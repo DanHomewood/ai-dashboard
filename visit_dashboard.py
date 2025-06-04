@@ -613,6 +613,70 @@ if "MonthName" in filtered_data.columns:
         ax1.set_ylabel("Visits")
         ax1.set_title("Visits by Month")
         st.pyplot(fig1)
+# 📈 Week-by-Week Trend Line
+if "Week" in filtered_data.columns:
+    with st.expander("📈 Weekly Visit Trend", expanded=False):
+        weekly_visits = filtered_data.groupby('Week').size().reset_index(name='Visit Count')
+        fig = px.line(weekly_visits, x='Week', y='Visit Count', markers=True,
+                      title='Weekly Visit Trends')
+        st.plotly_chart(fig, use_container_width=True)
+
+# 👷 Engineer Activity Breakdown
+if "Engineer" in filtered_data.columns:
+    with st.expander("👷 Engineer Activity Breakdown", expanded=False):
+        engineer_activity = filtered_data.groupby('Engineer').size().reset_index(name='Visit Count')
+        fig = px.bar(engineer_activity, x='Engineer', y='Visit Count',
+                     title='Engineer Activity Breakdown')
+        st.plotly_chart(fig, use_container_width=True)
+
+# 🌡️ Time of Day Heatmap for Activations
+if "Activate" in filtered_data.columns and "Date" in filtered_data.columns:
+    with st.expander("🌡️ Activation Heatmap by Hour and Day", expanded=False):
+        try:
+            filtered_data['Hour'] = pd.to_datetime(filtered_data['Activate'].astype(str), errors='coerce').dt.hour
+            filtered_data['Day'] = filtered_data['Date'].dt.day_name()
+            heatmap_data = filtered_data.groupby(['Hour', 'Day']).size().unstack(fill_value=0)
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.heatmap(heatmap_data, cmap="YlGnBu", annot=True, fmt="d", ax=ax)
+            ax.set_title("Activation Heatmap by Hour and Day")
+            st.pyplot(fig)
+        except Exception as e:
+            st.warning(f"Could not generate heatmap: {e}")
+
+if "Week" in filtered_data.columns:
+    with st.expander("📈 Weekly Visit Trend", expanded=False):
+        week_trend = (
+            filtered_data.groupby("Week")
+            .size()
+            .reset_index(name="Visit Count")
+            .sort_values("Week")
+        )
+        fig = px.line(week_trend, x="Week", y="Visit Count", title="Weekly Visit Trend")
+        st.plotly_chart(fig, use_container_width=True)
+
+if "Engineer" in filtered_data.columns and "Activate" in filtered_data.columns:
+    with st.expander("🕓 Time of Day Activation Heatmap", expanded=False):
+        df_time = filtered_data.copy()
+        df_time["Hour"] = pd.to_timedelta(df_time["Activate"].astype(str), errors='coerce').dt.total_seconds() // 3600
+        df_time.dropna(subset=["Hour"], inplace=True)
+        df_time["Hour"] = df_time["Hour"].astype(int)
+
+        # Remove 00:00 entries
+        df_time = df_time[df_time["Hour"] > 0]
+
+        # Format as HH:00 labels
+        df_time["HourLabel"] = df_time["Hour"].apply(lambda x: f"{int(x):02d}:00")
+
+        # Group and pivot
+        heatmap_df = df_time.groupby(["Engineer", "HourLabel"]).size().reset_index(name="Count")
+        heatmap_pivot = heatmap_df.pivot(index="Engineer", columns="HourLabel", values="Count").fillna(0)
+
+        # Convert to int for cleaner display
+        heatmap_pivot = heatmap_pivot.astype(int)
+
+        st.dataframe(heatmap_pivot.style.background_gradient(cmap='Oranges'), use_container_width=True)
+
 
 # 🗓️ Daily Calendar Heatmap
 if "Date" in filtered_data.columns and "Value" in filtered_data.columns:
@@ -814,9 +878,3 @@ with st.expander("🕓 Activate/Deactivate Time Insights", expanded=False):
         earliest_latest[col] = earliest_latest[col].apply(format_time)
 
     st.dataframe(earliest_latest)
-
-
- 
-
-
-
