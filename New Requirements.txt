@@ -4,3 +4,13 @@ plotly
 openpyxl
 matplotlib
 seaborn
+streamlit as st
+pandas as pd
+calendar
+plotly.express as px
+matplotlib.pyplot as plt
+seaborn as sns
+plotly.graph_objects as go
+base64
+numpy as np
+mpl_toolkits.mplot3d import Axes3D
