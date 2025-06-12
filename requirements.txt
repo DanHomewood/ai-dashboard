@@ -5,3 +5,4 @@ matplotlib
 seaborn
 numpy
 modal
+streamlit_modal
