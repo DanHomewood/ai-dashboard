@@ -103,6 +103,7 @@ from PIL import Image
 # Streamlit Modal (if you use pop-ups/modals)
 from streamlit_modal import Modal
 
+import matplotlib.pyplot
 # Matplotlib visual style (OPTIONAL: tweak as needed)
 plt.rcParams.update({
     'figure.figsize': (4, 2.5),
