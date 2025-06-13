@@ -6,3 +6,5 @@ seaborn
 numpy
 modal
 streamlit_modal
+openpyxl
+
