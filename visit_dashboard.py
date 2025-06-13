@@ -140,11 +140,13 @@ def load_file(path):
     try:
         # Special logic for "Productivity Report"
         if "Productivity Report" in path:
-            df = pd.read_excel(path)
-            # You can add custom cleaning for the Productivity Report here if needed
-            return df
+    import os
+    st.write("Trying to load:", path)
+    st.write("Current working directory:", os.getcwd())
+    st.write("Productivity Report.xlsx exists?", os.path.isfile("Productivity Report.xlsx"))
+    df = pd.read_excel("./Productivity Report.xlsx")
+    return df
 
-        df = pd.read_excel(path)
 
         if "AI Test SB Visits" in path:
             df = df.rename(columns={
