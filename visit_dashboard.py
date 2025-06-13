@@ -5451,8 +5451,7 @@ def fuzzy_match(value, options):
     best = difflib.get_close_matches(value, options, n=1, cutoff=0.7)
     return best[0] if best else None
 
-if page == "🧑‍💼 Ask AI: Oracle Visits":
-    st.header("🧑‍💼 Ask AI: Oracle Visits")
+
     st.markdown("*Ask anything: e.g. 'visit types', 'monthly trend', 'april completed', 'top team'...*")
 
     filtered_data = df_all.copy()  # or apply your filter logic
