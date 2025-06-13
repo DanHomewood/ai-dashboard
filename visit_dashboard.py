@@ -117,6 +117,9 @@ plt.rcParams.update({
 
 
 # --- SECTION: FILE CHOICES / DATA SOURCES ---
+import os
+import streamlit as st
+st.write("Files in working directory:", os.listdir())
 
 file_map = {
     "AI Test SB Visits": "AI Test SB Visits.xlsx",
