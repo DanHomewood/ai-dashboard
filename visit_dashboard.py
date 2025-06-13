@@ -5403,6 +5403,20 @@ import difflib
 import plotly.express as px
 import re
 
+if page == "🧑‍💼 Ask AI: Oracle Visits":
+    st.header("🧑‍💼 Ask AI: Oracle Visits")
+
+    # SAFETY CHECK: Data must be loaded
+    if df_all.empty or "Team" not in df_all.columns:
+        st.warning("No team data loaded yet! Please upload/select your data files.")
+        st.stop()  # This halts further execution for this page if no data!
+    
+    # ---- Put your AI UI and logic BELOW this check! ----
+    # For example:
+    st.markdown("*Ask anything: e.g. 'visit types', 'monthly trend', 'april completed', 'top team'...*")
+    # ...rest of your Oracle AI logic using df_all...
+
+
 # --- 0. HELPER FUNCTIONS ---
 
 trend_keywords = [
