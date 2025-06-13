@@ -5361,42 +5361,24 @@ with st.expander("📈 Animated Visits Over Time by Status (All Teams Shown Ever
     st.plotly_chart(fig_anim, use_container_width=True)
 
 
-
-# Oracle Visits AI (CLEAN COPY) - Paste into your Streamlit app
+# ---- MAIN RENDER BLOCK (Conversational AI!) ----
 
 import streamlit as st
 import pandas as pd
 import difflib
 import plotly.express as px
-import random
-import calendar
+import re
 
-# ---- 1. COMBINE ALL FILES ----
-file_paths = {
-    "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
-    "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
-    "VIP North": "VIP North Oracle Data.xlsx",
-    "VIP South": "VIP South Oracle Data.xlsx"
-}
-combined = []
-for label, path in file_paths.items():
-    df = pd.read_excel(path)
-    df["Team"] = label
-    combined.append(df)
-df_all = pd.concat(combined, ignore_index=True)
+# --- 0. HELPER FUNCTIONS ---
 
-# ---- 2. CLEANING LOGIC ----
-df_all = df_all[df_all["Visit Type"].astype(str).str.strip().str.lower() != "lunch (30)"]
-df_all["Date"] = pd.to_datetime(df_all["Date"], errors="coerce")
-df_all["Activity Status"] = df_all["Activity Status"].astype(str).str.strip().str.title()
-df_all["Activate"] = pd.to_timedelta(df_all["Activate"].astype(str), errors="coerce")
-df_all["Deactivate"] = pd.to_timedelta(df_all["Deactivate"].astype(str), errors="coerce")
-df_all["Weekday"] = df_all["Date"].dt.day_name()
-df_all["Month"] = df_all["Date"].dt.strftime("%b")
-df_all["Total Time"] = pd.to_timedelta(df_all["Total Time"].astype(str), errors="coerce") if "Total Time" in df_all.columns else None
+trend_keywords = [
+    "trend", "trend over", "monthly trend", "visit trend", "trend across", "activity type", "activity trend",
+    "visits over time", "visits per month", "month trend", "trend for", "trend by", "trend all"
+]
 
-# ---- 3. FLEXIBLE COLUMN FINDER ----
+
 def fuzzy_col(df, col_like):
+    # Flexible column finder (visit type, date, etc)
     for col in df.columns:
         if col_like.lower() in col.lower():
             return col
@@ -5405,280 +5387,502 @@ def fuzzy_col(df, col_like):
         return matches[0]
     return None
 
-# ---- 4. ORACLE AI FUNCTION ----
-def ask_oracle_ai(query, df):
-    if df.empty:
-        return "⚠️ No data loaded or matches current filters.", None
+def month_from_query(q):
+    # Extracts a month (Jan, Feb, etc) from the query if present
+    months = list(calendar.month_name)[1:] + list(calendar.month_abbr)[1:]
+    for m in months:
+        if m.lower() in q.lower():
+            return m[:3].title()
+    return None
 
-    q = query.lower()
+def fuzzy_match(value, options):
+    # Fuzzy match a value (e.g. "completd" finds "Completed")
+    for opt in options:
+        if value.lower() in opt.lower():
+            return opt
+    best = difflib.get_close_matches(value, options, n=1, cutoff=0.7)
+    return best[0] if best else None
+
+if page == "🧑‍💼 Ask AI: Oracle Visits":
+    st.header("🧑‍💼 Ask AI: Oracle Visits")
+    st.markdown("*Ask anything: e.g. 'visit types', 'monthly trend', 'april completed', 'top team'...*")
+
+    filtered_data = df_all.copy()  # or apply your filter logic
+
+
+
+# --- 1. ORACLE AI MAIN BLOCK (CLEANED, WORKING VERSION) ---
+def ask_oracle_ai(query, df, answer_style="Bullet points"):
+    q = query.strip().lower()
+    preview = ""
     answer = ""
     chart = None
-
-    engineer_col = fuzzy_col(df, "engineer") or fuzzy_col(df, "name")
-    value_col = fuzzy_col(df, "value")
-    date_col = fuzzy_col(df, "date")
     visit_type_col = fuzzy_col(df, "visit type")
-    activity_col = fuzzy_col(df, "activity")
+    date_col = fuzzy_col(df, "date")
+    activity_col = fuzzy_col(df, "activity status")
+    month_col = fuzzy_col(df, "month")
+    team_col = fuzzy_col(df, "team")
+
+    # --- Dynamic Activity Status by Team Drilldown ---
+    import difflib
+
+    activity_keywords = ["completed", "pending", "cancelled", "not done", "started"]
+
+    # Helper to fuzzy match the status in query
+    def get_status_from_query(q, statuses):
+        q = q.lower()
+        for s in statuses:
+            if s.lower() in q:
+                return s
+        best = difflib.get_close_matches(q, statuses, n=1, cutoff=0.6)
+        return best[0] if best else None
+
+    if "by team" in q and activity_col and team_col:
+        # Try to find a status word in the query
+        all_statuses = df[activity_col].dropna().unique()
+        found_status = None
+        for kw in activity_keywords + list(all_statuses):
+            if kw.lower() in q:
+                found_status = kw
+                break
+        if not found_status:
+            # fallback: fuzzy match any word
+            for word in q.split():
+                match = difflib.get_close_matches(word, all_statuses, n=1, cutoff=0.6)
+                if match:
+                    found_status = match[0]
+                    break
+        if found_status:
+            # Filter for that status
+            mask = df[activity_col].str.lower().str.startswith(found_status[:5].lower())
+            status_df = df[mask]
+            by_team = status_df.groupby(team_col).size().reset_index(name=f"{found_status.title()} Visits")
+            answer = f"**{found_status.title()} Visits by Team:**\n" + "\n".join(
+                f"- **{row[team_col]}**: {row[f'{found_status.title()} Visits']:,}" for _, row in by_team.iterrows()
+            )
+            chart = px.bar(by_team, x=team_col, y=f"{found_status.title()} Visits", title=f"{found_status.title()} Visits by Team")
+            return "", answer, chart
+
+
+    # --- Ensure these column lookups exist ---
+    team_col = "Team"  # Because you add this when combining your datasets!
+    team_names = [str(t).lower() for t in df[team_col].dropna().unique()]
+
+    # --- Helper: Get team from query ---
+    def get_team_from_query(q):
+        # Accept fuzzy/partial matches for team names
+        matches = []
+        for t in team_names:
+            # Allow short match (e.g. "north" for "tier 2 north")
+            if t in q or any(w in t for w in q.split()):
+                matches.append(t)
+        # Return all matches, or None if nothing found
+        return matches if matches else None
+
+    # --- Extract team(s) from query ---
+    teams_in_query = get_team_from_query(q)
+
+    # --- Example Drilldown usage ---
+    data = df.copy()
+    if teams_in_query:
+        # Accepts multi-team (e.g. "north" matches both VIP North and Tier 2 North)
+        data = data[data[team_col].str.lower().isin(teams_in_query)]
+
+    # Now, you can use 'data' as your filtered table for *just that team/those teams*
+    # All your visit type/status logic works as before, just with the subset!
+
+    if "pending by team" in q:
+        if team_col and activity_col:
+            pending = df[df[activity_col].str.lower().str.startswith("pend")]
+            by_team = pending.groupby(team_col).size().reset_index(name="Pending Visits")
+            # Build a response
+            answer = "**Pending by Team:**\n" + "\n".join(
+                f"- **{row[team_col]}**: {row['Pending Visits']:,}" for _, row in by_team.iterrows()
+            )
+            chart = px.bar(by_team, x=team_col, y="Pending Visits", title="Pending Visits by Team")
+            return "", answer, chart
+
+    
+
+    # ---- DRILLDOWN FOLLOW-UP LOGIC ----
+    # Store and detect follow-ups to previous question
+    if 'last_filters' not in st.session_state:
+        st.session_state['last_filters'] = {}
+
+    follow_up_keywords = ["now", "only", "just", "show only", "break down", "breakdown", "by team", "by month", "by status"]
+    is_follow_up = any(word in q for word in follow_up_keywords)
+
+    if is_follow_up and st.session_state['last_filters']:
+        # Start with previous filters, update as needed
+        filters = st.session_state['last_filters'].copy()
+        # Update filters based on new query parts
+        # Example: "now just north" => add team=north
+        team_words = ["north", "south", "vip", "tier 2"]
+        for t in team_words:
+            if t in q:
+                filters["team"] = t
+        for status in ["pending", "completed", "cancelled", "not done", "started", "suspended"]:
+            if status in q:
+                filters["activity_status"] = status
+        # Handle month follow-up
+        for m in ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]:
+            if m in q:
+                filters["month"] = m.title()
+        # Store updated filters for next time
+        st.session_state['last_filters'] = filters
+        # You can then apply filters to your data as needed, e.g.:
+        # - filter by team if 'team' in filters
+        # - filter by status if 'activity_status' in filters
+        # - filter by month if 'month' in filters
+        # ... (then continue with your standard answer code)
+
+    else:
+        # New question, build fresh filters
+        filters = {}
+        # Extract team/status/month from q
+        for t in ["north", "south", "vip", "tier 2"]:
+            if t in q:
+                filters["team"] = t
+        for status in ["pending", "completed", "cancelled", "not done", "started", "suspended"]:
+            if status in q:
+                filters["activity_status"] = status
+        for m in ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]:
+            if m in q:
+                filters["month"] = m.title()
+        st.session_state['last_filters'] = filters
+
+    # Now apply filters to data as you like:
+    if filters.get("team") and "team" in df.columns:
+        data = data[data["Team"].str.lower().str.contains(filters["team"])]
+    if filters.get("activity_status") and activity_col:
+        data = data[data[activity_col].str.lower().str.startswith(filters["activity_status"][:5])]
+    if filters.get("month") and date_col:
+        month_num = pd.to_datetime(filters["month"], format='%b').month
+        data = data[data[date_col].dt.month == month_num]
+
+    
+
+    # Fuzzy col names
+    visit_type_col = fuzzy_col(df, "visit type")
+    date_col = fuzzy_col(df, "date")
+    activity_col = fuzzy_col(df, "activity status")
     month_col = fuzzy_col(df, "month")
 
-# --- 1. Visit Trend (AI-style narrative summary + bullets)
-    if any(word in q for word in ["trend", "month", "visits over time", "visit trend", "monthly visits"]):
-        if month_col:
-            data = df.copy()
-            if activity_col:
-                data = data[data[activity_col].str.lower() == "completed"]
-            months_in_data = list(data[month_col].dropna().unique())
+    # 1. Handle completed visits, with/without month, excluding Lunch (unless "lunch" in query)
+    is_completed = "complet" in q or fuzzy_match("completed", [q])
+    wants_lunch = "lunch" in q
+    month_query = month_from_query(q)
+
+    # Build base filter
+    data = df.copy()
+    # Activity status
+    if is_completed and activity_col:
+        data = data[data[activity_col].str.lower().str.startswith("complet")]
+    # Exclude lunch unless they ask for it
+    if not wants_lunch and visit_type_col:
+        data = data[~data[visit_type_col].str.lower().str.contains("lunch")]
+    # Filter by month
+    if month_query and date_col:
+        # Accept things like "Apr" or "April"
+        month_num = pd.to_datetime(month_query, format='%b').month if len(month_query) == 3 else pd.to_datetime(month_query, format='%B').month
+        data = data[data[date_col].dt.month == month_num]
+
+    # Special: Activity trend (monthly breakdown for each status)
+    if ("activity" in q and "trend" in q) or ("status" in q and "trend" in q):
+        if activity_col and date_col and month_col:
+            temp = data.copy()
+            temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+            # Group by month and status
+            trend = temp.groupby(['Month', activity_col]).size().reset_index(name="Visits")
+            # Sort by calendar order
             months_order = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"]
-            months_sorted = [m for m in months_order if m in months_in_data]
-            monthly = data.groupby(month_col).size().reindex(months_sorted, fill_value=0).reset_index()
-            monthly.columns = ["Month", "Visits"]
+            trend['Month'] = pd.Categorical(trend['Month'], categories=months_order, ordered=True)
+            trend = trend.sort_values("Month")
+            # Compose summary/bullets
+            statuses = trend[activity_col].unique()
+            if answer_style == "Bullet points":
+                answer = "**Monthly trend for each activity status:**\n"
+                for s in statuses:
+                    total = int(trend[trend[activity_col]==s]["Visits"].sum())
+                    answer += f"- **{s}**: {total:,} visits\n"
+            elif answer_style == "Paragraph":
+                answer = f"Here's the monthly trend for **all activity statuses** across all teams."
+            elif answer_style == "Bar chart":
+                chart = px.bar(trend, x='Month', y='Visits', color=activity_col, barmode='group',
+                               title="Monthly Visits by Activity Status")
+            elif answer_style == "Line chart":
+                chart = px.line(trend, x='Month', y='Visits', color=activity_col, markers=True,
+                                title="Monthly Visits Trend by Activity Status")
+            return preview, answer, chart
+    # --- Handle explicit activity status queries ---
+    if "activity status" in q or (("status" in q or "activity" in q) and "trend" not in q):
+        if activity_col:
+            # List unique statuses
+            statuses = data[activity_col].dropna().unique()
+            status_counts = data[activity_col].value_counts().reset_index()
+            status_counts.columns = ["Activity Status", "Count"]
 
-            total_visits = monthly["Visits"].sum()
-            busiest = monthly.sort_values("Visits", ascending=False).iloc[0]
-            quietest = monthly[monthly["Visits"] > 0].sort_values("Visits", ascending=True).iloc[0] if (monthly["Visits"] > 0).any() else busiest
-            percent_change = 0
-            if busiest["Month"] != quietest["Month"] and quietest["Visits"] > 0:
-                percent_change = ((busiest["Visits"] - quietest["Visits"]) / quietest["Visits"]) * 100
-
-            summary = (
-                f"Between October 2024 and June 2025, there were a total of {total_visits:,} completed visits. "
-                f"The busiest month was {busiest['Month']}, with {busiest['Visits']} visits recorded, "
-                f"while the quietest active month was {quietest['Month']} ({quietest['Visits']} visits)."
-            )
-            if percent_change > 0:
-                summary += f" Overall, activity increased by {percent_change:.1f}% from the quietest to the busiest month."
-
-            bullets = (
-                f"\n\n**Quick stats:**\n"
-                f"- Total completed visits: **{total_visits:,}**\n"
-                f"- Busiest month: **{busiest['Month']}** ({busiest['Visits']} visits)\n"
-                f"- Quietest month: **{quietest['Month']}** ({quietest['Visits']} visits)\n"
-                f"- Activity change: **{percent_change:.1f}%**"
-            )
-
-            answer = summary + bullets
-
-            chart = px.line(
-                monthly, x="Month", y="Visits", markers=True, title="Monthly Visit Trends"
-            )
-            chart.update_traces(line=dict(width=3), marker=dict(size=9))
-            return answer, chart
+            preview = f"There are **{len(statuses)} activity statuses** in your data.\n\n"
+            preview += "• " + "\n• ".join([f"{s} ({status_counts[status_counts['Activity Status']==s]['Count'].iloc[0]} visits)" for s in statuses])
+            # Bullet/paragraph/bar/line options
+            if answer_style == "Bullet points":
+                answer = "**Activity Status breakdown:**\n" + "\n".join([f"- **{row['Activity Status']}**: {row['Count']} visits" for _, row in status_counts.iterrows()])
+            elif answer_style == "Paragraph":
+                answer = f"There are {len(statuses)} activity statuses. The most common is **{status_counts.iloc[0]['Activity Status']}** ({status_counts.iloc[0]['Count']} visits)."
+            elif answer_style == "Bar chart":
+                chart = px.bar(status_counts, x="Activity Status", y="Count", title="Visits by Activity Status")
+            elif answer_style == "Line chart":
+                if date_col:
+                    temp = data.copy()
+                    temp['Month'] = temp[date_col].dt.strftime('%b')
+                    monthly = temp.groupby(['Month', activity_col]).size().reset_index(name="Visits")
+                    months_order = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"]
+                    monthly['Month'] = pd.Categorical(monthly['Month'], categories=months_order, ordered=True)
+                    monthly = monthly.sort_values('Month')
+                    chart = px.line(monthly, x='Month', y='Visits', color=activity_col, markers=True, title="Monthly Visits by Activity Status")
+            return preview, answer, chart
 
 
-  
-# --- 2. Most Common Visit Type (AI-style narrative summary + bullets)
-    if any(word in q for word in ["most common visit", "top visit type", "popular visit type", "visit type", "visit types"]):
+    # 2. Handle "visit type" queries
+    if "visit type" in q or "visit types" in q or "type" in q:
         if visit_type_col:
-            data = df.copy()
-            if activity_col:
-                data = data[data[activity_col].str.lower() == "completed"]
+            visit_types = data[visit_type_col].dropna().unique()
+            preview = f"There are **{len(visit_types)} unique visit types** in your current selection."
+            # Extra: List them!
+            preview += "\n\n• " + "\n• ".join(sorted(visit_types))
+            # Most common
             visit_counts = data[visit_type_col].value_counts().reset_index()
             visit_counts.columns = ["Visit Type", "Count"]
 
-            if visit_counts.empty:
-                answer = "I couldn't find any visits for that filter."
-                return answer, None
-
-            total_visits = visit_counts["Count"].sum()
-            top_type, top_count = visit_counts.iloc[0]
-            if len(visit_counts) > 1:
-                second_type, second_count = visit_counts.iloc[1]
-                summary = (
-                    f"In your selected data, the most frequently performed visit type was '{top_type}' with {top_count} visits "
-                    f"({(top_count/total_visits*100):.1f}% of all completed visits). "
-                    f"The next most common was '{second_type}' with {second_count} visits."
+            # Style answer based on what user wants
+            if answer_style == "Bullet points":
+                answer = (
+                    f"**Top 5 Visit Types:**\n" +
+                    "\n".join([f"- {row['Visit Type']}: {row['Count']} visits" for _, row in visit_counts.head(5).iterrows()])
                 )
-                bullets = (
-                    f"\n\n**Quick stats:**\n"
-                    f"- Top visit type: **{top_type}** ({top_count} visits)\n"
-                    f"- Next most common: **{second_type}** ({second_count} visits)\n"
-                    f"- Total completed visits: **{total_visits:,}**"
-                )
-            else:
-                summary = (
-                    f"In your selected data, the most frequently performed visit type was '{top_type}' with {top_count} visits."
-                )
-                bullets = (
-                    f"\n\n**Quick stats:**\n"
-                    f"- Top visit type: **{top_type}** ({top_count} visits)\n"
-                    f"- Total completed visits: **{total_visits:,}**"
-                )
-
-            answer = summary + bullets
-
-            chart = px.bar(
-                visit_counts.head(10),
-                x="Visit Type", y="Count",
-                title="Most Common Visit Types",
-                text="Count"
-            )
-            return answer, chart
-
-    import re
-    def fuzzy_match(value, options):
-        """Case-insensitive, partial, and fuzzy matching for status/team names."""
-        value = value.lower()
-        for opt in options:
-            if value in opt.lower():
-                return opt
-        # Fuzzy with difflib if no substring match
-        import difflib
-        best = difflib.get_close_matches(value, options, n=1, cutoff=0.6)
-        return best[0] if best else None
-
-    # ---- 3. ACTIVITY STATUS AI BLOCK ----
-    statuses = sorted(df[activity_col].dropna().unique()) if activity_col else []
-    teams = sorted(df["Team"].dropna().unique()) if "Team" in df.columns else []
-
-    # Check for status/team in question (fuzzy!)
-    status_query = None
-    team_query = None
-    for s in statuses:
-        if re.search(rf"\b{s.lower()[:5]}", q):  # fuzzy: first 5 letters
-            status_query = s
-            break
-    if not status_query:
-        # Try fuzzy: see if ANY word in the query matches status
-        for word in q.split():
-            match = fuzzy_match(word, statuses)
-            if match:
-                status_query = match
-                break
-    
-    # --- Team? Enhanced logic for north/south: always match both VIP/Tier2 variants ---
-    team_query = None
-
-    # First, build lists of all north and south teams
-    north_teams = [t for t in teams if "north" in t.lower()]
-    south_teams = [t for t in teams if "south" in t.lower()]
-
-    if any(w in ["north", "vip north", "tier 2 north"] for w in q.lower().split()):
-        # Any query with 'north' matches all north teams
-        team_query = north_teams
-    elif any(w in ["south", "vip south", "tier 2 south"] for w in q.lower().split()):
-        # Any query with 'south' matches all south teams
-        team_query = south_teams
-    else:
-        # Fallback: fuzzy match any word in query against teams
-        for t in teams:
-            if any(w in t.lower() for w in q.split()):
-                team_query = [t]
-                break
-
-    
-
-    # Filter data
-    data = df.copy()
-    if status_query:
-        data = data[data[activity_col].str.lower().str.startswith(status_query[:5].lower())]
-    if team_query:
-        if isinstance(team_query, list):
-            data = data[data["Team"].isin(team_query)]
-        else:
-            data = data[data["Team"] == team_query]
-
-    # Summary text
-    if status_query and not team_query:
-        team_str = "all teams"
-    elif team_query:
-        team_str = ", ".join(team_query) if isinstance(team_query, list) else team_query
-    else:
-        team_str = "all teams"
-
-    if status_query:
-        # Count and summary for chosen status/team
-        n_visits = len(data)
-        month_counts = data.groupby("Month").size().reset_index(name="Count")
-        team_counts = data.groupby("Team").size().reset_index(name="Count")
-        max_month = month_counts.sort_values("Count", ascending=False).iloc[0] if not month_counts.empty else None
-        max_team = team_counts.sort_values("Count", ascending=False).iloc[0] if not team_counts.empty else None
-
-        summary = (
-            f"Across {team_str}, there were **{n_visits:,}** visits with activity status **{status_query}**."
-        )
-        if max_month is not None:
-            summary += f" The month with the most '{status_query}' visits was **{max_month['Month']}** with {max_month['Count']} visits."
-        if max_team is not None:
-            summary += f" The team with the most '{status_query}' visits was **{max_team['Team']}** with {max_team['Count']}."
-
-        # Bullet points
-        bullets = (
-            f"\n\n**Quick stats:**\n"
-            f"- Activity status: **{status_query}**\n"
-            f"- Teams: **{team_str}**\n"
-            f"- Total visits: **{n_visits:,}**\n"
-        )
-        if max_month is not None:
-            bullets += f"- Busiest month: **{max_month['Month']}** ({max_month['Count']})\n"
-        if max_team is not None:
-            bullets += f"- Top team: **{max_team['Team']}** ({max_team['Count']})\n"
-
-        answer = summary + bullets
-
-        # Charts (animated by month/team if >1)
-        chart = px.bar(
-            data.groupby(["Month", "Team"]).size().reset_index(name="Visits"),
-            x="Month", y="Visits", color="Team", barmode="group",
-            title=f"Visits by Month & Team for Status: {status_query}"
-        )
-
-        anim = None
-        if len(data["Month"].unique()) > 1 and len(data["Team"].unique()) > 1:
-            anim = px.bar(
-                data.groupby(["Month", "Team"]).size().reset_index(name="Visits"),
-                x="Team", y="Visits", color="Team", animation_frame="Month",
-                title=f"Animated Visits by Team for Status: {status_query}",
-                range_y=[0, data.groupby(["Month", "Team"]).size().max()+5]
-            )
-
-        # Return both, with animated chart as bonus!
-        return (answer, chart if not anim else anim)
-
-			       
-        
-    
-# ---- 5. MAIN RENDER BLOCK ----
-if page == "🧑‍💼 Ask AI: Oracle Visits":
-    st.header("🧑‍💼 Ask AI: Oracle Visits")
-    st.markdown("*Examples: 'top engineer', 'Simon Wakelin value', 'most common visit type', 'April visits', 'visit trend', 'heatmap'...*")
-
-    # Use df_all or your filtered data
-    filtered_data = df_all.copy()
-
-    if "oracle_chat_history" not in st.session_state:
-        st.session_state.oracle_chat_history = []
-
-    query = st.text_input("Ask Oracle AI...", key="oracle_ai_input")
-    if st.button("Clear Chat History", key="oracle_ai_clear"):
-        st.session_state.oracle_chat_history.clear()
-        st.rerun()
-
-    if query:
-        with st.spinner("Thinking..."):
-            try:
-                result = ask_oracle_ai(query, filtered_data)
-                if isinstance(result, tuple) and len(result) == 2:
-                    answer, chart = result
+            elif answer_style == "Paragraph":
+                top = visit_counts.iloc[0]
+                answer = (f"In your selection, the most common visit type was **{top['Visit Type']}** "
+                          f"with {top['Count']} visits. There are {len(visit_types)} visit types in total.")
+            elif answer_style == "Bar chart":
+                chart = px.bar(visit_counts.head(10), x="Visit Type", y="Count", title="Top Visit Types")
+            elif answer_style == "Line chart":
+                # For visit type, line chart over time by type
+                if date_col:
+                    temp = data.copy()
+                    temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+                    temp = temp.groupby(['Month', visit_type_col]).size().reset_index(name="Visits")
+                    chart = px.line(temp, x='Month', y='Visits', color=visit_type_col, title="Monthly Visits by Type")
                 else:
-                    answer, chart = "⚠️ I couldn’t generate a proper answer for that query.", None
-            except Exception as e:
-                answer, chart = f"⚠️ An error occurred: {e}", None
+                    answer = "Date column missing for line chart."
+            return preview, answer, chart
 
-            st.session_state.oracle_chat_history.append((query, answer, chart))
+    # 3. Handle "completed visits" [month/total]
+    if is_completed:
+        count = len(data)
+        preview = f"There are **{count} completed visits**"
+        if month_query:
+            preview += f" in **{month_query}**"
+        preview += " (excluding lunch)." if not wants_lunch else " (including lunch)."
+        if answer_style == "Bullet points":
+            answer = f"- Total completed visits: **{count}**\n"
+            if visit_type_col:
+                vt_counts = data[visit_type_col].value_counts()
+                answer += "- Visit type breakdown:\n"
+                for vt, n in vt_counts.items():
+                    answer += f"    • {vt}: {n}\n"
+        elif answer_style == "Paragraph":
+            answer = f"You had {count} completed visits"
+            if month_query:
+                answer += f" in {month_query}"
+            answer += "."
+        elif answer_style == "Bar chart":
+            if visit_type_col:
+                vt_counts = data[visit_type_col].value_counts().reset_index()
+                vt_counts.columns = ["Visit Type", "Count"]
+                chart = px.bar(vt_counts, x="Visit Type", y="Count", title="Completed Visits by Type")
+        elif answer_style == "Line chart":
+            if date_col:
+                temp = data.copy()
+                temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+                temp = temp.groupby('Month').size().reset_index(name="Completed Visits")
+                chart = px.line(temp, x='Month', y='Completed Visits', title="Completed Visits Over Time")
+        return preview, answer, chart
+
+    
+
+    # 4. Handle queries for any specific visit type by name
+    if visit_type_col:
+        # Check if the user asked for a specific visit type
+        all_visit_types = [vt.lower() for vt in df[visit_type_col].dropna().unique()]
+        for vt in all_visit_types:
+            if vt in q:
+                data = df[df[visit_type_col].str.lower() == vt]
+                count = len(data)
+                preview = f"There are **{count} '{vt.title()}' visits** in your current selection."
+                if count == 0:
+                    answer = f"No visits found for '{vt.title()}'."
+                else:
+                    if answer_style == "Bullet points":
+                        answer = f"- Total **{vt.title()}** visits: **{count}**"
+                    elif answer_style == "Paragraph":
+                        answer = f"In your selection, there were {count} visits of type '{vt.title()}'."
+                    elif answer_style == "Bar chart":
+                        if date_col:
+                            temp = data.copy()
+                            temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+                            monthly = temp.groupby('Month').size().reset_index(name="Visits")
+                            chart = px.bar(monthly, x='Month', y='Visits', title=f"Monthly '{vt.title()}' Visits")
+                    elif answer_style == "Line chart":
+                        if date_col:
+                            temp = data.copy()
+                            temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+                            monthly = temp.groupby('Month').size().reset_index(name="Visits")
+                            chart = px.line(monthly, x='Month', y='Visits', title=f"Monthly '{vt.title()}' Visits")
+                return preview, answer, chart
+
+    # 5. Handle PARTIAL and FUZZY Visit Type matches
+    if visit_type_col:
+        # Build list of unique visit types
+        all_visit_types = df[visit_type_col].dropna().unique()
+        # Find user tokens (all words in the query)
+        user_tokens = [w for w in q.lower().split() if w not in ["visits", "visit", "type", "types"]]
+        # Find visit types that match ANY token (partial or fuzzy)
+        matched_types = set()
+        for token in user_tokens:
+            # Fuzzy match
+            close_matches = difflib.get_close_matches(token, [vt.lower() for vt in all_visit_types], n=5, cutoff=0.5)
+            # Partial match
+            for vt in all_visit_types:
+                if token in vt.lower() or vt.lower() in token or vt.lower() in close_matches:
+                    matched_types.add(vt)
+        # If we found matches, filter!
+        if matched_types:
+            data = data[data[visit_type_col].isin(matched_types)]
+            count = len(data)
+            matched_types_str = ", ".join(sorted(matched_types))
+            preview = f"Showing results for **{matched_types_str}** ({count} visits)."
+            if count == 0:
+                answer = f"No visits found for '{matched_types_str}'."
+            else:
+                if answer_style == "Bullet points":
+                    vt_counts = data[visit_type_col].value_counts()
+                    answer = "**Visit type breakdown:**\n" + "\n".join([f"- **{vt}**: {n} visits" for vt, n in vt_counts.items()])
+                elif answer_style == "Paragraph":
+                    answer = f"In your selection, there were {count} visits for: {matched_types_str}."
+                elif answer_style == "Bar chart":
+                    if date_col:
+                        temp = data.copy()
+                        temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+                        monthly = temp.groupby(['Month', visit_type_col]).size().reset_index(name="Visits")
+                        chart = px.bar(monthly, x='Month', y='Visits', color=visit_type_col, title=f"Monthly Visits for: {matched_types_str}")
+                elif answer_style == "Line chart":
+                    if date_col:
+                        temp = data.copy()
+                        temp['Month'] = temp[date_col].dt.to_period('M').astype(str)
+                        monthly = temp.groupby(['Month', visit_type_col]).size().reset_index(name="Visits")
+                        chart = px.line(monthly, x='Month', y='Visits', color=visit_type_col, title=f"Monthly Visits for: {matched_types_str}")
+            return preview, answer, chart
+
+    # Default catch-all: No match found
+    preview = "Sorry, I couldn't figure out what you're looking for. Try asking about 'visit types', 'completed visits', or 'April completed', etc."
+    answer = ""
+    chart = None
+    return preview, answer, chart
 
 
-    for i, entry in enumerate(reversed(st.session_state.oracle_chat_history[-5:])):
-        if isinstance(entry, tuple) and len(entry) == 3:
-            q, a, c = entry
-        elif isinstance(entry, tuple) and len(entry) == 2:
-            q, a = entry
-            c = None
-        else:
-            continue
-        st.markdown(f"**You:** {q}")
-        st.markdown(f"> {a}", unsafe_allow_html=True)
-        if c is not None:
-            st.plotly_chart(c, use_container_width=True, key=f"ai_plotly_{i}")
+    # --- IMPROVED ACTIVITY STATUS TREND BLOCK ---
+    if ("activity" in q and "trend" in q) or ("status" in q and "trend" in q):
+        if activity_col and date_col:
+            temp = data.copy()
+            temp['Month'] = temp[date_col].dt.strftime('%b')  # Get 3-letter month abbrev (e.g. 'Oct')
+            # Group by month and status
+            trend = temp.groupby(['Month', activity_col]).size().reset_index(name="Visits")
+            # Sort by calendar order
+            months_order = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"]
+            trend['Month'] = pd.Categorical(trend['Month'], categories=months_order, ordered=True)
+            trend = trend.sort_values("Month")
+            statuses = trend[activity_col].unique()
+            if answer_style == "Bullet points":
+                answer = "**Monthly trend for each activity status:**\n"
+                for s in statuses:
+                    total = int(trend[trend[activity_col]==s]["Visits"].sum())
+                    answer += f"- **{s}**: {total:,} visits\n"
+            elif answer_style == "Paragraph":
+                answer = f"Here's the monthly trend for **all activity statuses** across all teams."
+            elif answer_style == "Bar chart":
+                chart = px.bar(trend, x='Month', y='Visits', color=activity_col, barmode='group',
+                               title="Monthly Visits by Activity Status")
+                answer = ""  # if you want no text for chart-only answers
+            elif answer_style == "Line chart":
+                chart = px.line(trend, x='Month', y='Visits', color=activity_col, markers=True,
+                                title="Monthly Visits Trend by Activity Status")
+                answer = ""
+            return preview, answer, chart
+
+
+
+
+        # At the very end of your ask_oracle_ai function:
+    if not preview and not answer and not chart:
+        preview = "Sorry, I couldn't figure out what you're looking for. Try asking about 'visit types', 'completed visits', or 'April completed', etc."
+    return preview, answer, chart
+
+
+# --- 2. STREAMLIT UI BLOCK ---
+
+if "oracle_ai_state" not in st.session_state:
+    st.session_state.oracle_ai_state = {
+        "last_query": None,
+        "answer_ready": False,
+        "selected_option": None,
+        "cached_answer": None,
+        "chat_history": []
+    }
+
+
+
+query = st.text_input("Ask Oracle AI...", key="oracle_ai_input")
+if st.button("Clear Chat", key="oracle_ai_clear"):
+    st.session_state.oracle_ai_state["chat_history"].clear()
+    st.session_state.oracle_ai_state["last_query"] = None
+    st.session_state.oracle_ai_state["answer_ready"] = False
+    st.session_state.oracle_ai_state["selected_option"] = None
+    st.session_state.oracle_ai_state["cached_answer"] = None
+    st.rerun()
+
+# 1. Handle preview & format pick
+if query and query != st.session_state.oracle_ai_state["last_query"]:
+    preview, _, _ = ask_oracle_ai(query, df_all, "Bullet points")
+    st.session_state.oracle_ai_state["last_query"] = query
+    st.session_state.oracle_ai_state["answer_ready"] = False
+    st.session_state.oracle_ai_state["selected_option"] = None
+    st.session_state.oracle_ai_state["cached_answer"] = None
+    st.session_state.oracle_ai_state["chat_history"].append(("You", query, None))
+    st.session_state.oracle_ai_state["chat_history"].append(("AI", f"{preview}\n\nHow would you like the answer? (Pick below ⬇️)", None))
+
+# 2. Format pick (show after query preview)
+if query:
+    answer_style = st.radio(
+        "How would you like the answer?",
+        ["Bullet points", "Paragraph", "Bar chart", "Line chart"],
+        key="oracle_ai_format"
+    )
+    if st.button("Show Answer", key="oracle_ai_show"):
+        st.session_state.oracle_ai_state["answer_ready"] = True
+        preview, answer, chart = ask_oracle_ai(query, df_all, answer_style)
+        st.session_state.oracle_ai_state["cached_answer"] = (preview, answer, chart)
+        st.session_state.oracle_ai_state["chat_history"].append(("AI", answer, chart))
+
+# 3. Chat history
+for i, entry in enumerate(reversed(st.session_state.oracle_ai_state["chat_history"][-6:])):
+    who, msg, chart = entry
+    st.markdown(f"**{who}:** {msg}", unsafe_allow_html=True)
+    if chart is not None:
+        st.plotly_chart(chart, use_container_width=True, key=f"oracle_ai_chart_{i}")
+
+
+
 
       
 
