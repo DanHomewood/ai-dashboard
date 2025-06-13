@@ -117,9 +117,6 @@ plt.rcParams.update({
 
 
 # --- SECTION: FILE CHOICES / DATA SOURCES ---
-import os
-import streamlit as st
-st.write("Files in working directory:", os.listdir())
 
 file_map = {
     "AI Test SB Visits": "AI Test SB Visits.xlsx",
@@ -140,10 +137,6 @@ def load_file(path):
     try:
         # Special logic for "Productivity Report"
         if "Productivity Report" in path:
-            import os
-            st.write("Trying to load:", path)
-            st.write("Current working directory:", os.getcwd())
-            st.write("Productivity Report.xlsx exists?", os.path.isfile("Productivity Report.xlsx"))
             df = pd.read_excel("./Productivity Report.xlsx")
             return df
 
@@ -152,6 +145,7 @@ def load_file(path):
     except Exception as e:
         st.error(f"Failed to load file: {e}")
         return None
+
 
         
 
