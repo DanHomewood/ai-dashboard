@@ -5027,6 +5027,13 @@ import itertools
 # Dummy placeholder if needed for real use
 # df_all = pd.read_csv("your_data.csv")
 
+if "df_all" in locals() and "Team" in df_all.columns:
+    all_teams = df_all["Team"].unique()
+else:
+    st.warning("No team data loaded yet! Please upload/select your data files.")
+    st.stop()
+
+
 # -------- SETUP --------
 statuses_to_plot = ["Completed", "Started", "Pending", "Cancelled", "Not Done"]
 all_teams = df_all["Team"].unique()
