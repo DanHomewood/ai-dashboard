@@ -10,6 +10,33 @@ import base64
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 
+import streamlit as st
+import pandas as pd
+
+# --- Load your Oracle datasets and combine into one DataFrame with a 'Team' column ---
+@st.cache_data  # Optional, for performance; remove if it causes issues
+def load_oracle_data():
+    file_paths = {
+        "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+        "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
+        "VIP North": "VIP North Oracle Data.xlsx",
+        "VIP South": "VIP South Oracle Data.xlsx"
+    }
+    combined = []
+    for label, path in file_paths.items():
+        try:
+            df = pd.read_excel(path)
+            df["Team"] = label
+            combined.append(df)
+        except Exception as e:
+            st.warning(f"Could not load {label}: {e}")
+    if combined:
+        df_all = pd.concat(combined, ignore_index=True)
+        return df_all
+    else:
+        return pd.DataFrame()  # Return empty DataFrame if none loaded
+
+df_all = load_oracle_data()
 
 st.markdown("""
     <style>
