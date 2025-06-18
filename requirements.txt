@@ -7,4 +7,5 @@ numpy
 modal
 streamlit_modal
 openpyxl
+scikit-learn
 
