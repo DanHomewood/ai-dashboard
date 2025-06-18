@@ -2002,53 +2002,270 @@ if page == "📈 Forecasts" and {"Date", "Activate", "Deactivate", "Total Time W
 # ──────────── MONTHLY VISITS & VALUE ANALYTICS (COLLAPSIBLE + TABS + KPI PER MONTH) ────────────
 if page == "📈 Forecasts" and {"Date", "Value"}.issubset(filtered_data.columns):
 
-    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go, matplotlib.pyplot as plt
+    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go, streamlit as st
 
+    # ── base dataframe (all visits) ───────────────────────────────────────
     df = filtered_data.copy()
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df[df["Date"].notnull()]
     df["Month"] = df["Date"].dt.to_period("M")
     df["MonthStr"] = df["Month"].astype(str)
 
-    combo = df.groupby("MonthStr").agg({"Value": "sum", "Date": "count"}).rename(columns={"Date": "Visits"}).reset_index()
-    combo.sort_values("MonthStr", inplace=True)
+    combo = (
+        df.groupby("MonthStr")
+          .agg(Value=("Value", "sum"), Visits=("Date", "count"))
+          .reset_index()
+          .sort_values("MonthStr")
+    )
 
     if combo.empty:
         st.info("No monthly data available.")
         st.stop()
 
+    # ═════════ EXPANDER 1 – Visits & £Value ════════════════════════════════
     with st.expander("📊 Monthly Visits & Value Analysis", expanded=False):
 
-        # Month Tabs (e.g. Nov, Dec, Jan, etc.)
         unique_months = combo["MonthStr"].tolist()
         month_tabs = st.tabs(unique_months)
 
         for i, month in enumerate(unique_months):
             with month_tabs[i]:
-                current = combo[combo["MonthStr"] == month].iloc[0]
-                prev_idx = max(0, i - 1)
-                previous = combo.iloc[prev_idx]
-                
-                delta_visits = current["Visits"] - previous["Visits"]
-                delta_value = current["Value"] - previous["Value"]
-                
-                cols = st.columns(2)
-                cols[0].metric("Visits", f"{current['Visits']:,}", f"{delta_visits:+,}")
-                cols[1].metric("£ Value", f"£{current['Value']:,.1f}", f"£{delta_value:+,.1f}")
+                current = combo.loc[combo["MonthStr"] == month].iloc[0]
+                previous = combo.iloc[max(i-1, 0)]
 
-                # Mini line chart trend
-                fig_trend = go.Figure()
-                fig_trend.add_trace(go.Scatter(x=combo["MonthStr"], y=combo["Visits"],
-                                               name="Visits", mode="lines+markers", line=dict(color="deepskyblue")))
-                fig_trend.add_trace(go.Scatter(x=combo["MonthStr"], y=combo["Value"],
-                                               name="Value (£)", mode="lines+markers", line=dict(color="orange"), yaxis="y2"))
-                fig_trend.update_layout(
-                    title=f"Visit & Value Trend up to {month}",
-                    xaxis=dict(title="Month"),
-                    yaxis=dict(title="Visits"),
-                    yaxis2=dict(title="Value (£)", overlaying="y", side="right")
-                )
-                st.plotly_chart(fig_trend, use_container_width=True, key=f"month_tab_trend_{month}")
+                delta_vis = current["Visits"] - previous["Visits"]
+                delta_val = current["Value"]  - previous["Value"]
+
+                c1, c2 = st.columns(2)
+                c1.metric("Visits",  f"{current.Visits:,}",  f"{delta_vis:+,}")
+                c2.metric("£ Value", f"£{current.Value:,.1f}", f"£{delta_val:+,.1f}")
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=combo["MonthStr"], y=combo["Visits"],
+                                         name="Visits", mode="lines+markers",
+                                         line=dict(color="#17becf")))
+                fig.add_trace(go.Scatter(x=combo["MonthStr"], y=combo["Value"],
+                                         name="Value (£)", mode="lines+markers",
+                                         yaxis="y2", line=dict(color="#ff7f0e")))
+                fig.update_layout(title=f"Visit & Value Trend up to {month}",
+                                  xaxis=dict(title="Month"),
+                                  yaxis=dict(title="Visits"),
+                                  yaxis2=dict(title="Value (£)", overlaying="y", side="right"))
+                st.plotly_chart(fig, use_container_width=True, key=f"trend_{month}")
+
+    # ── NEW SECTION – Avg Daily Completed-Visit KPIs with bi-color line ─────────────────────────
+    if {"Activity Status", "Visit Type"}.issubset(filtered_data.columns):
+
+        df_c = filtered_data.copy()
+        df_c["Activity Status"] = df_c["Activity Status"].astype(str).str.lower()
+        df_c = df_c[df_c["Activity Status"] == "completed"]
+        df_c = df_c[~df_c["Visit Type"].astype(str).str.contains("lunch", case=False, na=False)]
+        df_c["Date"] = pd.to_datetime(df_c["Date"], errors="coerce")
+        df_c = df_c[df_c["Date"].notnull()]
+        df_c["MonthStr"] = df_c["Date"].dt.to_period("M").astype(str)
+
+        df_c["Day"] = df_c["Date"].dt.date
+        daily_counts = df_c.groupby(["MonthStr", "Day"]).size().reset_index(name="DayVisits")
+        avg_daily = daily_counts.groupby("MonthStr")["DayVisits"].mean().reset_index()
+        monthly_completed = df_c.groupby("MonthStr").size().reset_index(name="Visits")
+        avg_df = avg_daily.merge(monthly_completed, on="MonthStr")
+
+        max_avg = avg_df["DayVisits"].max()
+        min_avg = avg_df["DayVisits"].min()
+        avg_df["Prev"] = avg_df["DayVisits"].shift(1)
+
+        avg_df["ΔPrev%"] = (avg_df["DayVisits"] / avg_df["Prev"] - 1) * 100
+        avg_df["ΔMax%"]  = (avg_df["DayVisits"] / max_avg - 1) * 100
+        avg_df["ΔMin%"]  = (avg_df["DayVisits"] / min_avg - 1) * 100
+
+        def p(x): return "–" if pd.isna(x) else f"{x:+.1f}%"
+        f_int = lambda x: "–" if pd.isna(x) else f"{x:.1f}"
+
+        with st.expander("📈 Avg Daily Completed Visits (No Lunch)", expanded=False):
+
+            months2 = avg_df["MonthStr"].tolist()
+            tabs2   = st.tabs(months2)
+
+            for i, m in enumerate(months2):
+                row = avg_df.iloc[i]
+
+                with tabs2[i]:
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Avg Daily Visits", f_int(row["DayVisits"]), p(row["ΔPrev%"]))
+                    c2.metric("% vs Max", p(row["ΔMax%"]))
+                    c3.metric("% vs Min", p(row["ΔMin%"]))
+                    c4.metric("Prev Mo Avg", f_int(row.Prev))
+
+                    # Plot bars
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=monthly_completed["MonthStr"], y=monthly_completed["Visits"],
+                                         name="Visits", marker=dict(color="lightskyblue")))
+
+                    # Add dynamic bi-colour line segments
+                    x_vals = monthly_completed["MonthStr"].tolist()
+                    y_vals = monthly_completed["Visits"].tolist()
+
+                    for j in range(1, len(x_vals)):
+                        x_pair = [x_vals[j-1], x_vals[j]]
+                        y_pair = [y_vals[j-1], y_vals[j]]
+                        color = "limegreen" if y_pair[1] >= y_pair[0] else "crimson"
+                        fig.add_trace(go.Scatter(x=x_pair, y=y_pair, mode="lines+markers",
+                                                 line=dict(color=color, width=3), showlegend=False))
+
+                    fig.update_layout(title="Completed Visits per Month (Bar + Line)",
+                                      xaxis_title="Month", yaxis_title="Visits")
+                    st.plotly_chart(fig, use_container_width=True, key=f"comp_bar_avg_{m}")
+
+    else:
+        st.warning("Activity Status or Visit Type column missing – cannot build Avg Daily Completed KPI block.")
+
+
+
+
+
+# ───────── MONTHLY VISIT COUNT & COMPLETION KPIs (COMPLETED, NO-LUNCH) ─────────
+if page == "📈 Forecasts" and {"Date", "Activity Status", "Visit Type"}.issubset(filtered_data.columns):
+
+    import pandas as pd, numpy as np, plotly.express as px, streamlit as st, datetime, re
+
+    oracle_files = {
+        "VIP North Oracle Data", "VIP South Oracle Data",
+        "Tier 2 North Oracle Data", "Tier 2 South Oracle Data"
+    }
+    if file_choice not in oracle_files:
+        st.info("Visit-count KPIs only available for the four Oracle datasets.")
+        st.stop()
+
+    # 1️⃣ Filter rows ------------------------------------------------------
+    df = filtered_data.copy()
+    df["Activity Status"] = df["Activity Status"].astype(str).str.lower()
+    df = df[~df["Visit Type"].astype(str).str.contains("lunch", case=False, na=False)]
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df[df["Date"].notnull()]
+
+    # Completed / Cancelled flags
+    df["is_completed"] = df["Activity Status"] == "completed"
+    df["is_cancelled"] = df["Activity Status"].str.contains("cancel", na=False)
+
+    df["Month"] = df["Date"].dt.to_period("M").astype(str)
+
+    # 2️⃣ Monthly aggregations --------------------------------------------
+    monthly = (
+        df.groupby("Month")
+          .agg(Visits=("is_completed", "sum"),
+               Cancelled=("is_cancelled", "sum"))
+          .reset_index()
+          .sort_values("Month")
+    )
+    monthly["TotalDecision"] = monthly["Visits"] + monthly["Cancelled"]
+    monthly["Rate"] = 100 * monthly["Visits"] / monthly["TotalDecision"].replace(0, np.nan)
+
+    # Rolling deltas & extremes
+    monthly["PrevVisits"] = monthly["Visits"].shift(1)
+    monthly["PrevRate"]   = monthly["Rate"].shift(1)
+
+    max_vis = monthly["Visits"].max()
+    min_vis = monthly["Visits"].min()
+    max_rate = monthly["Rate"].max()
+    min_rate = monthly["Rate"].min()
+
+    monthly["\u0394VisPrev%"] = (monthly["Visits"] / monthly["PrevVisits"] - 1) * 100
+    monthly["\u0394VisMax%"]  = (monthly["Visits"] / max_vis - 1) * 100
+    monthly["\u0394VisMin%"]  = (monthly["Visits"] / min_vis - 1) * 100
+
+    monthly["\u0394RatePrev%"] = (monthly["Rate"] / monthly["PrevRate"] - 1) * 100
+    monthly["\u0394RateMax%"]  = (monthly["Rate"] / max_rate - 1) * 100
+    monthly["\u0394RateMin%"]  = (monthly["Rate"] / min_rate - 1) * 100
+
+    # 3️⃣ “All” summary row -----------------------------------------------
+    all_row = pd.DataFrame({
+        "Month": ["All"],
+        "Visits":    [monthly["Visits"].sum()],
+        "Cancelled": [monthly["Cancelled"].sum()],
+        "TotalDecision": [monthly["Visits"].sum() + monthly["Cancelled"].sum()],
+    })
+    all_row["Rate"] = 100 * all_row["Visits"] / all_row["TotalDecision"].replace(0, np.nan)
+    all_row["PrevVisits"] = np.nan
+    all_row["PrevRate"]   = np.nan
+    for col in ["\u0394VisPrev%", "\u0394VisMax%", "\u0394VisMin%", "\u0394RatePrev%", "\u0394RateMax%", "\u0394RateMin%"]:
+        all_row[col] = np.nan
+    monthly_all = pd.concat([monthly, all_row], ignore_index=True)
+
+    # 4️⃣ Display ---------------------------------------------------------
+    def fmt(x, unit="%"):
+        if pd.isna(x): return "–"
+        return f"{x:.1f}{unit}"
+
+    def fmt_int(x):
+        if pd.isna(x): return "–"
+        return f"{int(x):,}"
+
+    def fmt_pct(x):
+        if pd.isna(x): return "–"
+        return f"{x:+.1f}%"
+
+    with st.expander("📈 Completed Visits & Completion-Rate KPIs (No Lunch)", expanded=False):
+
+        tab_labels = monthly_all["Month"].tolist()
+        month_tabs = st.tabs(tab_labels)
+
+        for idx, month_name in enumerate(tab_labels):
+            row = monthly_all.iloc[idx]
+
+            v_prev = row["PrevVisits"] if not np.isnan(row["PrevVisits"]) else row["Visits"]
+            r_prev = row["PrevRate"]   if not np.isnan(row["PrevRate"])   else row["Rate"]
+
+            with month_tabs[idx]:
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Visits", fmt_int(row['Visits']), fmt_pct(row['\u0394VisPrev%']))
+                c2.metric("% vs Max", fmt_pct(row['\u0394VisMax%']))
+                c3.metric("% vs Min", fmt_pct(row['\u0394VisMin%']))
+                c4.metric("Prev Mo Visits", fmt_int(v_prev))
+
+                c5, c6, c7, c8 = st.columns(4)
+                c5.metric("Completion Rate", fmt(row['Rate']), fmt_pct(row['\u0394RatePrev%']))
+                c6.metric("Rate vs Max", fmt_pct(row['\u0394RateMax%']))
+                c7.metric("Rate vs Min", fmt_pct(row['\u0394RateMin%']))
+                c8.metric("Prev Mo Rate", fmt(r_prev))
+
+                # ── Charts (with unique keys) ────────────────────────────────
+                line_tab, bar_tab, heat_tab, dual_tab, rate_tab = st.tabs(["Line", "Bar", "Heatmap", "Dual Axis", "Rate Only"])
+
+                with line_tab:
+                    st.plotly_chart(
+                        px.line(monthly, x="Month", y="Visits", markers=True,
+                                title="Completed Visits Trend"),
+                        use_container_width=True, key=f"vis_line_{month_name}")
+
+                with bar_tab:
+                    st.plotly_chart(
+                        px.bar(monthly, x="Month", y="Visits",
+                               title="Visits per Month (Bar)"),
+                        use_container_width=True, key=f"vis_bar_{month_name}")
+
+                with heat_tab:
+                    heat_df = monthly.set_index("Month")[["Visits"]].T
+                    st.plotly_chart(
+                        px.imshow(heat_df, aspect="auto", text_auto=True,
+                                  color_continuous_scale="PuBu",
+                                  title="Visits Heatmap"),
+                        use_container_width=True, key=f"vis_heat_{month_name}")
+
+                with dual_tab:
+                    fig = px.line(monthly, x="Month", y=["Visits", "Rate"], markers=True)
+                    fig.update_layout(title="Visits vs Completion Rate",
+                                      yaxis_title="Visits",
+                                      yaxis2=dict(title="Rate (%)", overlaying="y", side="right", showgrid=False))
+                    st.plotly_chart(fig, use_container_width=True, key=f"dual_axis_{month_name}")
+
+                with rate_tab:
+                    st.plotly_chart(
+                        px.bar(monthly, x="Month", y="Rate", title="Completion Rate per Month (%)"),
+                        use_container_width=True, key=f"rate_bar_{month_name}")
+
+
+
+
 
 
 
