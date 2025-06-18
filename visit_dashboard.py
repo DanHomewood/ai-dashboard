@@ -1883,6 +1883,122 @@ if page == "👷 Engineer View":
 
 
 
+# ────────── MONTHLY ACTIVATE & DEACTIVATE TIME AVERAGE ──────────
+if page == "📈 Forecasts" and {"Date", "Activate", "Deactivate", "Total Time Working"}.issubset(filtered_data.columns):
+
+    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go
+
+    df = filtered_data.copy()
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df[df["Date"].notnull()]
+    df["Month"] = df["Date"].dt.to_period("M")
+    df["MonthStr"] = df["Month"].astype(str)
+
+    # Clean and convert Activate and Deactivate to minutes
+    df["ActivateMinutes"] = df["Activate"].apply(
+        lambda t: t.hour * 60 + t.minute + t.second / 60
+        if pd.notnull(t) and t != pd.to_datetime("00:00").time()
+        else np.nan
+    )
+
+    df["DeactivateMinutes"] = df["Deactivate"].apply(
+        lambda t: t.hour * 60 + t.minute + t.second / 60
+        if pd.notnull(t) and t != pd.to_datetime("00:00").time()
+        else np.nan
+    )
+
+    # Total Time Working (convert HH:MM:SS to total minutes)
+    df["WorkingMinutes"] = pd.to_timedelta(df["Total Time Working"], errors="coerce").dt.total_seconds() / 60
+    df = df[df["WorkingMinutes"].notnull()]
+
+    monthly_avg = df.groupby("MonthStr").agg({
+        "ActivateMinutes": "mean",
+        "DeactivateMinutes": "mean",
+        "WorkingMinutes": "mean"
+    }).reset_index()
+
+    def format_minutes(minutes):
+        if np.isnan(minutes): return "-"
+        h, m = divmod(int(minutes), 60)
+        return f"{h:02d}:{m:02d}"
+
+    with st.expander("⏰ Monthly Avg Activate, Deactivate & Working Time", expanded=False):
+        tabs = st.tabs(["KPIs", "Trend", "Stacked Bar", "Heatmap", "Scatter", "Working Time"])
+
+        with tabs[0]:
+            latest = monthly_avg.iloc[-1]
+            act = format_minutes(latest["ActivateMinutes"])
+            deact = format_minutes(latest["DeactivateMinutes"])
+            work = format_minutes(latest["WorkingMinutes"])
+            delta_a = latest["ActivateMinutes"] - monthly_avg["ActivateMinutes"].iloc[-2] if len(monthly_avg) > 1 else 0
+            delta_d = latest["DeactivateMinutes"] - monthly_avg["DeactivateMinutes"].iloc[-2] if len(monthly_avg) > 1 else 0
+            delta_w = latest["WorkingMinutes"] - monthly_avg["WorkingMinutes"].iloc[-2] if len(monthly_avg) > 1 else 0
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Latest Avg Activate Time", act, f"{delta_a:.1f} min", delta_color="inverse")
+            col2.metric("Latest Avg Deactivate Time", deact, f"{delta_d:.1f} min", delta_color="inverse")
+            col3.metric("Latest Avg Working Time", work, f"{delta_w:.1f} min", delta_color="normal")
+
+        with tabs[1]:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=monthly_avg["MonthStr"], y=monthly_avg["ActivateMinutes"],
+                                     name="Activate", mode="lines+markers", line=dict(color="green")))
+            fig.add_trace(go.Scatter(x=monthly_avg["MonthStr"], y=monthly_avg["DeactivateMinutes"],
+                                     name="Deactivate", mode="lines+markers", line=dict(color="firebrick")))
+            fig.add_trace(go.Scatter(x=monthly_avg["MonthStr"], y=monthly_avg["WorkingMinutes"],
+                                     name="Working Time", mode="lines+markers", line=dict(color="goldenrod")))
+            fig.update_layout(
+                title="Avg Times Over Time",
+                xaxis_title="Month",
+                yaxis_title="Avg Time (minutes)",
+                legend_title="Time Type"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        with tabs[2]:
+            fig_stack = go.Figure()
+            fig_stack.add_trace(go.Bar(x=monthly_avg["MonthStr"], y=monthly_avg["ActivateMinutes"], name="Activate", marker_color="seagreen"))
+            fig_stack.add_trace(go.Bar(x=monthly_avg["MonthStr"], y=monthly_avg["DeactivateMinutes"], name="Deactivate", marker_color="indianred"))
+            fig_stack.add_trace(go.Bar(x=monthly_avg["MonthStr"], y=monthly_avg["WorkingMinutes"], name="Working", marker_color="goldenrod"))
+            fig_stack.update_layout(
+                barmode="stack",
+                title="Stacked Avg Activate, Deactivate & Working Time",
+                xaxis_title="Month",
+                yaxis_title="Avg Time (minutes)",
+                legend_title=""
+            )
+            st.plotly_chart(fig_stack, use_container_width=True)
+
+        with tabs[3]:
+            heat_df = monthly_avg.copy()
+            heat_df_melted = pd.melt(heat_df, id_vars="MonthStr", var_name="Type", value_name="Minutes")
+            fig_heat = px.density_heatmap(
+                heat_df_melted, x="MonthStr", y="Type", z="Minutes",
+                color_continuous_scale="Viridis", title="Avg Time Heatmap"
+            )
+            st.plotly_chart(fig_heat, use_container_width=True)
+
+        with tabs[4]:
+            fig_scatter = px.scatter(
+                monthly_avg.melt(id_vars="MonthStr", value_vars=["ActivateMinutes", "DeactivateMinutes", "WorkingMinutes"],
+                                 var_name="Type", value_name="Minutes"),
+                x="MonthStr", y="Minutes", color="Type",
+                title="Scatter Plot of Avg Times",
+                labels={"MonthStr": "Month", "Minutes": "Avg Time (minutes)"}
+            )
+            st.plotly_chart(fig_scatter, use_container_width=True)
+
+        with tabs[5]:
+            fig_work = px.line(
+                monthly_avg, x="MonthStr", y="WorkingMinutes",
+                title="Average Total Time Working per Month",
+                markers=True, labels={"WorkingMinutes": "Minutes", "MonthStr": "Month"}
+            )
+            st.plotly_chart(fig_work, use_container_width=True)
+
+
+
+
 # ──────────── MONTHLY VISITS & VALUE ANALYTICS (COLLAPSIBLE + TABS + KPI PER MONTH) ────────────
 if page == "📈 Forecasts" and {"Date", "Value"}.issubset(filtered_data.columns):
 
@@ -2059,6 +2175,234 @@ if page == "📈 Forecasts" and {"Date", "Week"}.issubset(filtered_data.columns)
                     animation_frame="DayOfWeek", category_orders={"DayOfWeek": day_order},
                     title="Animated Day‑of‑Week Pattern Across Weeks")
                 st.plotly_chart(anim_donut, use_container_width=True, key="dow_anim")
+
+# ──────────── MONTHLY ACTIVITY STATUS ANALYTICS (FORECASTS) ────────────
+if page == "📈 Forecasts" and {"Date", "Activity Status"}.issubset(filtered_data.columns):
+
+    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go
+    import streamlit as st
+
+    # ── Prepare data ------------------------------------------------------
+    df = filtered_data.copy()
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df[df["Date"].notnull()]
+    df["Month"] = df["Date"].dt.to_period("M")
+    df["MonthStr"] = df["Month"].astype(str)
+
+    # Overall monthly totals per Activity Status
+    monthly_status = (
+        df.groupby(["MonthStr", "Activity Status"]).size()
+          .reset_index(name="Count")
+          .sort_values("MonthStr")
+    )
+
+    if monthly_status.empty:
+        st.info("No Activity Status data available for the selected filters.")
+        st.stop()
+
+    # Pivot for KPI delta calculation
+    pivot = monthly_status.pivot(index="MonthStr", columns="Activity Status", values="Count").fillna(0)
+
+    # Collapsible container ------------------------------------------------
+    with st.expander("📈 Monthly Activity Status Dashboard", expanded=False):
+
+        # Top‑level sub‑tabs ----------------------------------------------
+        tab_line, tab_area, tab_heat, tab_month = st.tabs([
+            "Line", "Stacked Area", "Heatmap", "Month KPIs"])
+
+        # 1️⃣ Multi‑line chart --------------------------------------------
+        with tab_line:
+            fig_line = px.line(
+                monthly_status, x="MonthStr", y="Count", color="Activity Status",
+                markers=True, title="Activity Status – Monthly Trend"
+            )
+            st.plotly_chart(fig_line, use_container_width=True, key="status_line")
+
+        # 2️⃣ Stacked area --------------------------------------------------
+        with tab_area:
+            fig_area = px.area(
+                monthly_status, x="MonthStr", y="Count", color="Activity Status",
+                groupnorm="", title="Activity Status – Stacked Area"
+            )
+            st.plotly_chart(fig_area, use_container_width=True, key="status_area")
+
+        # 3️⃣ Heatmap -------------------------------------------------------
+        with tab_heat:
+            heat_df = pivot.T  # Status as rows
+            heatmap = px.imshow(
+                heat_df, text_auto=True, aspect="auto", color_continuous_scale="YlOrRd",
+                labels=dict(x="Month", y="Activity Status", color="Visits"),
+                title="Heatmap – Visits per Activity Status per Month"
+            )
+            st.plotly_chart(heatmap, use_container_width=True, key="status_heat")
+
+        # 4️⃣ Month‑wise KPI tabs -----------------------------------------
+        with tab_month:
+            month_tabs = st.tabs(pivot.index.tolist())
+
+            for i, m in enumerate(pivot.index):
+                with month_tabs[i]:
+                    current_row = pivot.loc[m]
+                    prev_row    = pivot.iloc[max(i-1, 0)]  # previous month or same if first
+
+                    # Show KPI metrics in two columns per status
+                    statuses = current_row.index.tolist()
+                    # Chunk into rows of 3 columns
+                    n_cols = 3
+                    for start in range(0, len(statuses), n_cols):
+                        cols = st.columns(n_cols)
+                        for j, status in enumerate(statuses[start:start+n_cols]):
+                            cur_val = int(current_row[status])
+                            prev_val = int(prev_row[status]) if i > 0 else cur_val
+                            delta = cur_val - prev_val
+                            cols[j].metric(status, f"{cur_val:,}", f"{delta:+,}")
+
+                    # Mini dual‑line chart (visits + % share) --------------
+                    share_df = pd.DataFrame({
+                        "Status": statuses,
+                        "Count": current_row.values,
+                        "Share %": (current_row / current_row.sum() * 100).round(2)
+                    })
+                    fig_bar = px.bar(share_df, x="Status", y="Count", color="Status",
+                                     title=f"Visit Counts by Activity Status – {m}")
+                    st.plotly_chart(fig_bar, use_container_width=True, key=f"status_bar_{m}")
+
+                    fig_pie = px.pie(share_df, names="Status", values="Count", hole=0.45,
+                                      title=f"Share by Activity Status – {m}")
+                    st.plotly_chart(fig_pie, use_container_width=True, key=f"status_pie_{m}")
+
+
+
+
+# ────────── MONTHLY ACTIVATE • DEACTIVATE • WORKING-TIME AVERAGES ──────────
+if page == "📈 Forecasts":
+
+    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go
+    import datetime, re, streamlit as st
+
+    # Only run for the four Oracle datasets
+    oracle_files = {
+        "VIP North Oracle Data", "VIP South Oracle Data",
+        "Tier 2 North Oracle Data", "Tier 2 South Oracle Data"
+    }
+    if file_choice not in oracle_files:
+        st.info("Timing analysis only available for Oracle datasets.")
+        st.stop()
+
+    df = filtered_data.copy()
+
+    # ── Flexible column finder (case & space tolerant) --------------------
+    def find_col(possibles: list[str]):
+        patt = re.compile(rf"^({'|'.join(map(re.escape, possibles))})$", re.I)
+        for c in df.columns:
+            if patt.match(c.strip()):
+                return c
+        return None
+
+    date_col  = find_col(["Date"])
+    act_col   = find_col(["Activate", "Activate Time"])
+    deact_col = find_col(["Deactivate", "Deactivate Time"])
+    work_col  = find_col(["Total Time Working", "Total Time", "Total Time for AI"])
+
+    if None in (date_col, act_col, deact_col, work_col):
+        st.warning("Timing columns not found in this dataset.")
+        st.stop()
+
+    # ── Parse & clean -----------------------------------------------------
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+    df = df[df[date_col].notnull()]
+    df["MonthStr"] = df[date_col].dt.to_period("M").astype(str)
+
+    def to_minutes(val):
+        if pd.isnull(val) or val in ["00:00", "00:00:00", 0, "0:00"]:
+            return np.nan
+        try:
+            if isinstance(val, datetime.timedelta):
+                return val.total_seconds() / 60
+            if isinstance(val, datetime.time):
+                if val == datetime.time(0, 0):
+                    return np.nan
+                return val.hour * 60 + val.minute + val.second / 60
+            parsed = pd.to_timedelta(str(val), errors="coerce")
+            if pd.isnull(parsed) or parsed.total_seconds() == 0:
+                return np.nan
+            return parsed.total_seconds() / 60
+        except Exception:
+            return np.nan
+
+    df["ActivateMin"]   = df[act_col].apply(to_minutes)
+    df["DeactivateMin"] = df[deact_col].apply(to_minutes)
+    df["WorkingMin"]    = pd.to_timedelta(df[work_col], errors="coerce").dt.total_seconds() / 60
+
+    df = df.dropna(subset=["ActivateMin", "DeactivateMin", "WorkingMin"], how="all")
+    if df.empty:
+        st.warning("No usable timing data after cleaning blanks / 00:00.")
+        st.stop()
+
+    monthly = df.groupby("MonthStr").agg({
+        "ActivateMin":   "mean",
+        "DeactivateMin": "mean",
+        "WorkingMin":    "mean"
+    }).reset_index()
+
+    fmt = lambda m: "-" if np.isnan(m) else f"{int(m)//60:02d}:{int(m)%60:02d}"
+
+    # ── UI ---------------------------------------------------------------
+    with st.expander("⏰ Monthly Avg Activate, Deactivate & Working Time", expanded=False):
+
+        tab_kpi, tab_trend, tab_stack, tab_heat, tab_scatter, tab_work = st.tabs(
+            ["KPIs", "Trend", "Stacked", "Heatmap", "Scatter", "Working"])
+
+        # 1️⃣ KPIs
+        with tab_kpi:
+            last, prev = monthly.iloc[-1], monthly.iloc[max(len(monthly)-2, 0)]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Activate",   fmt(last.ActivateMin),   f"{last.ActivateMin-prev.ActivateMin:+.1f} min")
+            c2.metric("Deactivate", fmt(last.DeactivateMin), f"{last.DeactivateMin-prev.DeactivateMin:+.1f} min")
+            c3.metric("Working",    fmt(last.WorkingMin),    f"{last.WorkingMin-prev.WorkingMin:+.1f} min")
+
+        # 2️⃣ Trend (multi-line)
+        with tab_trend:
+            st.plotly_chart(
+                px.line(monthly, x="MonthStr",
+                        y=["ActivateMin", "DeactivateMin", "WorkingMin"],
+                        markers=True, labels={"value":"Minutes", "variable":"Type"},
+                        title="Average Time Trend"), use_container_width=True)
+
+        # 3️⃣ Stacked bar
+        with tab_stack:
+            st.plotly_chart(
+                px.bar(monthly, x="MonthStr",
+                       y=["ActivateMin", "DeactivateMin", "WorkingMin"],
+                       barmode="stack", labels={"value":"Minutes"},
+                       title="Stacked Monthly Averages"),
+                use_container_width=True)
+
+        # 4️⃣ Heatmap
+        with tab_heat:
+            melt = monthly.melt(id_vars="MonthStr",
+                                value_vars=["ActivateMin", "DeactivateMin", "WorkingMin"],
+                                var_name="Type", value_name="Minutes")
+            st.plotly_chart(
+                px.density_heatmap(melt, x="MonthStr", y="Type", z="Minutes",
+                                   color_continuous_scale="Viridis",
+                                   title="Average Times Heatmap"),
+                use_container_width=True)
+
+        # 5️⃣ Scatter
+        with tab_scatter:
+            st.plotly_chart(
+                px.scatter(melt, x="MonthStr", y="Minutes", color="Type",
+                           title="Scatter of Monthly Averages"),
+                use_container_width=True)
+
+        # 6️⃣ Working-only line
+        with tab_work:
+            st.plotly_chart(
+                px.line(monthly, x="MonthStr", y="WorkingMin", markers=True,
+                        title="Average Working Time per Month",
+                        labels={"WorkingMin":"Minutes"}),
+                use_container_width=True)
 
 
 
@@ -6080,6 +6424,8 @@ for i, entry in enumerate(reversed(st.session_state.oracle_ai_state["chat_histor
 
 
 
+
+    
 
       
 
