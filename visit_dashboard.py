@@ -1278,7 +1278,13 @@ import os, time, csv, datetime, re
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-from openai import OpenAIError
+# --- Optional OpenAI import (won't break if package missing) ------------
+try:
+    from openai import OpenAIError
+except ModuleNotFoundError:
+    class OpenAIError(Exception):      # fall-back stub
+        """Placeholder so downstream `except OpenAIError:` still works."""
+        pass
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.chat_models import ChatOpenAI
 
