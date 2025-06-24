@@ -16,3 +16,4 @@ langchain
 langchain-experimental
 tiktoken
 langchain-openai
+tabulate
