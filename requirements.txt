@@ -9,4 +9,10 @@ streamlit_modal
 openpyxl
 scikit-learn
 statsmodels
+pandas
+openai
+plotly
+langchain
+langchain-experimental
+tiktoken
 
