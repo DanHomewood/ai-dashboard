@@ -15,4 +15,4 @@ plotly
 langchain
 langchain-experimental
 tiktoken
-
+langchain-openai
