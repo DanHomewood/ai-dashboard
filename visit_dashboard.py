@@ -1,36 +1,69 @@
-# --- NUMBER 1---# 
+# --- NUMBER 1 ---
 # --- SECTION: IMPORTS & LOGO BASE64 ---
+
+
 import streamlit as st
+
+# Initialize session state defaults once
 if "screen" not in st.session_state:
-    st.session_state.screen = "area_selection"
-import pandas as pd
-import calendar
-import plotly.express as px
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.graph_objects as go
-import base64
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from statsmodels.tsa.arima.model import ARIMA
+    st.session_state.screen = "area_selection"  # Set your starting page here
 
+if "user_df" not in st.session_state:
+    st.session_state.user_df = None
 
-import pandas as pd
-
-# --- Ensure session keys are initialized ---
-if "screen" not in st.session_state:
-    st.session_state.screen = "dashboard"
+if "user_file_name" not in st.session_state:
+    st.session_state.user_file_name = None
 
 if "selected_dataset" not in st.session_state:
     st.session_state.selected_dataset = None
 
 
+import pandas as pd
+import os
+import streamlit as st
+
+
+import os
+import re
+import csv
+import time
+import base64
+import datetime
+import calendar
+
+import pandas as pd
+import numpy as np
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
+
+import plotly.express as px
+import plotly.graph_objects as go
+
+from openai import OpenAI, OpenAIError
+
+from statsmodels.tsa.arima.model import ARIMA
+
+from langchain_experimental.agents import create_pandas_dataframe_agent
+from langchain.chat_models import ChatOpenAI
+from langchain.agents.agent_types import AgentType
+
+import uuid
+import pathlib
+import textwrap
+import streamlit as st
+from collections import OrderedDict
+st.write("Current screen:", st.session_state.get("screen"))
+
+# Function to load Excel file safely
 def load_file(path):
     try:
         return pd.read_excel(path)
     except Exception as e:
         st.error(f"Failed to load data from {path}: {e}")
         return pd.DataFrame()
+
 
 # --- NUMBER 2 ---#
 # --- SECTION: CUSTOM CSS ---
@@ -123,26 +156,1048 @@ Welcome to the advanced reporting hub. Use the sidebar to explore summaries, tre
 # --- NUMBER 6 ---#
 # --- SECTION: AREA SELECTION MAIN MENU ---
 if st.session_state.screen == "area_selection":
-    
-
     st.markdown("## Choose an area", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
 
-    with col1:
+    # First row with 3 columns
+    row1_cols = st.columns(3)
+    with row1_cols[0]:
         if st.button("🏢 Operational Area", use_container_width=True):
-            # ✅ make the value EXACTLY the same string Block 17 expects
             st.session_state.screen = "operational_area"
             st.rerun()
-
-    with col2:
+    with row1_cols[1]:
         if st.button("📊 Dashboard Area", use_container_width=True):
             st.session_state.screen = "dashboard"
             st.rerun()
-
-    with col3:
-        if st.button("🤖 Operational AI Area", use_container_width=True):
+    with row1_cols[2]:
+        if st.button("🤖 Sky Orbit", use_container_width=True):
             st.session_state.screen = "ai"
             st.rerun()
+
+    # Add vertical spacing between rows if needed
+    st.write("")  # blank line
+
+    # Second row with 3 columns
+    row2_cols = st.columns(3)
+    with row2_cols[0]:
+        if st.button("💡 Suggestion Box", use_container_width=True):
+            st.session_state.screen = "suggestions"
+            st.rerun()
+    with row2_cols[1]:
+        if st.button("📈 Forecasts", use_container_width=True):
+            st.session_state.screen = "Forecasts"
+            st.rerun()
+    with row2_cols[2]:
+        if st.button("🗺️ Highlands & Islands", use_container_width=True):
+            st.session_state.screen = "highlands_islands"
+            st.rerun()
+
+
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 💡 SUGGESTION BOX  – Excel‑based (Flow‑friendly) version  V2.1
+#     • Keeps Table1 intact for Power Automate
+#     • Unique Streamlit keys (no duplicate crash)
+#     • Atomic temp‑file save (OneDrive‑safe)
+#     • NEW: "🗑️ Delete" button to remove rows on‑screen
+# ──────────────────────────────────────────────────────────────────────
+import uuid, datetime
+from pathlib import Path
+import pandas as pd
+import streamlit as st
+from openpyxl import Workbook, load_workbook
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.utils import get_column_letter
+
+# ▼━━━━━━━━━━━━━━ 1. CONFIG ━━━━━━━━━━━━━━▼
+COMMENTS_FILE = Path(r"C:\Users\dah47\OneDrive - Sky\Oracle development\suggestion_comments.xlsx")
+SUGG_FILE    = Path(r"C:\Users\dah47\OneDrive - Sky\Oracle development\suggestions log.xlsx")
+
+SUGG_COLS    = ["id","num_id","timestamp","name","tag","idea","status"]
+COMM_COLS    = ["id","timestamp","comment"]
+NEW_STATUSES = ["Received","Notified"]
+TABLE_NAME   = "Table1" ; SHEET_NAME = "Sheet1" ; TMP_SUFFIX = ".tmp.xlsx"
+# ▲━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━▲
+
+# ▼━━━━━━━━━━ 2. EXCEL HELPERS ━━━━━━━━━━▼
+
+def _create_table(ws, df):
+    n_rows, n_cols = df.shape
+    ref = f"A1:{get_column_letter(n_cols)}{n_rows+1}"
+    t = Table(displayName=TABLE_NAME, ref=ref)
+    t.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
+    ws.add_table(t)
+
+def _ensure_excel(path: Path, cols):
+    if path.exists():
+        return
+    wb = Workbook(); ws = wb.active; ws.title = SHEET_NAME
+    ws.append(cols); _create_table(ws, pd.DataFrame(columns=cols)); wb.save(path)
+
+def _atomic_overwrite(path: Path, df: pd.DataFrame):
+    tmp = path.with_suffix(TMP_SUFFIX)
+    with pd.ExcelWriter(tmp, engine="openpyxl") as w:
+        df.to_excel(w, sheet_name=SHEET_NAME, index=False)
+    wb = load_workbook(tmp); ws = wb[SHEET_NAME]
+    if TABLE_NAME in ws.tables: del ws.tables[TABLE_NAME]
+    _create_table(ws, df); wb.save(tmp); tmp.replace(path)
+
+def _load_df(path: Path, cols): _ensure_excel(path, cols); return pd.read_excel(path, dtype=str).fillna("")
+
+def _save_df(path: Path, df: pd.DataFrame, cols): _ensure_excel(path, cols); _atomic_overwrite(path, df)
+
+load_suggestions = lambda: _load_df(SUGG_FILE, SUGG_COLS)
+save_suggestions = lambda d: _save_df(SUGG_FILE, d, SUGG_COLS)
+load_comments    = lambda: _load_df(COMMENTS_FILE, COMM_COLS)
+save_comments    = lambda d: _save_df(COMMENTS_FILE, d, COMM_COLS)
+# ▲━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━▲
+
+# ▼━━━━━━━━ 3. ADD / COMMENT HELPERS ━━━━━▼
+
+def add_suggestion(row):
+    df = load_suggestions(); df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    save_suggestions(df); st.success("✅ Suggestion submitted – Teams post soon.")
+
+def add_comment(sugg_id, text):
+    df = load_comments(); df = pd.concat([df, pd.DataFrame([{"id":sugg_id,"timestamp":datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),"comment":text.strip()}])], ignore_index=True)
+    save_comments(df)
+# ▲━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━▲
+# ▼━━━━━━━━━━ 4. STREAMLIT UI ━━━━━━━━━━━▼
+if st.session_state.get("screen") == "suggestions":
+    if st.button("⬅️ Back to Main Menu", use_container_width=True):
+        st.session_state.screen="area_selection"; st.rerun()
+
+    st.markdown("## 💡 Suggestion Box"); st.caption("Help improve the dashboard by submitting your ideas.")
+
+    with st.form("suggest_form"):
+        name = st.text_input("Your name"); tag = st.selectbox("What does your suggestion relate to?",["General","Missing Data","Graphs Required","Sky Stake Holder","Performance"])
+        idea = st.text_area("Your suggestion (max 500 chars)", height=150, max_chars=500)
+        sent = st.form_submit_button("Submit Suggestion")
+
+    if sent and idea.strip():
+        df   = load_suggestions(); next_id = str(len(df)+1)
+        add_suggestion({"id":str(uuid.uuid4())[:8],"num_id":next_id,"timestamp":datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),"name":name.strip() or "Anonymous","tag":tag,"idea":idea.strip(),"status":"Received"}); st.rerun()
+    elif sent:
+        st.warning("Please write something before submitting.")
+
+    tab_new, tab_prog, tab_done = st.tabs(["📥 New","🚧 In Progress","✅ Completed"])
+    df_sugg, df_comm = load_suggestions(), load_comments()
+
+    def render_list(df: pd.DataFrame, allowed_status):
+        global df_sugg, df_comm
+        rows = df[df["status"].isin(allowed_status)]
+        if rows.empty:
+            st.info("No suggestions here yet."); return
+        for idx, (_, r) in enumerate(rows.iterrows()):
+            safe_id = r["id"] or r.get("num_id","") or idx
+            with st.expander(f"📝 {r['idea']} ({r['name']})"):
+                st.caption(f"📅 {r['timestamp']}  |  🏷️ {r['tag']}")
+
+                # ── Comments block ──
+                if r["status"] == "In Progress":
+                    st.markdown("**Comments**"); cts = df_comm[df_comm["id"]==r["id"]]
+                    for _, c in cts.iterrows(): st.markdown(f"- *{c['timestamp']}*: {c['comment']}")
+                    new_c = st.text_area("Add new comment", key=f"c_{safe_id}_{idx}")
+                    if st.button("Add", key=f"add_{safe_id}_{idx}") and new_c.strip():
+                        add_comment(r["id"], new_c); st.success("Added!"); st.rerun()
+
+                # ── Control buttons row ──
+                btn_cols = st.columns([1,1,1,5])  # In‑Prog / Complete / Delete / Spacer
+
+                # → Mark In Progress
+                if r["status"] in NEW_STATUSES and btn_cols[0].button("Start", key=f"start_{safe_id}_{idx}"):
+                    df_sugg.loc[df_sugg["id"]==r["id"],"status"]="In Progress"; save_suggestions(df_sugg); st.rerun()
+
+                # ✓ Completed checkbox
+                if r["status"] == "In Progress" and btn_cols[1].checkbox("Done", key=f"done_{safe_id}_{idx}"):
+                    df_sugg.loc[df_sugg["id"]==r["id"],"status"]="Completed"; save_suggestions(df_sugg); st.rerun()
+
+                # 🗑️ Delete button
+                if btn_cols[2].button("Delete", key=f"del_{safe_id}_{idx}"):
+                    df_sugg = df_sugg[df_sugg["id"]!=r["id"]]; save_suggestions(df_sugg); st.success("Deleted."); st.rerun()
+
+    with tab_new:  render_list(df_sugg, NEW_STATUSES)
+    with tab_prog: render_list(df_sugg, ["In Progress"])
+    with tab_done: render_list(df_sugg, ["Completed"])
+
+
+
+
+# ▲━━━━━━━Highlands_islands━━━━━━━▲
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import numpy as np
+
+# Function to safely convert columns to numeric
+def safe_numeric(df, cols):
+    for col in cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
+    return df
+
+@st.cache_data
+def load_data(file_path):
+    sheets = [
+        "2022", "2023", "2024", "2025",
+        "Company 2022", "Company 2023", "Company 2024", "Company 2025"
+    ]
+    dfs = pd.read_excel(file_path, sheet_name=sheets)
+    for sheet, df in dfs.items():
+        df.columns = df.columns.str.strip()
+        df = safe_numeric(df, ['Issued Visits', 'Completed Visits', 'Average Complete Job Time (Min)',
+                              '7 Day Revisits', '7 Day Revisits %', '30 Day Revisits', '30 Day Revisits %',
+                              'Surveys', 'NPS%', 'NPS'])
+        dfs[sheet] = df
+    return dfs
+
+dfs = load_data("Highlands Islands.xlsx")
+
+# Separate sheets for tabs
+yearly_sheets = ["2022", "2023", "2024", "2025"]
+company_sheets = ["Company 2022", "Company 2023", "Company 2024", "Company 2025"]
+
+# Helper functions at top-level (outside tabs)
+def safe_sum(df, col):
+    if col in df.columns:
+        return pd.to_numeric(df[col], errors='coerce').sum(skipna=True)
+    return 0
+
+def weighted_avg(df, val_col, weight_col):
+    if val_col in df.columns and weight_col in df.columns:
+        df_clean = df[[val_col, weight_col]].dropna()
+        if df_clean.empty:
+            return None
+        total_weight = df_clean[weight_col].sum()
+        if total_weight == 0:
+            return None
+        return (df_clean[val_col] * df_clean[weight_col]).sum() / total_weight
+    return None
+
+def generate_summary(df, scope="Yearly"):
+    total_issued = safe_sum(df, 'Issued Visits')
+    total_completed = safe_sum(df, 'Completed Visits')
+    completion_rate = (total_completed / total_issued * 100) if total_issued else 0
+    total_not_done = safe_sum(df, 'Not Done Vists')
+    not_done_pct = (total_not_done / total_issued * 100) if total_issued else 0
+    total_7day_revisits = safe_sum(df, '7 Day Revisits')
+    total_30day_revisits = safe_sum(df, '30 Day Revisits')
+    weighted_job_time = weighted_avg(df, 'Average Complete Job Time (Min)', 'Completed Visits')
+    total_surveys = safe_sum(df, 'Surveys')
+    nps_col = 'NPS' if 'NPS' in df.columns else 'NPS%'
+    weighted_nps = weighted_avg(df, nps_col, 'Surveys') if nps_col in df.columns else None
+
+    summary = f"In this {scope} dataset, there were a total of {total_issued:,} issued visits, of which {total_completed:,} were completed, resulting in a completion rate of {completion_rate:.2f}%. "
+    summary += f"Not done visits accounted for {total_not_done:,} visits ({not_done_pct:.2f}%). "
+    summary += f"Revisit rates included {total_7day_revisits:,} 7-day revisits and {total_30day_revisits:,} 30-day revisits. "
+    if weighted_job_time:
+        summary += f"The average job completion time was approximately {weighted_job_time:.2f} minutes. "
+    if total_surveys > 0 and weighted_nps is not None:
+        summary += f"Customer satisfaction measured via NPS had an average score of {weighted_nps:.2f} based on {total_surveys:,} surveys. "
+    else:
+        summary += "NPS data is currently unavailable. "
+
+    summary += f"This data provides valuable insights to guide operational and customer experience improvements."
+
+    return summary
+
+if st.session_state.get("screen") == "highlands_islands":
+    if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_highlands"):
+        st.session_state.screen = "area_selection"
+        st.rerun()
+
+    st.title("🗺️ Highlands & Islands Dashboard")
+
+    tab1, tab2 = st.tabs(["Yearly Data", "Company Data"])
+
+    with tab1:
+        # default to first year so we can display summary immediately
+        year_choice = st.selectbox("Select Year", yearly_sheets)
+        df = dfs[year_choice]
+
+        # Show advanced summary paragraph before the dropdown
+        if not df.empty:
+            st.markdown(f"### Advanced Summary for {year_choice}")
+            st.info(generate_summary(df, "Yearly"))
+        else:
+            st.info("No data available for this year.")
+
+        # Yearly KPIs
+        with st.expander("Yearly KPIs", expanded=True):
+            total_issued = df['Issued Visits'].sum()
+            total_completed = df['Completed Visits'].sum()
+            completion_rate = (total_completed / total_issued * 100) if total_issued else 0
+
+            total_not_done = df['Not Done Vists'].sum() if 'Not Done Vists' in df.columns else 0
+            not_done_pct = (total_not_done / total_issued * 100) if total_issued else 0
+            total_7day_revisits = df['7 Day Revisits'].sum() if '7 Day Revisits' in df.columns else 0
+            weighted_7day_revisit_pct = weighted_avg(df, '7 Day Revisits %', 'Completed Visits')
+            total_surveys = df['Surveys'].sum() if 'Surveys' in df.columns else 0
+            weighted_nps = weighted_avg(df, 'NPS', 'Surveys') if 'NPS' in df.columns else None
+            weighted_job_time = weighted_avg(df, 'Average Complete Job Time (Min)', 'Completed Visits')
+
+            cols = st.columns(3)
+
+            cols[0].metric("Total Issued Visits", f"{total_issued:,.0f}")
+            cols[1].metric("Total Completed Visits", f"{total_completed:,.0f}")
+            cols[2].metric("Completion Rate (%)", f"{completion_rate:.2f}%")
+
+            cols[0].metric("Total Not Done Visits", f"{total_not_done:,.0f}")
+            cols[1].metric("Not Done Visits %", f"{not_done_pct:.2f}%")
+            cols[2].metric("Total 7 Day Revisits", f"{total_7day_revisits:,.0f}")
+
+            cols[0].metric("Weighted 7 Day Revisits %", f"{weighted_7day_revisit_pct:.2f}%" if weighted_7day_revisit_pct is not None else "N/A")
+            cols[1].metric("Total Surveys", f"{total_surveys:,.0f}")
+            cols[2].metric("Weighted Average NPS", f"{weighted_nps:.2f}" if weighted_nps is not None else "N/A")
+
+        with st.expander("Sunburst Chart - Issued Visits by Field by FRU"):
+            if "Field by FRU" in df.columns:
+                df_sb = df.copy()
+                df_sb['Field by FRU'] = df_sb['Field by FRU'].fillna("Unknown")
+                df_sb['Completion %'] = (df_sb['Completed Visits'] / df_sb['Issued Visits']).fillna(0) * 100
+
+                fig = px.sunburst(df_sb, path=['Field by FRU'], values='Issued Visits',
+                                  color='Completion %', color_continuous_scale='RdYlGn',
+                                  title="Issued Visits by Field by FRU (colored by Completion %)")
+                st.plotly_chart(fig, use_container_width=True, key=f"sunburst_yearly_{year_choice}")
+            else:
+                st.info("Column 'Field by FRU' not found in this dataset.")
+
+    with tab2:
+        comp_choice = st.selectbox("Select Company Year", company_sheets)
+        df = dfs[comp_choice]
+
+        if not df.empty:
+            st.markdown(f"### Advanced Summary for {comp_choice}")
+            st.info(generate_summary(df, "Company"))
+        else:
+            st.info("No data available for this company dataset.")
+
+        with st.expander("Company KPIs", expanded=True):
+            # Group by company and aggregate relevant metrics
+            comp_kpis = df.groupby('Company').agg(
+                Total_Issued_Visits = ('Issued Visits', 'sum'),
+                Total_Completed_Visits = ('Completed Visits', 'sum')
+            ).reset_index()
+
+            # Calculate Completion Rate per company
+            comp_kpis['Completion Rate (%)'] = (comp_kpis['Total_Completed_Visits'] / comp_kpis['Total_Issued_Visits']) * 100
+
+            # Format numbers for display
+            comp_kpis['Total_Issued_Visits'] = comp_kpis['Total_Issued_Visits'].map('{:,.0f}'.format)
+            comp_kpis['Total_Completed_Visits'] = comp_kpis['Total_Completed_Visits'].map('{:,.0f}'.format)
+            comp_kpis['Completion Rate (%)'] = comp_kpis['Completion Rate (%)'].map('{:.2f}%'.format)
+
+            # Rename columns for nice display
+            comp_kpis = comp_kpis.rename(columns={
+                'Company': 'Company',
+                'Total_Issued_Visits': 'Total Issued Visits',
+                'Total_Completed_Visits': 'Total Completed Visits',
+                'Completion Rate (%)': 'Completion Rate (%)'
+            })
+
+            st.dataframe(comp_kpis)
+
+
+
+        with tab1:
+            df = dfs[year_choice]
+
+            if not df.empty:
+                with st.expander("Section 3: Detailed Metrics & Charts (Yearly)", expanded=False):
+                    total_issued = safe_sum(df, 'Issued Visits')
+                    total_completed = safe_sum(df, 'Completed Visits')
+                    total_not_done = safe_sum(df, 'Not Done Vists')  # spelling as per your header
+                    total_7day_revisits = safe_sum(df, '7 Day Revisits')
+                    total_30day_revisits = safe_sum(df, '30 Day Revisits')
+                    total_surveys = safe_sum(df, 'Surveys')
+
+                    weighted_job_time = weighted_avg(df, 'Average Complete Job Time (Min)', 'Completed Visits')
+                    weighted_7day_revisit_pct = weighted_avg(df, '7 Day Revisits %', 'Completed Visits')
+                    weighted_30day_revisit_pct = weighted_avg(df, '30 Day Revisits %', 'Completed Visits')
+
+                    nps_col = 'NPS' if 'NPS' in df.columns else None
+                    weighted_nps = weighted_avg(df, nps_col, 'Surveys') if nps_col else None
+
+                    # KPI Table
+                    kpi_data = {
+                        "Metric": [
+                            "Total Issued Visits",
+                            "Total Completed Visits",
+                            "Total Not Done Visits",
+                            "Total 7 Day Revisits",
+                            "Weighted 7 Day Revisits %",
+                            "Total 30 Day Revisits",
+                            "Weighted 30 Day Revisits %",
+                            "Total Surveys",
+                            "Weighted Average NPS",
+                            "Weighted Average Job Time (Min)"
+                        ],
+                        "Value": [
+                            f"{total_issued:,.0f}",
+                            f"{total_completed:,.0f}",
+                            f"{total_not_done:,.0f}",
+                            f"{total_7day_revisits:,.0f}",
+                            f"{weighted_7day_revisit_pct:.2f}%" if weighted_7day_revisit_pct is not None else "N/A",
+                            f"{total_30day_revisits:,.0f}",
+                            f"{weighted_30day_revisit_pct:.2f}%" if weighted_30day_revisit_pct is not None else "N/A",
+                            f"{total_surveys:,.0f}",
+                            f"{weighted_nps:.2f}" if weighted_nps is not None else "N/A",
+                            f"{weighted_job_time:.2f}" if weighted_job_time is not None else "N/A",
+                        ]
+                    }
+                    st.table(pd.DataFrame(kpi_data))
+
+                    # Completion vs Not Done Pie Chart
+                    pie_df = pd.DataFrame({
+                        'Status': ['Completed', 'Not Done'],
+                        'Visits': [total_completed, total_not_done]
+                    })
+                    fig_pie = px.pie(pie_df, names='Status', values='Visits', title="Completion Status Distribution")
+                    st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_completion_yearly_{year_choice}")
+
+                    # Revisits Bar Chart (by Field by FRU)
+                    revisit_cols = [col for col in ['7 Day Revisits', '30 Day Revisits'] if col in df.columns]
+                    if 'Field by FRU' in df.columns and revisit_cols:
+                        revisit_df = df.groupby('Field by FRU')[revisit_cols].sum().reset_index()
+                        fig_bar = px.bar(revisit_df, x='Field by FRU', y=revisit_cols, barmode='group', title="Revisits by Field by FRU")
+                        st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_revisits_yearly_{year_choice}")
+
+        with tab2:
+            df = dfs[comp_choice]
+
+            if not df.empty:
+                with st.expander("Section 3: Detailed Metrics & Charts (Company)", expanded=False):
+                    total_issued = safe_sum(df, 'Issued Visits')
+                    total_completed = safe_sum(df, 'Completed Visits')
+                    total_not_done = safe_sum(df, 'Not Done Vists')
+                    total_7day_revisits = safe_sum(df, '7 Day Revisits')
+                    total_30day_revisits = safe_sum(df, '30 Day Revisits')
+                    total_surveys = safe_sum(df, 'Surveys')
+
+                    weighted_job_time = weighted_avg(df, 'Average Complete Job Time (Min)', 'Completed Visits')
+                    weighted_7day_revisit_pct = weighted_avg(df, '7 Day Revisits %', 'Completed Visits')
+                    weighted_30day_revisit_pct = weighted_avg(df, '30 Day Revisits %', 'Completed Visits')
+
+                    nps_col = 'NPS%' if 'NPS%' in df.columns else None
+                    weighted_nps = weighted_avg(df, nps_col, 'Surveys') if nps_col else None
+
+                    # KPI Table
+                    kpi_data = {
+                        "Metric": [
+                            "Total Issued Visits",
+                            "Total Completed Visits",
+                            "Total Not Done Visits",
+                            "Total 7 Day Revisits",
+                            "Weighted 7 Day Revisits %",
+                            "Total 30 Day Revisits",
+                            "Weighted 30 Day Revisits %",
+                            "Total Surveys",
+                            "Weighted Average NPS",
+                            "Weighted Average Job Time (Min)"
+                        ],
+                        "Value": [
+                            f"{total_issued:,.0f}",
+                            f"{total_completed:,.0f}",
+                            f"{total_not_done:,.0f}",
+                            f"{total_7day_revisits:,.0f}",
+                            f"{weighted_7day_revisit_pct:.2f}%" if weighted_7day_revisit_pct is not None else "N/A",
+                            f"{total_30day_revisits:,.0f}",
+                            f"{weighted_30day_revisit_pct:.2f}%" if weighted_30day_revisit_pct is not None else "N/A",
+                            f"{total_surveys:,.0f}",
+                            f"{weighted_nps:.2f}" if weighted_nps is not None else "N/A",
+                            f"{weighted_job_time:.2f}" if weighted_job_time is not None else "N/A",
+                        ]
+                    }
+                    st.table(pd.DataFrame(kpi_data))
+
+                    # Completion vs Not Done Pie Chart
+                    pie_df = pd.DataFrame({
+                        'Status': ['Completed', 'Not Done'],
+                        'Visits': [total_completed, total_not_done]
+                    })
+                    fig_pie = px.pie(pie_df, names='Status', values='Visits', title="Completion Status Distribution")
+                    st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_completion_company_{comp_choice}")
+
+                    # Revisits Bar Chart (by Company)
+                    revisit_cols = [col for col in ['7 Day Revisits', '30 Day Revisits'] if col in df.columns]
+                    if 'Company' in df.columns and revisit_cols:
+                        revisit_df = df.groupby('Company')[revisit_cols].sum().reset_index()
+                        fig_bar = px.bar(revisit_df, x='Company', y=revisit_cols, barmode='group', title="Revisits by Company")
+                        st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_revisits_company_{comp_choice}")
+
+ 
+#SECTION 4#
+
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+
+        with tab1:
+            # Yearly Tab
+            with st.expander("Section 4: Advanced Analytics (Yearly)", expanded=False):
+                # Completion % Trend over Years
+                st.subheader("Completion % Trend Over Years")
+                year_data = []
+                for year in yearly_sheets:
+                    d = dfs[year]
+                    total_issued = safe_sum(d, 'Issued Visits')
+                    total_completed = safe_sum(d, 'Completed Visits')
+                    comp_pct = (total_completed / total_issued * 100) if total_issued else 0
+                    year_data.append({"Year": year, "Completion %": comp_pct})
+                trend_df = pd.DataFrame(year_data)
+                fig_trend = px.line(trend_df, x='Year', y='Completion %', markers=True)
+                st.plotly_chart(fig_trend, use_container_width=True, key=f"comp_trend_yearly")
+
+                # Top 5 Field by FRU by Issued Visits for selected year
+                st.subheader(f"Top 5 Field by FRU by Issued Visits ({year_choice})")
+                if 'Field by FRU' in df.columns:
+                    top5 = df.groupby('Field by FRU')['Issued Visits'].sum().nlargest(5).reset_index()
+                    fig_top5 = px.bar(top5, x='Field by FRU', y='Issued Visits', title="Top 5 Field by FRU")
+                    st.plotly_chart(fig_top5, use_container_width=True, key=f"top5_frus_{year_choice}")
+                else:
+                    st.info("No 'Field by FRU' data available")
+
+                # Not Done Visits Pie Chart
+                st.subheader("Not Done Visits Proportion")
+                total_not_done = safe_sum(df, 'Not Done Vists')
+                pie_nd_df = pd.DataFrame({
+                    'Status': ['Completed', 'Not Done'],
+                    'Visits': [safe_sum(df, 'Completed Visits'), total_not_done]
+                })
+                fig_nd_pie = px.pie(pie_nd_df, names='Status', values='Visits', title="Not Done Visits Proportion")
+                st.plotly_chart(fig_nd_pie, use_container_width=True, key=f"nd_pie_{year_choice}")
+
+                # NPS Distribution (if available)
+                if 'NPS' in df.columns:
+                    st.subheader("NPS Distribution")
+                    fig_nps = px.histogram(df, x='NPS', nbins=20, title="NPS Score Distribution")
+                    st.plotly_chart(fig_nps, use_container_width=True, key=f"nps_dist_{year_choice}")
+                else:
+                    st.info("NPS data not available")
+
+        with tab2:
+            # Company Tab
+            with st.expander("Section 4: Advanced Analytics (Company)", expanded=False):
+                # Completion % Trend over Company Years
+                st.subheader("Completion % Trend Over Company Years")
+                comp_data = []
+                for comp_year in company_sheets:
+                    d = dfs[comp_year]
+                    total_issued = safe_sum(d, 'Issued Visits')
+                    total_completed = safe_sum(d, 'Completed Visits')
+                    comp_pct = (total_completed / total_issued * 100) if total_issued else 0
+                    comp_data.append({"Year": comp_year, "Completion %": comp_pct})
+                comp_trend_df = pd.DataFrame(comp_data)
+                fig_comp_trend = px.line(comp_trend_df, x='Year', y='Completion %', markers=True)
+                st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_company")
+
+                # Top 5 Companies by Issued Visits for selected company year
+                st.subheader(f"Top 5 Companies by Issued Visits ({comp_choice})")
+                if 'Company' in df.columns:
+                    top5_comp = df.groupby('Company')['Issued Visits'].sum().nlargest(5).reset_index()
+                    fig_top5_comp = px.bar(top5_comp, x='Company', y='Issued Visits', title="Top 5 Companies")
+                    st.plotly_chart(fig_top5_comp, use_container_width=True, key=f"top5_company_{comp_choice}")
+                else:
+                    st.info("No 'Company' data available")
+
+                # Not Done Visits Pie Chart
+                st.subheader("Not Done Visits Proportion")
+                total_not_done = safe_sum(df, 'Not Done Vists')
+                pie_nd_df = pd.DataFrame({
+                    'Status': ['Completed', 'Not Done'],
+                    'Visits': [safe_sum(df, 'Completed Visits'), total_not_done]
+                })
+                fig_nd_pie = px.pie(pie_nd_df, names='Status', values='Visits', title="Not Done Visits Proportion")
+                st.plotly_chart(fig_nd_pie, use_container_width=True, key=f"nd_pie_company_{comp_choice}")
+
+                # NPS% Distribution (if available)
+                if 'NPS%' in df.columns:
+                    st.subheader("NPS% Distribution")
+                    fig_nps = px.histogram(df, x='NPS%', nbins=20, title="NPS% Score Distribution")
+                    st.plotly_chart(fig_nps, use_container_width=True, key=f"nps_dist_company_{comp_choice}")
+                else:
+                    st.info("NPS% data not available")
+
+
+
+        with tab1:
+            df = dfs[year_choice]
+
+            if not df.empty:
+                with st.expander("Section 5: Interactive Filters & Drilldown (Yearly)", expanded=False):
+                    # Filter by Field by FRU
+                    fru_options = df['Field by FRU'].dropna().unique()
+                    selected_fru = st.multiselect(
+                        "Filter by Field by FRU",
+                        options=fru_options,
+                        default=fru_options,
+                        key=f"filter_fru_{year_choice}"
+                    )
+
+                    # Filter by Completion Status
+                    status_options = ['Completed', 'Not Done']
+                    selected_status = st.multiselect(
+                        "Filter by Completion Status",
+                        options=status_options,
+                        default=status_options,
+                        key=f"filter_status_{year_choice}"
+                    )
+
+                    # Filter dataframe based on selections
+                    filtered_df = df[df['Field by FRU'].isin(selected_fru)]
+
+                    # Create completion mask
+                    if 'Not Done Vists' in filtered_df.columns and 'Completed Visits' in filtered_df.columns:
+                        if set(selected_status) == {'Completed', 'Not Done'}:
+                            pass
+                        elif selected_status == ['Completed']:
+                            filtered_df = filtered_df[filtered_df['Completed Visits'] > 0]
+                        elif selected_status == ['Not Done']:
+                            filtered_df = filtered_df[filtered_df['Not Done Vists'] > 0]
+                        else:
+                            filtered_df = filtered_df.iloc[0:0]
+
+                    # Show KPIs for filtered data
+                    total_issued = safe_sum(filtered_df, 'Issued Visits')
+                    total_completed = safe_sum(filtered_df, 'Completed Visits')
+                    total_not_done = safe_sum(filtered_df, 'Not Done Vists')
+
+                    st.write("### Filtered KPIs")
+                    st.metric("Total Issued Visits", f"{total_issued:,.0f}")
+                    st.metric("Total Completed Visits", f"{total_completed:,.0f}")
+                    st.metric("Total Not Done Visits", f"{total_not_done:,.0f}")
+
+                    # Optionally show filtered data table
+                    if st.checkbox("Show filtered data table", key=f"show_table_{year_choice}"):
+                        st.dataframe(filtered_df)
+
+        with tab2:
+            df = dfs[comp_choice]
+
+            if not df.empty:
+                with st.expander("Section 5: Interactive Filters & Drilldown (Company)", expanded=False):
+                    # Filter by Company
+                    comp_options = df['Company'].dropna().unique()
+                    selected_comp = st.multiselect(
+                        "Filter by Company",
+                        options=comp_options,
+                        default=comp_options,
+                        key=f"filter_company_{comp_choice}"
+                    )
+
+                    # Filter by Completion Status
+                    status_options = ['Completed', 'Not Done']
+                    selected_status = st.multiselect(
+                        "Filter by Completion Status",
+                        options=status_options,
+                        default=status_options,
+                        key=f"filter_status_company_{comp_choice}"
+                    )
+
+                    filtered_df = df[df['Company'].isin(selected_comp)]
+
+                    if 'Not Done Vists' in filtered_df.columns and 'Completed Visits' in filtered_df.columns:
+                        if set(selected_status) == {'Completed', 'Not Done'}:
+                            pass
+                        elif selected_status == ['Completed']:
+                            filtered_df = filtered_df[filtered_df['Completed Visits'] > 0]
+                        elif selected_status == ['Not Done']:
+                            filtered_df = filtered_df[filtered_df['Not Done Vists'] > 0]
+                        else:
+                            filtered_df = filtered_df.iloc[0:0]
+
+                    # Calculate KPIs for filtered data
+                    total_issued = safe_sum(filtered_df, 'Issued Visits')
+                    total_completed = safe_sum(filtered_df, 'Completed Visits')
+                    total_not_done = safe_sum(filtered_df, 'Not Done Vists')
+                    not_done_pct = (total_not_done / total_issued * 100) if total_issued else 0
+                    total_7day_revisits = safe_sum(filtered_df, '7 Day Revisits')
+
+                    weighted_7day_revisit_pct = weighted_avg(filtered_df, '7 Day Revisits %', 'Completed Visits')
+                    total_surveys = safe_sum(filtered_df, 'Surveys')
+                    weighted_nps = weighted_avg(filtered_df, 'NPS%', 'Surveys')
+
+                    completion_rate = (total_completed / total_issued * 100) if total_issued else 0
+
+                    st.write("### Filtered KPIs")
+                    cols = st.columns(3)
+
+                    cols[0].metric("Total Issued Visits", f"{total_issued:,.0f}")
+                    cols[1].metric("Total Completed Visits", f"{total_completed:,.0f}")
+                    cols[2].metric("Completion Rate (%)", f"{completion_rate:.2f}%")
+
+                    cols[0].metric("Total Not Done Visits", f"{total_not_done:,.0f}")
+                    cols[1].metric("Not Done Visits %", f"{not_done_pct:.2f}%")
+                    cols[2].metric("Total 7 Day Revisits", f"{total_7day_revisits:,.0f}")
+
+                    cols[0].metric("Weighted 7 Day Revisits %", f"{weighted_7day_revisit_pct:.2f}%" if weighted_7day_revisit_pct is not None else "N/A")
+                    cols[1].metric("Total Surveys", f"{total_surveys:,.0f}")
+                    cols[2].metric("Weighted Average NPS%", f"{weighted_nps:.2f}" if weighted_nps is not None else "N/A")
+
+                    if st.checkbox("Show filtered data table", key=f"show_table_company_{comp_choice}"):
+                        st.dataframe(filtered_df)
+
+
+
+        from sklearn.linear_model import LinearRegression
+        import numpy as np
+        import plotly.express as px
+
+        with tab1:
+            with st.expander("Section 6: Yearly Trends & Forecasts", expanded=False):
+                # Combine all yearly data into one DataFrame
+                combined_yearly = []
+                for year in yearly_sheets:
+                    df_year = dfs[year]
+                    total_issued = safe_sum(df_year, 'Issued Visits')
+                    total_completed = safe_sum(df_year, 'Completed Visits')
+                    comp_pct = (total_completed / total_issued * 100) if total_issued else 0
+                    combined_yearly.append({
+                        "Year": int(year),
+                        "Issued Visits": total_issued,
+                        "Completed Visits": total_completed,
+                        "Completion %": comp_pct
+                    })
+                trend_df = pd.DataFrame(combined_yearly).sort_values("Year")
+
+                # KPIs to plot
+                kpis = ["Issued Visits", "Completed Visits", "Completion %"]
+
+                for kpi in kpis:
+                    st.subheader(f"{kpi} Trend Over Years")
+                    fig = px.line(trend_df, x='Year', y=kpi, markers=True, title=f"{kpi} Trend Over Years")
+
+                    # Forecast next year using simple linear regression
+                    X = trend_df['Year'].values.reshape(-1,1)
+                    y = trend_df[kpi].values
+
+                    model = LinearRegression()
+                    model.fit(X, y)
+
+                    next_year = np.array([[trend_df['Year'].max() + 1]])
+                    forecast = model.predict(next_year)[0]
+
+                    # Add forecast point to the chart
+                    fig.add_scatter(x=[next_year[0][0]], y=[forecast], mode='markers+text',
+                                    marker=dict(color='red', size=10),
+                                    text=["Forecast"],
+                                    textposition="top center",
+                                    name="Forecast")
+
+                    st.plotly_chart(fig, use_container_width=True, key=f"trend_forecast_{kpi.replace(' ', '_')}")
+
+
+# ------- Section 1 Forecasts ------- #
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+
+@st.cache_data
+def load_file(path):
+    try:
+        df = pd.read_excel(path)
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')  # Convert Date if it exists
+        return df
+    except Exception as e:
+        st.error(f"Failed to load data from {path}: {e}")
+        return pd.DataFrame()
+
+
+# Your forecast_visit_type function here (unchanged)...
+def forecast_visit_type(df, visit_type, selected_activity_statuses, periods=6):
+    df_filtered = df[df["Visit Type"] == visit_type].copy()
+    df_filtered["Date"] = pd.to_datetime(df_filtered["Date"], errors="coerce")
+    df_filtered = df[
+        (df["Visit Type"] == visit_type) &
+        (df["Activity Status"].isin(selected_activity_statuses))
+    ].copy()
+
+    df_filtered.dropna(subset=["Date"], inplace=True)
+
+    # Group by month and count completed visits
+    monthly_counts = (
+        df_filtered.groupby(pd.Grouper(key="Date", freq="M"))
+        .size()
+        .reset_index(name="Completed Visits")
+    )
+
+    if len(monthly_counts) < 3:
+        return None  # Not enough data to forecast
+
+    monthly_counts["Month_Num"] = np.arange(len(monthly_counts))
+    X = monthly_counts["Month_Num"].values.reshape(-1, 1)
+    y = monthly_counts["Completed Visits"].values
+
+    # Simple linear regression to predict future values
+    coeffs = np.polyfit(X.flatten(), y, 1)
+    poly = np.poly1d(coeffs)
+
+    # Forecast future months
+    future_X = np.arange(len(monthly_counts), len(monthly_counts) + periods)
+    future_dates = pd.date_range(
+        monthly_counts["Date"].max() + pd.offsets.MonthBegin(),
+        periods=periods,
+        freq="M"
+    )
+    forecast_vals = poly(future_X).clip(0).round().astype(int)
+
+    # Build forecast DataFrame
+    forecast_df = pd.DataFrame({
+        "Month": future_dates.strftime("%b %Y"),
+        "Forecasted Completed Visits": forecast_vals
+    })
+
+    return monthly_counts, forecast_df
+
+
+def forecast_ui(df, visit_types, selected_activity_statuses):
+    cols_per_row = 8
+    n = len(visit_types)
+
+    # Reset selected visit types on page load or if not initialized
+    if "selected_visit_types" not in st.session_state or st.session_state.get("reset_forecast", True):
+        st.session_state.selected_visit_types = set()
+        st.session_state.reset_forecast = False
+
+    # Display historical combined visits line chart (collapsible)
+    with st.expander("Historical Completed Visits - All Visit Types", expanded=True):
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        filtered_df = df[df["Activity Status"].isin(selected_activity_statuses)]
+        historical_all = (
+            filtered_df.groupby(pd.Grouper(key="Date", freq="M"))
+            .size()
+            .reset_index(name="Completed Visits")
+        )
+        if not historical_all.empty:
+            fig = px.line(historical_all, x="Date", y="Completed Visits", title="All Visit Types Historical Completed Visits")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No historical data available for selected activity statuses.")
+
+    # Display grid of checkboxes for selection
+    st.write("### Select Visit Types to Forecast")
+    for i in range(0, n, cols_per_row):
+        cols = st.columns(cols_per_row)
+        for j, visit_type in enumerate(visit_types[i:i+cols_per_row]):
+            checked = visit_type in st.session_state.selected_visit_types
+            new_val = cols[j].checkbox(visit_type, value=checked, key=f"vt_{i+j}")
+            if new_val and visit_type not in st.session_state.selected_visit_types:
+                st.session_state.selected_visit_types.add(visit_type)
+            elif not new_val and visit_type in st.session_state.selected_visit_types:
+                st.session_state.selected_visit_types.remove(visit_type)
+
+    # Show forecasts only for selected visit types
+    if not st.session_state.selected_visit_types:
+        st.info("Select one or more visit types above to see forecasts.")
+        return
+
+    for vt in st.session_state.selected_visit_types:
+        st.markdown(f"## Visit Type: {vt}")
+        historical, forecast = forecast_visit_type(df, vt, selected_activity_statuses)
+        if historical is None:
+            st.info("Not enough data to forecast")
+        else:
+            st.write("### Historical Completed Visits")
+            st.line_chart(historical.set_index("Date")["Completed Visits"])
+
+            st.write("### Forecast for Next 6 Months")
+            st.dataframe(forecast)
+
+            fig = px.line(forecast, x="Month", y="Forecasted Completed Visits", markers=True)
+            st.plotly_chart(fig, use_container_width=True)
+
+
+
+# ▼━━━━━━━━━━ SECTION 2 ━━━━━━━━━━━▼ 
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+def forecast_visit_type_with_pct_change(df, visit_type, selected_activity_statuses, selected_day='All', periods=6):
+    """
+    Forecast completed visits per month for a given visit type and calculate percentage change month-on-month.
+    Returns historical data and forecast dataframe with % change.
+    """
+    # Filter for visit type and activity status
+    df_filtered = df[
+        (df["Visit Type"] == visit_type) & 
+        (df["Activity Status"].isin(selected_activity_statuses))
+    ].copy()
+    
+    df_filtered["Date"] = pd.to_datetime(df_filtered["Date"], errors="coerce")
+    df_filtered.dropna(subset=["Date"], inplace=True)
+
+    # Filter by day of week if not 'All'
+    if selected_day != 'All':
+        df_filtered = df_filtered[df_filtered['Date'].dt.day_name() == selected_day]
+
+    # Group by month
+    monthly_counts = df_filtered.groupby(pd.Grouper(key="Date", freq="M")).size().reset_index(name="Completed Visits")
+
+    if len(monthly_counts) < 3:
+        return None, None  # Not enough data to forecast
+
+    monthly_counts["Month_Num"] = np.arange(len(monthly_counts))
+    X = monthly_counts["Month_Num"].values.reshape(-1, 1)
+    y = monthly_counts["Completed Visits"].values
+
+    coeffs = np.polyfit(X.flatten(), y, 1)
+    poly = np.poly1d(coeffs)
+
+    future_X = np.arange(len(monthly_counts), len(monthly_counts) + periods)
+    future_dates = pd.date_range(monthly_counts["Date"].max() + pd.offsets.MonthBegin(), periods=periods, freq="M")
+    forecast_vals = poly(future_X).clip(0).round().astype(int)
+
+    forecast_df = pd.DataFrame({
+        "Month": future_dates.strftime("%b %Y"),
+        "Forecasted Completed Visits": forecast_vals
+    })
+
+    forecast_df["Pct Change"] = forecast_df["Forecasted Completed Visits"].pct_change().fillna(0) * 100
+    forecast_df["Pct Change"] = forecast_df["Pct Change"].map(lambda x: f"{x:+.2f}%")
+
+    return monthly_counts, forecast_df
+
+def combined_forecast_ui(df, visit_types, selected_activity_statuses, periods=6):
+    # Prepare combined data
+    combined_data = []
+
+    for visit_type in visit_types:
+        historical, forecast = forecast_visit_type_with_pct_change(df, visit_type, selected_activity_statuses, periods)
+        if historical is not None:
+            # Prepare forecast data for line plot (date + forecasted visits)
+            forecast_dates = pd.to_datetime(forecast["Month"], format="%b %Y")
+            combined_data.append(pd.DataFrame({
+                "Month": forecast_dates,
+                "Forecasted Completed Visits": forecast["Forecasted Completed Visits"],
+                "Visit Type": visit_type
+            }))
+
+    if combined_data:
+        combined_df = pd.concat(combined_data)
+
+        fig = px.line(
+            combined_df,
+            x="Month",
+            y="Forecasted Completed Visits",
+            color="Visit Type",
+            title="Combined Forecast for Selected Visit Types",
+            markers=True
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Then show individual graphs without tables
+    for visit_type in visit_types:
+        with st.expander(f"Visit Type: {visit_type}", expanded=False):
+            historical, _ = forecast_visit_type_with_pct_change(df, visit_type, selected_activity_statuses, periods)
+            if historical is None:
+                st.info("Not enough data to forecast for this visit type.")
+            else:
+                st.write("### Historical Completed Visits")
+                st.line_chart(historical.set_index("Date")["Completed Visits"])
+
+
+
+def forecast_ui_with_tables(df, visit_types, selected_activity_statuses, selected_day='All'):
+    """
+    Display forecast charts and tables for each selected visit type, full width.
+    """
+    for visit_type in visit_types:
+        with st.expander(f"Visit Type: {visit_type}", expanded=False):
+            historical, forecast = forecast_visit_type_with_pct_change(df, visit_type, selected_activity_statuses, selected_day)
+            if historical is None:
+                st.info("Not enough data to forecast for this visit type.")
+            else:
+                st.write("### Historical Completed Visits")
+                st.line_chart(historical.set_index("Date")["Completed Visits"])
+
+                st.write("### Forecast for Next 6 Months")
+                st.dataframe(forecast)
+
+                combined = pd.concat([
+                    historical[["Date", "Completed Visits"]].rename(columns={"Date": "Month"}),
+                    pd.DataFrame({
+                        "Month": pd.to_datetime(forecast["Month"], format="%b %Y"),
+                        "Completed Visits": forecast["Forecasted Completed Visits"]
+                    })
+                ])
+
+                fig = px.line(
+                    combined,
+                    x="Month",
+                    y="Completed Visits",
+                    title=f"Completed Visits Forecast for {visit_type}",
+                    markers=True
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+
+# ▼━━━━━━━━━━ SECTION 3 ━━━━━━━━━━━▼  
+if st.session_state.get("screen") == "Forecasts":
+    if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_button"):
+        st.session_state.screen = "area_selection"
+        st.rerun()  # or st.rerun()
+
+    st.title("📊 Forecasts")
+
+    # Load datasets
+    vip_south_df = load_file("VIP South Oracle Data.xlsx")
+    vip_north_df = load_file("VIP North Oracle Data.xlsx")
+    tier2_south_df = load_file("Tier 2 South Oracle Data.xlsx")
+    tier2_north_df = load_file("Tier 2 North Oracle Data.xlsx")
+
+    datasets = {
+        "All": pd.concat([vip_south_df, vip_north_df, tier2_south_df, tier2_north_df], ignore_index=True),
+        "VIP South": vip_south_df,
+        "VIP North": vip_north_df,
+        "Tier 2 South": tier2_south_df,
+        "Tier 2 North": tier2_north_df,
+    }
+
+    day_options = ['All', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    selected_day = st.selectbox("Select Day of Week", day_options, key="day_of_week_select")
+
+    selected_dataset_name = st.selectbox("Select dataset", list(datasets.keys()), key="dataset_select")
+
+    if selected_dataset_name:
+        selected_df = datasets[selected_dataset_name]
+
+        visit_types = sorted(selected_df['Visit Type'].dropna().unique())
+        activity_statuses = sorted(selected_df['Activity Status'].dropna().unique())
+
+        selected_visit_types = st.multiselect("Select Visit Type(s)", visit_types, default=visit_types, key="visit_types_multiselect")
+
+        selected_activity_statuses = st.multiselect("Select Activity Status(es)", activity_statuses, default=activity_statuses, key="activity_status_multiselect")
+
+        # Filter dataframe with visit type and activity status
+        filtered_df = selected_df[
+            selected_df['Visit Type'].isin(selected_visit_types) &
+            selected_df['Activity Status'].isin(selected_activity_statuses)
+        ]
+
+        if selected_day != 'All':
+            filtered_df = filtered_df[filtered_df['Date'].dt.day_name() == selected_day]
+
+        # Conditionally call forecast functions with all needed parameters
+        if len(selected_visit_types) == 1:
+            forecast_ui_with_tables(filtered_df, selected_visit_types, selected_activity_statuses, selected_day)
+        elif len(selected_visit_types) > 1:
+            combined_forecast_ui(filtered_df, selected_visit_types, selected_activity_statuses, selected_day)
+        else:
+            st.info("Please select at least one Visit Type.")
+
+    # Combine all datasets for any other use
+    combined_df = pd.concat([vip_south_df, vip_north_df, tier2_south_df, tier2_north_df], ignore_index=True)
+    combined_df['Visit Type'] = combined_df['Visit Type'].astype(str).str.strip()
+    visit_types = sorted(combined_df['Visit Type'].dropna().unique())
 
 
 # --- NUMBER 7 ---#
@@ -157,6 +1212,426 @@ file_map = {
     "Call Log Data": "Call Log Data.xlsx",
     "Productivity Report": "Productivity Report.xlsx",
 }
+
+
+
+#------------------NEW BLOCK 17---------------------#
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+@st.cache_data
+def load_data():
+    df_vip_south = pd.read_excel("VIP South Oracle Data.xlsx")
+    df_vip_south["Team"] = "VIP South"
+    df_vip_north = pd.read_excel("VIP North Oracle Data.xlsx")
+    df_vip_north["Team"] = "VIP North"
+    df_t2_south = pd.read_excel("Tier 2 South Oracle Data.xlsx")
+    df_t2_south["Team"] = "Tier 2 South"
+    df_t2_north = pd.read_excel("Tier 2 North Oracle Data.xlsx")
+    df_t2_north["Team"] = "Tier 2 North"
+    df_all = pd.concat([df_vip_south, df_vip_north, df_t2_south, df_t2_north], ignore_index=True)
+    return df_all, df_vip_south, df_vip_north, df_t2_south, df_t2_north
+
+df_all, df_vip_south, df_vip_north, df_t2_south, df_t2_north = load_data()
+
+def fmt_td(x):
+    if pd.isnull(x): return ""
+    if isinstance(x, pd.Timedelta):
+        s = str(x)
+        if "days" in s:
+            s = s.split(" ")[-1]
+        return s.split(".")[0]
+    return str(x)
+
+def fix_time_col(series):
+    import datetime
+    return series.apply(
+        lambda x: x.strftime("%H:%M:%S") if isinstance(x, datetime.time) else x
+    )
+
+if st.session_state.get("screen") == "operational_area":
+    # -- Horizontal section buttons --
+    col1, col2, col3 = st.columns(3)
+    if col1.button("Engineer"):
+        st.session_state["op_area_section"] = "engineer"
+        st.rerun()
+    if col2.button("Time analysis"):
+        st.session_state["op_area_section"] = "time"
+        st.rerun()
+    if col3.button("Visits"):
+        st.session_state["op_area_section"] = "visits"
+        st.rerun()
+
+    section = st.session_state.get("op_area_section", "engineer")
+
+    # ---- ENGINEER SECTION ----
+    if section == "engineer":
+        st.title("Engineer Dashboard (All Oracle Data)")
+        st.subheader("All Engineers & Visit Counts")
+        engineer_counts = df_all["Name"].value_counts().reset_index()
+        engineer_counts.columns = ["Engineer", "Visit Count"]
+        st.dataframe(engineer_counts, use_container_width=True)
+
+        with st.expander("📊 Bar Chart: Visits per Engineer"):
+            fig = px.bar(engineer_counts, x="Engineer", y="Visit Count", title="Visits per Engineer")
+            st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🥧 Pie Chart: Visit Share (Top 10 Engineers)"):
+            top10 = engineer_counts.head(10)
+            fig = px.pie(top10, names="Engineer", values="Visit Count", title="Top 10 Engineers by Visit Share")
+            st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🌞 Sunburst: Engineer → Visit Type"):
+            if "Visit Type" in df_all.columns and "Name" in df_all.columns:
+                sunburst_df = df_all[["Name", "Visit Type"]].dropna()
+                fig = px.sunburst(sunburst_df, path=["Name", "Visit Type"], title="Engineer → Visit Type Breakdown")
+                st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("👷‍♂️ Engineer Visit Summary Stats")
+        stats = {
+            "Average Visits": int(engineer_counts["Visit Count"].mean()),
+            "Min Visits": int(engineer_counts["Visit Count"].min()),
+            "Max Visits": int(engineer_counts["Visit Count"].max()),
+            "Total Engineers": len(engineer_counts)
+        }
+        st.table(pd.DataFrame(stats, index=["Value"]).T)
+
+        with st.expander("🏢 Visits per Engineer by Team (Stacked Bar)"):
+            if "Team" in df_all.columns and "Name" in df_all.columns:
+                grouped = df_all.groupby(["Name", "Team"]).size().unstack(fill_value=0)
+                fig = px.bar(
+                    grouped,
+                    barmode="stack",
+                    title="Visits per Engineer by Team"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🔎 Top 10 Engineers with Most Visit Type Diversity"):
+            if "Name" in df_all.columns and "Visit Type" in df_all.columns:
+                n_types = df_all.groupby("Name")["Visit Type"].nunique().sort_values(ascending=False).head(10)
+                st.bar_chart(n_types)
+                st.dataframe(n_types)
+
+        with st.expander("🍰 Engineer Visit Status Breakdown (Pie)"):
+            if "Name" in df_all.columns and "Activity Status" in df_all.columns:
+                engineer_status = df_all.groupby("Name")["Activity Status"].value_counts().unstack(fill_value=0)
+                top_eng = engineer_status.sum(axis=1).sort_values(ascending=False).head(5).index
+                pie_data = df_all[df_all["Name"].isin(top_eng)]
+                fig = px.pie(
+                    pie_data, names="Activity Status", title="Status Breakdown (Top 5 Engineers)",
+                    color="Activity Status"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("📈 Engineer Visits Over Time"):
+            if "Date" in df_all.columns and "Name" in df_all.columns:
+                df_all["Date"] = pd.to_datetime(df_all["Date"], errors="coerce")
+                by_month = df_all.groupby([pd.Grouper(key="Date", freq="M"), "Name"]).size().unstack(fill_value=0)
+                top_engs = engineer_counts["Engineer"].head(5)
+                fig = px.line(
+                    by_month[top_engs], 
+                    title="Monthly Visit Count - Top 5 Engineers",
+                    labels={"value": "Visits", "Date": "Month"}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🏷️ Visits per Engineer by Visit Type (Stacked Bar)"):
+            if "Visit Type" in df_all.columns and "Name" in df_all.columns:
+                grouped = df_all.groupby(["Name", "Visit Type"]).size().unstack(fill_value=0)
+                top_engs = engineer_counts["Engineer"].head(5)
+                fig = px.bar(
+                    grouped.loc[top_engs],
+                    barmode="stack",
+                    title="Visits per Engineer by Visit Type (Top 5 Engineers)"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("⏳ Average & Total Time per Engineer"):
+            if "Name" in df_all.columns and "Total Time" in df_all.columns:
+                df_time = df_all.copy()
+                df_time["Total Time"] = pd.to_timedelta(fix_time_col(df_time["Total Time"]), errors="coerce")
+                df_time = df_time[~df_time["Total Time"].isna()]
+                time_stats = df_time.groupby("Name")["Total Time"].agg(["count", "mean", "sum"])
+                time_stats = time_stats.sort_values("count", ascending=False).head(10)
+                time_stats["mean"] = time_stats["mean"].apply(fmt_td)
+                time_stats["sum"] = time_stats["sum"].apply(fmt_td)
+                st.dataframe(time_stats)
+                st.bar_chart(time_stats["count"])
+
+        with st.expander("📋 Engineer vs Visit Type Matrix"):
+            if "Name" in df_all.columns and "Visit Type" in df_all.columns:
+                matrix = pd.crosstab(df_all["Name"], df_all["Visit Type"])
+                st.dataframe(matrix)
+
+        with st.expander("👥 Engineer Visits Per Team (Table)"):
+            if "Name" in df_all.columns and "Team" in df_all.columns:
+                team_table = pd.crosstab(df_all["Name"], df_all["Team"])
+                st.dataframe(team_table)
+
+
+
+
+    # ---- VISITS SECTION ----
+    elif section == "visits":
+        st.title("Visit Dashboard (All Oracle Data)")
+
+        st.subheader("All Visits (Table View)")
+        visit_cols = [c for c in ["Visit Type", "Activity Status", "Date", "Team", "Name"] if c in df_all.columns]
+        visit_table = df_all[visit_cols].copy()
+        st.dataframe(visit_table.head(200), use_container_width=True)
+
+        with st.expander("📊 Bar Chart: Visit Count by Type"):
+            vc_type = df_all["Visit Type"].value_counts().reset_index()
+            vc_type.columns = ["Visit Type", "Count"]
+            fig = px.bar(vc_type, x="Visit Type", y="Count", title="Visit Count by Type")
+            st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🟢 Visit Status Breakdown (Pie Chart)"):
+            if "Activity Status" in df_all.columns:
+                fig = px.pie(df_all, names="Activity Status", title="Visit Status Breakdown")
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("👥 Visits by Team (Bar Chart)"):
+            if "Team" in df_all.columns:
+                vc_team = df_all["Team"].value_counts().reset_index()
+                vc_team.columns = ["Team", "Visit Count"]
+                fig = px.bar(vc_team, x="Team", y="Visit Count", title="Visits by Team")
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("📈 Visits Over Time (Monthly Line Chart)"):
+            if "Date" in df_all.columns:
+                df_all["Date"] = pd.to_datetime(df_all["Date"], errors="coerce")
+                df_all["Month"] = df_all["Date"].dt.to_period("M").dt.to_timestamp()
+                by_month = df_all.groupby("Month").size().reset_index(name="Visit Count")
+                fig = px.line(by_month, x="Month", y="Visit Count", markers=True, title="Monthly Visit Trend")
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🌞 Sunburst: Team → Visit Type"):
+            if "Team" in df_all.columns and "Visit Type" in df_all.columns:
+                sunburst_df = df_all[["Team", "Visit Type"]].dropna()
+                fig = px.sunburst(sunburst_df, path=["Team", "Visit Type"], title="Visits Breakdown: Team → Visit Type")
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🔗 Parallel Categories: Team, Status, Visit Type"):
+            needed_cols = ["Team", "Activity Status", "Visit Type"]
+            if all(c in df_all.columns for c in needed_cols):
+                pc_df = df_all[needed_cols].dropna().astype(str)
+                fig = px.parallel_categories(pc_df, dimensions=needed_cols, title="Team → Status → Visit Type")
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("📅 Visits by Day of Week"):
+            if "Date" in df_all.columns:
+                df_all["Day of Week"] = df_all["Date"].dt.day_name()
+                vc_day = df_all["Day of Week"].value_counts().reindex(
+                    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], fill_value=0
+                )
+                st.bar_chart(vc_day)
+
+        with st.expander("🏠 Visits by Postcode (Top 10)"):
+            if "Postcode" in df_all.columns:
+                vc_postcode = df_all["Postcode"].value_counts().head(10)
+                st.bar_chart(vc_postcode)
+
+        with st.expander("👷 Visits per Engineer (Top 10)"):
+            if "Name" in df_all.columns:
+                vc_engineer = df_all["Name"].value_counts().head(10)
+                st.bar_chart(vc_engineer)
+
+        with st.expander("🔥 Visits by Month & Team (Heatmap)"):
+            if "Date" in df_all.columns and "Team" in df_all.columns:
+                df_all["Month"] = df_all["Date"].dt.to_period("M").dt.strftime('%b %Y')
+                pivot = pd.pivot_table(df_all, index="Month", columns="Team", values="Visit Type", aggfunc="count", fill_value=0)
+                st.dataframe(pivot)
+
+        with st.expander("📋 Visits by Status & Type"):
+            if "Activity Status" in df_all.columns and "Visit Type" in df_all.columns:
+                pivot = pd.pivot_table(df_all, index="Activity Status", columns="Visit Type", values="Date", aggfunc="count", fill_value=0)
+                st.dataframe(pivot)
+
+    # (You can add a 'time analysis' section next, just like above.)
+
+import datetime
+
+def fmt_td(x):
+    if pd.isnull(x):
+        return ""
+    total_seconds = int(x.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+def clean_times(df, time_cols):
+    df = df.copy()
+    for col in time_cols:
+        if col in df.columns:
+            # Convert any datetime.time to string
+            df[col] = df[col].apply(
+                lambda x: x.strftime("%H:%M:%S") if isinstance(x, datetime.time) else x
+            )
+            # Convert to timedelta
+            df[col] = pd.to_timedelta(df[col], errors="coerce")
+            # Remove zeros, blanks, NaT
+            df = df[~df[col].isna()]
+            df = df[df[col] != pd.Timedelta(0)]
+    return df
+
+# All possible time columns
+time_cols = ["Total Time", "Activate", "Deactivate", "Travel Time", "Total Time (Inc Travel)", "Total Working Time"]
+
+# 1. Summary Table: Mean/Min/Max by Time Column
+st.subheader("⏳ Summary Table: Time Columns Stats")
+summary_rows = []
+for col in time_cols:
+    if col in df_all.columns:
+        cleaned = clean_times(df_all[[col]], [col])
+        if not cleaned.empty:
+            summary_rows.append({
+                "Column": col,
+                "Mean": cleaned[col].mean(),
+                "Min": cleaned[col].min(),
+                "Max": cleaned[col].max(),
+                "Count": cleaned[col].count()
+            })
+if summary_rows:
+    stats_df = pd.DataFrame(summary_rows)
+    stats_df["Mean"] = stats_df["Mean"].apply(fmt_td)
+    stats_df["Min"] = stats_df["Min"].apply(fmt_td)
+    stats_df["Max"] = stats_df["Max"].apply(fmt_td)
+    st.dataframe(stats_df)
+else:
+    st.info("No time columns found.")
+
+# 2. Average Total Time per Visit Type
+if "Total Time" in df_all.columns and "Visit Type" in df_all.columns:
+    with st.expander("⏱️ Average Total Time per Visit Type"):
+        cleaned = clean_times(df_all[["Total Time", "Visit Type"]], ["Total Time"])
+        avg_time = cleaned.groupby("Visit Type")["Total Time"].mean().sort_values()
+        avg_time = avg_time.apply(fmt_td)
+        st.bar_chart(avg_time)
+        st.dataframe(avg_time)
+
+# 3. Activate & Deactivate Time Analysis
+for col in ["Activate", "Deactivate"]:
+    if col in df_all.columns:
+        with st.expander(f"⚡ {col} Time Analysis"):
+            cleaned = clean_times(df_all[[col, "Visit Type"]], [col])
+            if not cleaned.empty:
+                avg = cleaned.groupby("Visit Type")[col].mean().sort_values()
+                avg = avg.apply(fmt_td)
+                st.bar_chart(avg)
+                st.dataframe(avg)
+                st.markdown(f"**Min:** {fmt_td(cleaned[col].min())} &nbsp;&nbsp; **Max:** {fmt_td(cleaned[col].max())}")
+            else:
+                st.info(f"No data for {col} column.")
+
+# 4. Total Working Time Analysis
+if "Total Working Time" in df_all.columns:
+    with st.expander("🛠️ Total Working Time Analysis"):
+        cleaned = clean_times(df_all[["Total Working Time", "Visit Type"]], ["Total Working Time"])
+        avg = cleaned.groupby("Visit Type")["Total Working Time"].mean().sort_values()
+        avg = avg.apply(fmt_td)
+        st.bar_chart(avg)
+        st.dataframe(avg)
+        st.markdown(f"**Min:** {fmt_td(cleaned['Total Working Time'].min())} &nbsp;&nbsp; **Max:** {fmt_td(cleaned['Total Working Time'].max())}")
+
+# 5. Boxplot of Total Time per Team
+if "Total Time" in df_all.columns and "Team" in df_all.columns:
+    with st.expander("📦 Boxplot: Total Time by Team"):
+        cleaned = clean_times(df_all[["Total Time", "Team"]], ["Total Time"])
+        import plotly.express as px
+        fig = px.box(cleaned, x="Team", y="Total Time", title="Total Time Distribution by Team")
+        st.plotly_chart(fig, use_container_width=True)
+
+# 6. Timeline: Mean Total Time Per Month
+if "Total Time" in df_all.columns and "Date" in df_all.columns:
+    with st.expander("📈 Avg Total Time Per Month (Line Chart)"):
+        cleaned = clean_times(df_all[["Total Time", "Date"]], ["Total Time"])
+        cleaned["Month"] = pd.to_datetime(cleaned["Date"], errors="coerce").dt.to_period("M").dt.to_timestamp()
+        monthly = cleaned.groupby("Month")["Total Time"].mean().dropna()
+        monthly_fmt = monthly.apply(fmt_td)
+        st.line_chart(monthly_fmt)
+
+# 7. Table: All Time Columns (first 100 rows, cleaned)
+with st.expander("📋 All Time Columns (Sample)"):
+    cols_present = [col for col in time_cols if col in df_all.columns]
+    sample = clean_times(df_all[cols_present], cols_present)
+    # Format columns
+    for c in cols_present:
+        sample[c] = sample[c].apply(fmt_td)
+    st.dataframe(sample.head(100), use_container_width=True)
+
+# 8. 🔥 Heatmap: Average Total Time by Team & Visit Type
+if all(col in df_all.columns for col in ["Total Time", "Team", "Visit Type"]):
+    with st.expander("🔥 Heatmap: Avg Total Time by Team & Visit Type"):
+        cleaned = clean_times(df_all[["Total Time", "Team", "Visit Type"]], ["Total Time"])
+        pivot = cleaned.pivot_table(index="Team", columns="Visit Type", values="Total Time", aggfunc="mean")
+        # Format for display (HH:MM:SS)
+        pivot_fmt = pivot.applymap(fmt_td)
+        st.dataframe(pivot_fmt)
+
+# 9. ⏲️ Distribution of Total Time (Histogram)
+if "Total Time" in df_all.columns:
+    with st.expander("⏲️ Distribution of Total Time (Histogram)"):
+        cleaned = clean_times(df_all[["Total Time"]], ["Total Time"])
+        if not cleaned.empty:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            times = cleaned["Total Time"].dt.total_seconds() / 60  # Minutes
+            fig, ax = plt.subplots()
+            ax.hist(times, bins=30, color='skyblue', edgecolor='black')
+            ax.set_title("Distribution of Total Time (Minutes)")
+            ax.set_xlabel("Minutes")
+            ax.set_ylabel("Frequency")
+            st.pyplot(fig)
+
+# 10. 🕒 Median Time by Visit Type and Team
+if all(col in df_all.columns for col in ["Total Time", "Team", "Visit Type"]):
+    with st.expander("🕒 Median Total Time by Visit Type and Team (Table)"):
+        cleaned = clean_times(df_all[["Total Time", "Team", "Visit Type"]], ["Total Time"])
+        pivot = cleaned.pivot_table(index="Team", columns="Visit Type", values="Total Time", aggfunc="median")
+        pivot_fmt = pivot.applymap(fmt_td)
+        st.dataframe(pivot_fmt)
+
+# 11. 📊 Pie Chart: Proportion of Visits with >1 Hour Total Time
+if "Total Time" in df_all.columns:
+    with st.expander("📊 Visits > 1 Hour vs <= 1 Hour (Pie Chart)"):
+        cleaned = clean_times(df_all[["Total Time"]], ["Total Time"])
+        gt1h = (cleaned["Total Time"] > pd.Timedelta(hours=1)).sum()
+        le1h = (cleaned["Total Time"] <= pd.Timedelta(hours=1)).sum()
+        pie_df = pd.DataFrame({
+            "Category": ["> 1 Hour", "<= 1 Hour"],
+            "Count": [gt1h, le1h]
+        })
+        fig = px.pie(pie_df, names="Category", values="Count", title="Proportion of Visits > 1 Hour Total Time")
+        st.plotly_chart(fig, use_container_width=True)
+
+# 12. 🏆 Longest & Shortest Total Times (Per Team)
+if "Total Time" in df_all.columns and "Team" in df_all.columns:
+    with st.expander("🏆 Longest & Shortest Total Times per Team"):
+        cleaned = clean_times(df_all[["Total Time", "Team", "Name", "Visit Type"]], ["Total Time"])
+        idxmax = cleaned.groupby("Team")["Total Time"].idxmax()
+        idxmin = cleaned.groupby("Team")["Total Time"].idxmin()
+        longest = cleaned.loc[idxmax]
+        shortest = cleaned.loc[idxmin]
+        longest = longest[["Team", "Name", "Visit Type", "Total Time"]]
+        shortest = shortest[["Team", "Name", "Visit Type", "Total Time"]]
+        longest["Total Time"] = longest["Total Time"].apply(fmt_td)
+        shortest["Total Time"] = shortest["Total Time"].apply(fmt_td)
+        st.markdown("#### Longest Total Time per Team")
+        st.dataframe(longest)
+        st.markdown("#### Shortest Total Time per Team")
+        st.dataframe(shortest)
+
+
+
+
+
+
+
+
 
 # --- NUMBER 8 ---#
 # --- SECTION: DASHBOARD AREA – Dataset Grid Selection ---
@@ -195,7 +1670,7 @@ if st.session_state.screen == "dashboard":
         i += 1
 
 
-# --- NUMBER 8 ----------------------------------------------------------
+# --- NUMBER 9 ----------------------------------------------------------
 # --- SECTION: SIDEBAR FILTERS & DATA LOADING ---------------------------
 
 # ➊ Skip the entire sidebar when we’re on screens that don’t need it
@@ -210,26 +1685,24 @@ else:
     # ORIGINAL SIDEBAR CODE BEGINS HERE (unchanged)
     # ------------------------------------------------------------------
 
-    # 0️⃣ Make sure a dataset has already been chosen on the main page
-    file_choice = st.session_state.get("selected_dataset")
-    if file_choice is None:
-        st.info("👈 Pick a dataset first, then filters will appear here.")
-        st.stop()
+    # ⛔ Only check for dataset if we're NOT on the suggestion screen
+    if st.session_state.get("screen") != "suggestions":
+        file_choice = st.session_state.get("selected_dataset")
+        if file_choice is None:
+            st.info("👈 Pick a dataset first, then filters will appear here.")
+            st.stop()
 
-    # 1️⃣ Load the file (only once thanks to @st.cache_data in load_file)
+
+ # 1️⃣ Load the file (only once thanks to @st.cache_data in load_file)
+file_choice = st.session_state.get("selected_dataset")
+if file_choice:
     file_path = file_map.get(file_choice)
     df = load_file(file_path)
     if df.empty:
         st.warning("❌ No data loaded or file is empty.")
         st.stop()
 
-    filtered_data = df.copy()      # master copy we’ll keep refining
-
-    # 2️⃣ SIDEBAR UI  … etc …
-    # ---------------------------------------------------------------
-    # (everything from your original block stays exactly the same)
-
-
+    filtered_data = df.copy()  # master copy we’ll keep refining
 
     # 2️⃣ SIDEBAR UI
     with st.sidebar:
@@ -244,13 +1717,18 @@ else:
             unsafe_allow_html=True
         )
 
-        # --- Date ---
-        if "Date" in filtered_data.columns:
+        # --- Date --- 
+        if (
+            st.session_state.selected_dataset not in ["Productivity Report"]
+            and "Date" in filtered_data.columns
+            and pd.api.types.is_datetime64_any_dtype(filtered_data["Date"])
+        ):
             filtered_data["Date"] = pd.to_datetime(filtered_data["Date"], errors="coerce")
             date_opts = ["All"] + sorted(filtered_data["Date"].dt.date.dropna().unique())
             sel_date = st.selectbox("📅 Date", date_opts, index=0)
             if sel_date != "All":
                 filtered_data = filtered_data[filtered_data["Date"].dt.date == sel_date]
+
 
         # --- Week ---
         if "Week" in filtered_data.columns:
@@ -294,7 +1772,6 @@ else:
 
     # 4️⃣ Stash for downstream use
     st.session_state.filtered_data = filtered_data
-# -----------------------------------------------------------------
 
 import base64
 
@@ -355,6 +1832,7 @@ if st.session_state.get("screen") == "dashboard_view":
                 except Exception:
                     return pd.NaT
             return pd.NaT
+
 
         valid_times = adv_data.copy()
         if {"Activate", "Deactivate"}.issubset(valid_times.columns):
@@ -425,52 +1903,56 @@ if st.session_state.get("screen") == "dashboard_view":
             unsafe_allow_html=True,
         )
 
-# --- NUMBER 9 ---#
-# --- SECTION: LOAD FILE FUNCTION ---
+    @st.cache_data
+    def load_file(path):
+        try:
+            df = pd.read_excel(path)
+            df.columns = df.columns.str.strip()  # Strip all column names of whitespace
+            #st.write("DEBUG: Columns loaded from", path, df.columns.tolist())
 
-@st.cache_data
-def load_file(path):
-    try:
-        df = pd.read_excel(path)
+            # Standardise column names by dataset
+            if "AI Test SB Visits" in path:
+                df = df.rename(columns={
+                    'Business Engineers Name': 'Engineer',
+                    'Date of visit': 'Date',
+                    'Venue Name': 'Venue',
+                    'Visit type': 'Visit Type',
+                    'Total Value': 'Value'
+                })
+            elif "Invoice Data AI" in path:
+                df = df.rename(columns={
+                    'Date of visit': 'Date',
+                    'Total Value': 'Value'
+                })
+            elif "Productivity Report" in path:
+                # For Productivity Report, do NOT try to rename or convert date,
+                # since it has no date column.
+                pass
+            elif any(x in path for x in [
+                "VIP North Oracle Data", "VIP South Oracle Data",
+                "Tier 2 North Oracle Data", "Tier 2 South Oracle Data"
+            ]):
+                df = df.rename(columns={
+                    'Name': 'Engineer',
+                    'Date': 'Date',
+                    'Visit Type': 'Visit Type',
+                    'Total Value': 'Value',
+                    'Postcode': 'Venue'
+                })
 
-        # Standardise column names by dataset
-        if "AI Test SB Visits" in path:
-            df = df.rename(columns={
-                'Business Engineers Name': 'Engineer',
-                'Date of visit': 'Date',
-                'Venue Name': 'Venue',
-                'Visit type': 'Visit Type',
-                'Total Value': 'Value'
-            })
-        elif "Invoice Data AI" in path:
-            df = df.rename(columns={
-                'Date of visit': 'Date',
-                'Total Value': 'Value'
-            })
-        elif any(x in path for x in [
-            "VIP North Oracle Data", "VIP South Oracle Data",
-            "Tier 2 North Oracle Data", "Tier 2 South Oracle Data"
-        ]):
-            df = df.rename(columns={
-                'Name': 'Engineer',
-                'Date': 'Date',
-                'Visit Type': 'Visit Type',
-                'Total Value': 'Value',
-                'Postcode': 'Venue'
-            })
+            # Handle date fields for datasets that have a 'Date' column and are NOT Productivity Report
+            if 'Date' in df.columns and "Productivity Report" not in path:
+                df['Date'] = pd.to_datetime(df['Date'], errors='coerce', dayfirst=True)
+                df.dropna(subset=['Date'], inplace=True)
+                df['MonthName'] = df['Date'].dt.month_name()
+                df['Week'] = df['Date'].dt.isocalendar().week
 
-        # Handle date fields
-        if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date'], errors='coerce', dayfirst=True)
-            df.dropna(subset=['Date'], inplace=True)
-            df['MonthName'] = df['Date'].dt.month_name()
-            df['Week'] = df['Date'].dt.isocalendar().week
+            return df
 
-        return df
+        except Exception as e:
+            st.error(f"⚠️ Failed to load file: {e}")
+            return pd.DataFrame()
 
-    except Exception as e:
-        st.error(f"⚠️ Failed to load file: {e}")
-        return pd.DataFrame()
 
 
 
@@ -484,6 +1966,9 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
         st.session_state.selected_dataset = None
         st.rerun()
 
+    # Convert date column early
+    if "Date of Call Taken" in filtered_data.columns:
+        filtered_data["Date of Call Taken"] = pd.to_datetime(filtered_data["Date of Call Taken"], errors="coerce")
 
     st.subheader("📞 Call Log Overview")
 
@@ -493,12 +1978,39 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
 
     # SUMMARY KPIs
     with st.expander("📋 Summary KPIs", expanded=True):
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Calls", f"{len(filtered_data):,}")
-        if "Name of Engineer" in filtered_data.columns:
-            col2.metric("Unique Engineers", filtered_data["Name of Engineer"].nunique())
-        if "Region" in filtered_data.columns:
-            col3.metric("Regions", filtered_data["Region"].nunique())
+        cols = st.columns(3)
+        col1, col2, col3 = cols[0], cols[1], cols[2]
+
+        # Prepare data metrics
+        total_calls = len(filtered_data)
+        unique_engineers = filtered_data["Name of Engineer"].nunique() if "Name of Engineer" in filtered_data.columns else "N/A"
+        unique_regions = filtered_data["Region"].nunique() if "Region" in filtered_data.columns else "N/A"
+        unique_options = filtered_data["Option Selected"].nunique() if "Option Selected" in filtered_data.columns else "N/A"
+        unique_months = filtered_data["Month"].nunique() if "Month" in filtered_data.columns else "N/A"
+        unique_vr = filtered_data["VR Number (If Known)"].nunique() if "VR Number (If Known)" in filtered_data.columns else "N/A"
+        unique_callers = filtered_data["Name Of Engineer Who Made The Call"].nunique() if "Name Of Engineer Who Made The Call" in filtered_data.columns else "N/A"
+        unique_emails = filtered_data["Engineers email address (who made the call)"].nunique() if "Engineers email address (who made the call)" in filtered_data.columns else "N/A"
+
+        peak_day = "N/A"
+        peak_day_calls = "N/A"
+        if "Date of Call Taken" in filtered_data.columns:
+            calls_per_day = filtered_data["Date of Call Taken"].dt.date.value_counts()
+            if not calls_per_day.empty:
+                peak_day = calls_per_day.idxmax().strftime("%d %b %Y")
+                peak_day_calls = calls_per_day.max()
+
+        # Display KPIs in a 3x3 grid
+        col1.metric("Total Calls", f"{total_calls:,}")
+        col2.metric("Unique Engineers", unique_engineers)
+        col3.metric("Regions", unique_regions)
+
+        col1.metric("Unique Options Selected", unique_options)
+        col2.metric("Unique Months", unique_months)
+        col3.metric("Unique VR Numbers", unique_vr)
+
+        col1.metric("Unique Callers", unique_callers)
+        col2.metric("Unique Caller Emails", unique_emails)
+        col3.metric("Peak Call Day", f"{peak_day} ({peak_day_calls} calls)" if peak_day_calls != "N/A" else peak_day)
 
     # TOP 5 REGIONS BY CALL VOLUME
     if "Region" in filtered_data.columns:
@@ -565,6 +2077,148 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
                                    title="Top 10 Engineers by Call Volume"), use_container_width=True)
             st.plotly_chart(px.bar(top_eng, y="Engineer", x="Call Count", color="Engineer", orientation="h",
                                    title="Top 10 Engineers by Call Volume (Horizontal)"), use_container_width=True)
+    import pandas as pd
+    import numpy as np
+    import plotly.express as px
+
+    # Additional KPIs expander
+    with st.expander("📊 Additional KPIs", expanded=False):
+        total_calls = len(filtered_data)
+        calls_by_engineer = filtered_data.groupby("Name of Engineer").size()
+        calls_by_region = filtered_data.groupby("Region").size()
+
+        avg_calls_per_engineer = calls_by_engineer.mean() if not calls_by_engineer.empty else 0
+        avg_calls_per_region = calls_by_region.mean() if not calls_by_region.empty else 0
+
+        most_frequent_option = filtered_data["Option Selected"].mode().iloc[0] if not filtered_data["Option Selected"].mode().empty else "N/A"
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Avg Calls per Engineer", f"{avg_calls_per_engineer:.2f}")
+        col2.metric("Avg Calls per Region", f"{avg_calls_per_region:.2f}")
+        col3.metric("Most Frequent Option", most_frequent_option)
+
+    # Calls by Engineer & Region Pivot Table
+    with st.expander("📋 Calls by Engineer & Region", expanded=False):
+        if {"Name of Engineer", "Region"}.issubset(filtered_data.columns):
+            pivot_eng_reg = pd.pivot_table(filtered_data, index="Name of Engineer", columns="Region", values="Date of Call Taken", aggfunc="count", fill_value=0)
+            st.dataframe(pivot_eng_reg)
+
+            fig = px.bar(pivot_eng_reg.reset_index(), x="Name of Engineer", y=pivot_eng_reg.columns.tolist(), 
+                         title="Calls by Engineer and Region", barmode='stack')
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Calls by Option & Month Heatmap
+    with st.expander("📅 Calls by Option & Month", expanded=False):
+        if {"Option Selected", "Month"}.issubset(filtered_data.columns):
+            pivot_opt_month = pd.pivot_table(filtered_data, index="Option Selected", columns="Month", values="Date of Call Taken", aggfunc="count", fill_value=0)
+            
+            # Sort months in chronological order by parsing month names
+            pivot_opt_month = pivot_opt_month.reindex(sorted(pivot_opt_month.columns, key=lambda x: pd.to_datetime(x, format='%B')), axis=1)
+
+            st.dataframe(pivot_opt_month)
+
+            fig = px.imshow(pivot_opt_month, labels=dict(x="Month", y="Option Selected", color="Call Count"), 
+                            title="Heatmap of Calls by Option and Month")
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Month-on-Month % Change in Calls
+    with st.expander("📈 Month-on-Month % Change in Total Calls", expanded=False):
+        calls_by_month = filtered_data.groupby(filtered_data["Date of Call Taken"].dt.to_period("M")).size()
+        pct_change = calls_by_month.pct_change().fillna(0) * 100
+        pct_df = pct_change.reset_index().rename(columns={"Date of Call Taken": "Month", 0: "Percent Change"})
+        
+        # Rename columns properly
+        pct_df.columns = ["Month", "Percent Change"]
+
+        # Convert period to datetime for sorting and format as string
+        pct_df["Month_dt"] = pd.to_datetime(pct_df["Month"].astype(str), format='%Y-%m')
+        pct_df = pct_df.sort_values("Month_dt")
+        pct_df["Month"] = pct_df["Month_dt"].dt.strftime('%b %Y')
+
+        st.dataframe(pct_df.drop(columns=["Month_dt"]))
+
+        fig = px.bar(pct_df, x="Month", y="Percent Change", title="Month-on-Month % Change in Calls")
+        st.plotly_chart(fig, use_container_width=True)
+
+
+    # VR Number Distribution
+    with st.expander("🎫 VR Number Distribution", expanded=False):
+        if "VR Number (If Known)" in filtered_data.columns:
+            vr_counts = filtered_data["VR Number (If Known)"].value_counts().head(15)
+            vr_df = vr_counts.reset_index()
+            vr_df.columns = ["VR Number", "Call Count"]
+            st.dataframe(vr_df)
+
+            fig = px.bar(vr_df, x="VR Number", y="Call Count", title="Top 15 VR Numbers by Call Count")
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Region Call Volume & Distribution
+    with st.expander("📊 Region Call Volume & Distribution", expanded=False):
+        if "Region" in filtered_data.columns:
+            calls_by_region = filtered_data["Region"].value_counts().reset_index()
+            calls_by_region.columns = ["Region", "Call Count"]
+            st.plotly_chart(
+                px.bar(calls_by_region, x="Region", y="Call Count", color="Region",
+                       title="Call Volume by Region"),
+                use_container_width=True,
+                key="bar_region_call_volume"
+            )
+
+            st.plotly_chart(
+                px.pie(calls_by_region, names="Region", values="Call Count",
+                       title="Call Volume Distribution by Region"),
+                use_container_width=True,
+                key="pie_region_call_distribution"
+            )
+
+    # Region & Option / Engineer Insights
+    with st.expander("📈 Region & Option / Engineer Insights", expanded=False):
+        if {"Region", "Option Selected"}.issubset(filtered_data.columns):
+            sunburst_df = (
+                filtered_data.groupby(["Region", "Option Selected"])
+                .size()
+                .reset_index(name="Count")
+            )
+            fig_sunburst = px.sunburst(sunburst_df, path=["Region", "Option Selected"], values="Count",
+                                       title="Call Distribution: Region → Option")
+            st.plotly_chart(fig_sunburst, use_container_width=True, key="sunburst_region_option")
+
+        if {"Region", "Name of Engineer"}.issubset(filtered_data.columns):
+            pivot_eng_reg = pd.pivot_table(
+                filtered_data,
+                index="Name of Engineer",
+                columns="Region",
+                values="Date of Call Taken",
+                aggfunc="count",
+                fill_value=0,
+            )
+            st.dataframe(pivot_eng_reg)
+
+            fig_stacked_bar = px.bar(
+                pivot_eng_reg.reset_index(),
+                x="Name of Engineer",
+                y=pivot_eng_reg.columns.tolist(),
+                title="Calls by Engineer and Region",
+                barmode="stack",
+            )
+            st.plotly_chart(fig_stacked_bar, use_container_width=True, key="stacked_bar_eng_reg")
+
+    # Call Volume by Region & Option Selected (Sunburst or Treemap)
+    with st.expander("🌳 Call Volume by Region & Option Selected (Sunburst)", expanded=False):
+        if {"Region", "Option Selected"}.issubset(filtered_data.columns):
+            region_option = (
+                filtered_data.groupby(["Region", "Option Selected"])
+                .size()
+                .reset_index(name="Count")
+            )
+            fig_region_option = px.sunburst(region_option,
+                                           path=["Region", "Option Selected"],
+                                           values="Count",
+                                           title="Call Volume by Region & Option Selected")
+            st.plotly_chart(fig_region_option, use_container_width=True, key="sunburst_region_option_2")
+
+
+
 
 # --- NUMBER 11 ---
 # --- SECTION: Productivity Report ---
@@ -683,7 +2337,7 @@ if (
                 st.plotly_chart(
                     px.bar(
                         filtered_data,
-                        x="Team",
+                        x="Team",       # Using Team grouping as valid column
                         y=value_col,
                         color="Team",
                         title=f"{display_col} by Team (Bar)",
@@ -726,15 +2380,6 @@ if (
                     use_container_width=True,
                 )
 
-            # Radar chart if 3+ teams
-            if filtered_data["Team"].nunique() >= 3:
-                radar_df = filtered_data.groupby("Team")[value_col].mean().reset_index()
-                radar_fig = go.Figure()
-                radar_fig.add_trace(
-                    go.Scatterpolar(r=radar_df[value_col], theta=radar_df["Team"], fill="toself"))
-                radar_fig.update_layout(title=f"{display_col} Radar", showlegend=False)
-                st.plotly_chart(radar_fig, use_container_width=True)
-
     # ------------------------------------------------------------------
     #   HEATMAP – Team vs Metrics (money_cols only)
     # ------------------------------------------------------------------
@@ -750,6 +2395,7 @@ if (
     # ------------------------------------------------------------------
     with st.expander("📋 Full Productivity Data"):
         st.dataframe(filtered_data, use_container_width=True)
+
 
 # --- NUMBER 12 ---
 # --- SECTION: Invoice Data AI ---
@@ -767,32 +2413,128 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
     df_invoice = df_invoice.replace(["", " ", "00:00", "00:00:00", 0, "0", None], pd.NA)
     df_invoice.dropna(how='all', inplace=True)
 
-    # Fix column naming
+    # Fix column naming and add YearMonth for monthly grouping
     if "Date of visit" in df_invoice.columns:
-        df_invoice["Week"] = pd.to_datetime(df_invoice["Date of visit"], errors='coerce').dt.isocalendar().week
+        df_invoice["Date of visit"] = pd.to_datetime(df_invoice["Date of visit"], errors='coerce')
+        df_invoice["YearMonth"] = df_invoice["Date of visit"].dt.to_period("M").astype(str)
+        df_invoice["Week"] = df_invoice["Date of visit"].dt.isocalendar().week
 
-    # RAW TABLE
+    # Ensure numeric conversions for relevant columns
+    for col in ["Total Value", "Labour Value", "Time On-Site"]:
+        if col in df_invoice.columns:
+            df_invoice[col] = pd.to_numeric(df_invoice[col], errors='coerce')
+
+    # KPI Grid (3x3) with additional detailed metrics
+    with st.expander("📋 Summary KPIs", expanded=True):
+        col1, col2, col3 = st.columns(3)
+
+        total_value = df_invoice["Total Value"].sum() if "Total Value" in df_invoice.columns else 0
+        avg_invoice = df_invoice["Total Value"].mean() if "Total Value" in df_invoice.columns else 0
+        max_invoice = df_invoice["Total Value"].max() if "Total Value" in df_invoice.columns else 0
+        min_invoice = df_invoice["Total Value"].min() if "Total Value" in df_invoice.columns else 0
+        median_invoice = df_invoice["Total Value"].median() if "Total Value" in df_invoice.columns else 0
+
+        total_labour = df_invoice["Labour Value"].sum() if "Labour Value" in df_invoice.columns else 0
+        avg_time_onsite = df_invoice["Time On-Site"].mean() if "Time On-Site" in df_invoice.columns else 0
+
+        total_invoices = len(df_invoice)
+        unique_types = df_invoice["Visit Type"].nunique() if "Visit Type" in df_invoice.columns else 0
+
+        internal_counts = df_invoice["Internal Or External"].value_counts() if "Internal Or External" in df_invoice.columns else pd.Series()
+
+        col1.metric("Total Invoice Value (£)", f"£{total_value:,.2f}")
+        col2.metric("Average Invoice Value (£)", f"£{avg_invoice:,.2f}")
+        col3.metric("Median Invoice Value (£)", f"£{median_invoice:,.2f}")
+
+        col1.metric("Max Invoice Value (£)", f"£{max_invoice:,.2f}")
+        col2.metric("Min Invoice Value (£)", f"£{min_invoice:,.2f}")
+        
+
+        
+        col2.metric("Total Invoices", f"{total_invoices:,}")
+        col3.metric("Unique Invoice Types", f"{unique_types}")
+
+    import pandas as pd
+
+    import pandas as pd
+
+    if "Visit Type" in df_invoice.columns:
+        visit_types = df_invoice["Visit Type"].unique()
+
+        st.markdown("### 📊 KPIs by Visit Type")
+
+        for vt in visit_types:
+            vt_df = df_invoice[df_invoice["Visit Type"] == vt]
+
+            # Exclude unwanted columns
+            exclude_cols = ["Time On-Site", "Week"]
+            numeric_cols = [col for col in vt_df.select_dtypes(include="number").columns if col not in exclude_cols]
+
+            # Calculate KPIs for this Visit Type
+            kpi_data = {}
+            for col in numeric_cols:
+                if any(keyword in col for keyword in ["Value", "Cost", "Total", "Amount", "Count"]):
+                    kpi_data[col] = vt_df[col].sum()
+                else:
+                    kpi_data[col] = vt_df[col].mean()
+
+            if not kpi_data:
+                st.info(f"No numeric KPIs found for Visit Type: {vt}")
+                continue
+
+            kpi_df = pd.DataFrame.from_dict(kpi_data, orient="index", columns=["Value"])
+
+            with st.expander(f"Visit Type: {vt} KPIs", expanded=False):
+                st.dataframe(kpi_df.style.format("{:,.2f}"), use_container_width=True)
+
+
+
+    # Raw data table
     with st.expander("🧾 Raw Invoice Table", expanded=False):
         st.dataframe(df_invoice, use_container_width=True)
 
-    # SUMMARY KPIs
-    with st.expander("📋 Summary KPIs", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
-        if "Value" in df_invoice.columns:
-            col1.metric("Total Value (£)", f"£{df_invoice['Value'].sum():,.2f}")
-            col2.metric("Average Invoice (£)", f"£{df_invoice['Value'].mean():,.2f}")
-        col3.metric("Total Invoices", len(df_invoice))
-        if "Visit Type" in df_invoice.columns:
-            col4.metric("Types", df_invoice["Visit Type"].nunique())
+    # Box plot: Invoice Value distribution by Visit Type
+    if "Visit Type" in df_invoice.columns and "Total Value" in df_invoice.columns:
+        with st.expander("📦 Invoice Value Distribution by Visit Type"):
+            fig_box = px.box(df_invoice, x="Visit Type", y="Total Value",
+                             title="Invoice Value Distribution by Visit Type")
+            st.plotly_chart(fig_box, use_container_width=True)
 
-    # TOP BY VALUE
+    # Histogram: Time On-Site distribution
+    if "Time On-Site" in df_invoice.columns:
+        with st.expander("⏱️ Time On-Site Distribution"):
+            fig_hist = px.histogram(df_invoice, x="Time On-Site", nbins=30, title="Time On-Site Distribution (mins)")
+            st.plotly_chart(fig_hist, use_container_width=True)
+
+    # Bar chart: Total Labour Value by Team
+    if "Team" in df_invoice.columns and "Labour Value" in df_invoice.columns:
+        with st.expander("💼 Total Labour Value by Team"):
+            labour_team = df_invoice.groupby("Team")["Labour Value"].sum().reset_index()
+            fig_bar_labour = px.bar(labour_team, x="Team", y="Labour Value", title="Total Labour Value by Team")
+            st.plotly_chart(fig_bar_labour, use_container_width=True)
+
+    # Pie chart: Internal vs External
+    if "Internal Or External" in df_invoice.columns:
+        with st.expander("🔍 Internal vs External Visits"):
+            internal_counts = df_invoice["Internal Or External"].value_counts()
+            fig_pie_int_ext = px.pie(names=internal_counts.index, values=internal_counts.values, title="Internal vs External Visits")
+            st.plotly_chart(fig_pie_int_ext, use_container_width=True)
+
+    # Line chart: Monthly Invoice Value with Min, Max, Median
+    if "YearMonth" in df_invoice.columns and "Total Value" in df_invoice.columns:
+        with st.expander("📈 Monthly Invoice Value with Min, Max, Median"):
+            monthly_stats = df_invoice.groupby("YearMonth")["Total Value"].agg(["min", "max", "median"]).reset_index()
+            fig_line_stats = px.line(monthly_stats, x="YearMonth", y=["min", "max", "median"],
+                                    title="Monthly Invoice Value: Min, Max, Median", markers=True)
+            st.plotly_chart(fig_line_stats, use_container_width=True)
+
+    # Keep your existing charts too
     if "Visit Type" in df_invoice.columns and "Value" in df_invoice.columns:
         with st.expander("💰 Top 5 Visit Types by Value"):
             top_value = df_invoice.groupby("Visit Type")["Value"].sum().sort_values(ascending=False).head(5).reset_index()
             st.plotly_chart(px.bar(top_value, x="Visit Type", y="Value", color="Visit Type",
                                    title="Top 5 Visit Types by Value (£)"), use_container_width=True)
 
-    # TOP BY COUNT
     if "Visit Type" in df_invoice.columns:
         with st.expander("📊 Top 5 Visit Types by Count"):
             top_count = df_invoice["Visit Type"].value_counts().head(5).reset_index()
@@ -800,7 +2542,6 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
             st.plotly_chart(px.bar(top_count, x="Visit Type", y="Count", color="Visit Type",
                                    title="Top 5 Visit Types by Volume"), use_container_width=True)
 
-    # SUNBURST
     if {"Visit Type", "Week"}.issubset(df_invoice.columns):
         with st.expander("🌞 Visit Type → Week Sunburst"):
             sun_df = df_invoice.groupby(["Visit Type", "Week"]).size().reset_index(name="Count")
@@ -808,7 +2549,6 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
                               title="Visit Type Breakdown by Week")
             st.plotly_chart(fig, use_container_width=True)
 
-    # TRENDS OVER TIME
     if {"Week", "Value"}.issubset(df_invoice.columns):
         with st.expander("📈 Visit Trends by Week"):
             week_value = df_invoice.groupby("Week")["Value"].sum().reset_index()
@@ -816,15 +2556,15 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
             st.plotly_chart(px.line(week_value, x="Week", y="Value", title="Total Invoice Value by Week"), use_container_width=True)
             st.plotly_chart(px.bar(week_count, x="Week", y="Count", title="Invoice Volume by Week"), use_container_width=True)
 
-    # HEATMAP
     if {"Visit Type", "Week"}.issubset(df_invoice.columns):
         with st.expander("🌡️ Visit Type vs Week Heatmap"):
             heat_df = pd.pivot_table(df_invoice, index="Visit Type", columns="Week", aggfunc="size", fill_value=0)
             st.plotly_chart(px.imshow(heat_df, aspect="auto", title="Visit Heatmap: Types by Week"), use_container_width=True)
 
-    # FINAL TABLE
     with st.expander("📋 Full Invoice Table", expanded=False):
         st.dataframe(df_invoice, use_container_width=True)
+
+
 
 
 # --- NUMBER 13 ---
@@ -851,40 +2591,112 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
         "Total Value": "Value"
     }, inplace=True)
 
-    # Convert Date and extract Week
+    # Convert Date and extract Week and Month
     df_sb["Date"] = pd.to_datetime(df_sb["Date"], errors='coerce')
     df_sb["Week"] = df_sb["Date"].dt.isocalendar().week
+    df_sb["Month"] = df_sb["Date"].dt.to_period('M').astype(str)
 
-    # --- Summary KPIs ---
-    with st.expander("📋 Summary KPIs", expanded=True):
+    # Ensure Value column is numeric for aggregation
+    df_sb["Value"] = pd.to_numeric(df_sb["Value"], errors="coerce")
+
+    # --- Summary KPIs per Visit Type (no nested expanders) ---
+    with st.expander("📋 Summary KPIs per Visit Type", expanded=False):
+        visit_types = df_sb["Visit Type"].dropna().unique()
+        for vt in visit_types:
+            sub_df = df_sb[df_sb["Visit Type"] == vt]
+            total_visits = len(sub_df)
+            unique_engineers = sub_df["Engineer"].nunique()
+            total_value = sub_df["Value"].sum()
+            avg_value = sub_df["Value"].mean()
+
+            st.markdown(f"### Visit Type: {vt}")
+            kpi1, kpi2, kpi3 = st.columns(3)
+            kpi1.metric("Total Visits", f"{total_visits:,}")
+            kpi2.metric("Unique Engineers", f"{unique_engineers:,}")
+            kpi3.metric("Total Invoice Value (£)", f"£{total_value:,.2f}")
+            st.write(f"Average Invoice Value (£): £{avg_value:,.2f}")
+
+    # --- Overall KPIs (3x3 grid) ---
+    with st.expander("📊 Overall KPIs", expanded=True):
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Visits", len(df_sb))
-        col2.metric("Unique Engineers", df_sb["Engineer"].nunique())
-        col3.metric("Visit Types", df_sb["Visit Type"].nunique())
+        col4, col5, col6 = st.columns(3)
+        col7, col8, col9 = st.columns(3)
 
-    # --- Top Visit Types ---
+        total_visits = len(df_sb)
+        unique_engineers = df_sb["Engineer"].nunique()
+        unique_visit_types = df_sb["Visit Type"].nunique()
+        total_value = df_sb["Value"].sum()
+        avg_value = df_sb["Value"].mean()
+        min_value = df_sb["Value"].min()
+        max_value = df_sb["Value"].max()
+        median_value = df_sb["Value"].median()
+
+        col1.metric("Total Visits", f"{total_visits:,}")
+        col2.metric("Unique Engineers", f"{unique_engineers:,}")
+        col3.metric("Unique Visit Types", f"{unique_visit_types:,}")
+
+        col4.metric("Total Invoice Value (£)", f"£{total_value:,.2f}")
+        col5.metric("Average Invoice Value (£)", f"£{avg_value:,.2f}")
+        col6.metric("Median Invoice Value (£)", f"£{median_value:,.2f}")
+
+        col7.metric("Minimum Invoice Value (£)", f"£{min_value:,.2f}")
+        col8.metric("Maximum Invoice Value (£)", f"£{max_value:,.2f}")
+        col9.metric("Data Range (Months)", f"{df_sb['Month'].nunique()}")
+
+    # (rest of your code unchanged...)
+
+
+    # --- Top Visit Types by Volume and Value ---
     if "Visit Type" in df_sb.columns:
         with st.expander("📊 Top 5 Visit Types by Volume"):
             top_visits = df_sb["Visit Type"].value_counts().head(5).reset_index()
             top_visits.columns = ["Visit Type", "Count"]
             st.plotly_chart(px.bar(top_visits, x="Visit Type", y="Count", color="Visit Type",
-                                   title="Top 5 Visit Types"), use_container_width=True)
+                                   title="Top 5 Visit Types by Volume"), use_container_width=True)
 
-    # --- Top Engineers ---
+        with st.expander("💰 Top 5 Visit Types by Invoice Value"):
+            value_sum = df_sb.groupby("Visit Type")["Value"].sum().sort_values(ascending=False).head(5).reset_index()
+            st.plotly_chart(px.bar(value_sum, x="Visit Type", y="Value", color="Visit Type",
+                                   title="Top 5 Visit Types by Invoice Value"), use_container_width=True)
+
+    # --- Top Engineers by Visits and Value ---
     if "Engineer" in df_sb.columns:
-        with st.expander("🧑 Top Engineers by Visit Volume"):
+        with st.expander("🧑 Top 5 Engineers by Visit Volume"):
             eng_counts = df_sb["Engineer"].value_counts().head(5).reset_index()
             eng_counts.columns = ["Engineer", "Count"]
             st.plotly_chart(px.bar(eng_counts, x="Engineer", y="Count", color="Engineer",
                                    title="Top 5 Engineers by Visits"), use_container_width=True)
 
-    # --- Total Value by Engineer ---
-    if {"Engineer", "Value"}.issubset(df_sb.columns):
-        with st.expander("💰 Total Value by Engineer"):
-            df_sb["Value"] = pd.to_numeric(df_sb["Value"], errors="coerce")
+        with st.expander("💰 Top 5 Engineers by Invoice Value"):
             value_sum = df_sb.groupby("Engineer")["Value"].sum().nlargest(5).reset_index()
             st.plotly_chart(px.bar(value_sum, x="Engineer", y="Value", color="Engineer",
                                    title="Top 5 Engineers by Invoice Value"), use_container_width=True)
+
+    # --- Visits Over Time by Month ---
+    if "Month" in df_sb.columns:
+        with st.expander("📈 Visit Volume Over Time (Monthly)"):
+            monthly_visits = df_sb.groupby("Month").size().reset_index(name="Visits")
+            st.plotly_chart(px.line(monthly_visits, x="Month", y="Visits", title="Monthly Visit Volume"), use_container_width=True)
+
+    # --- Pie Charts ---
+    if "Visit Type" in df_sb.columns:
+        with st.expander("🥧 Visit Type Share"):
+            visit_type_counts = df_sb["Visit Type"].value_counts().reset_index()
+            visit_type_counts.columns = ["Visit Type", "Count"]
+            st.plotly_chart(px.pie(visit_type_counts, values="Count", names="Visit Type", title="Visit Type Share"), use_container_width=True)
+
+    if "Engineer" in df_sb.columns:
+        with st.expander("👥 Engineer Contribution Share"):
+            engineer_counts = df_sb["Engineer"].value_counts().reset_index()
+            engineer_counts.columns = ["Engineer", "Count"]
+            st.plotly_chart(px.pie(engineer_counts, values="Count", names="Engineer", title="Engineer Contribution Share"), use_container_width=True)
+
+    # --- Heatmap: Visit Type vs Week ---
+    if {"Visit Type", "Week"}.issubset(df_sb.columns):
+        with st.expander("🌡️ Visit Type vs Week Heatmap"):
+            heat_df = pd.pivot_table(df_sb, index="Visit Type", columns="Week", aggfunc="size", fill_value=0)
+            st.plotly_chart(px.imshow(heat_df, aspect="auto", title="Visit Heatmap: Types by Week"),
+                            use_container_width=True)
 
     # --- Sunburst: Visit Type → Engineer ---
     if {"Visit Type", "Engineer"}.issubset(df_sb.columns):
@@ -894,29 +2706,19 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
                               title="Visits by Type and Engineer")
             st.plotly_chart(fig, use_container_width=True)
 
-    # --- Line Graph: Visits Over Time ---
-    if "Date" in df_sb.columns:
-        with st.expander("📈 Visits Over Time"):
-            daily = df_sb.groupby("Date").size().reset_index(name="Visits")
-            st.plotly_chart(px.line(daily, x="Date", y="Visits", title="Visit Volume Over Time"),
-                            use_container_width=True)
-
-    # --- Heatmap: Visit Type vs Week ---
-    if {"Visit Type", "Week"}.issubset(df_sb.columns):
-        with st.expander("🌡️ Visit Type vs Week Heatmap"):
-            heat_df = pd.pivot_table(df_sb, index="Visit Type", columns="Week", aggfunc="size", fill_value=0)
-            st.plotly_chart(px.imshow(heat_df, aspect="auto", title="Visit Heatmap: Types by Week"),
-                            use_container_width=True)
-
     # --- Full Table ---
     with st.expander("📋 Full AI Test SB Visit Table", expanded=False):
-        st.dataframe(df_sb, use_container_width=True)
-
+        # Drop 'Week' and 'Time On-Site' columns if they exist
+        show_df = df_sb.drop(columns=[col for col in ["Week", "Time On-Site"] if col in df_sb.columns])
+        st.dataframe(show_df, use_container_width=True)
 
 # --- NUMBER 14 ---
 # --- SECTION: Oracle Team – Advanced Summary ---
 
 import datetime
+import os
+import pandas as pd
+import streamlit as st
 
 ORACLE_TEAMS = [
     "VIP North Oracle Data",
@@ -929,16 +2731,77 @@ if (
     st.session_state.screen == "dashboard_view"
     and st.session_state.selected_dataset in ORACLE_TEAMS
 ):
+
     # Back button
     if st.button("⬅️ Back to Dataset Selection", use_container_width=True, key="back_oracle"):
         st.session_state.screen = "dashboard"
         st.session_state.selected_dataset = None
         st.rerun()
 
-    st.subheader("📑 Oracle Team – Advanced Summary")
+    # Local function to load Oracle data only for this block
+    @st.cache_data(show_spinner=False)
+    def load_all_data():
+        def clean_df(df: pd.DataFrame) -> pd.DataFrame:
+            # Replace unwanted values with NaN
+            df.replace({"0": pd.NA, "": pd.NA, " ": pd.NA}, inplace=True)
+
+            # Strip whitespace from all object/string columns
+            for c in df.select_dtypes("object").columns:
+                df[c] = df[c].astype(str).str.strip()
+
+            # Replace additional unwanted string variants with NaN
+            df.replace({"": pd.NA, "nan": pd.NA, "None": pd.NA}, inplace=True)
+
+            # Convert Date column to datetime, drop rows with invalid dates
+            if "Date" in df.columns:
+                df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+                df.dropna(subset=["Date"], inplace=True)
+
+            # Convert certain columns to timedelta if they exist
+            for td in ("Activate", "Deactivate", "Total Time"):
+                if td in df.columns:
+                    df[td] = pd.to_timedelta(df[td].astype(str), errors="coerce")
+
+            return df
+
+        # Dictionary of Oracle dataset filenames keyed by team name
+        oracle_files = {
+            "VIP South": "VIP South Oracle Data.xlsx",
+            "VIP North": "VIP North Oracle Data.xlsx",
+            "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
+            "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+        }
+
+        oracle_frames, missing = [], []
+
+        # Load each Oracle dataset file if it exists
+        for team, path in oracle_files.items():
+            if os.path.exists(path):
+                tmp = pd.read_excel(path)
+                tmp["Team"] = team  # Add team column for identification
+                oracle_frames.append(tmp)
+            else:
+                missing.append(path)
+
+        # Warn if any files are missing
+        if missing:
+            st.warning("Missing Oracle files: " + ", ".join(missing))
+
+        # Concatenate all dataframes if any loaded, else return empty DataFrame
+        if oracle_frames:
+            df_oracle = clean_df(pd.concat(oracle_frames, ignore_index=True))
+        else:
+            df_oracle = pd.DataFrame()
+
+        return df_oracle
+
+    # Load data only here inside block 14
+    df_oracle = load_all_data()
+
+    # Now you can safely use df_oracle below in Block 14 only
 
     # ---------------- Load & Clean ----------------
-    df = filtered_data.copy()
+    df = df_oracle.copy()
     df.columns = df.columns.str.strip()
     df.replace(["", " ", "00:00", "00:00:00", 0, "0", None], pd.NA, inplace=True)
 
@@ -1029,6 +2892,9 @@ if (
         common_type = "N/A"
 
     # ----------- Advanced Summary output ----------
+    st.subheader("📊 Oracle Team Visit Overview")
+    st.dataframe(df.head())
+
     st.markdown(
         f"""
         <div style='background:#1f2937;padding:16px 20px;border-radius:10px;color:#e0e0e0;font-size:1.03em;line-height:1.6em'>
@@ -1059,63 +2925,41 @@ if (
         """
     )
 
+    # Section 3 of Block 14: Oracle Team Visit Data (All Regions)
 
-
-
-
-
-# --- NUMBER 15 --- 
-# --- SECTION: Oracle Team Visit Data (All Regions) ---
-
-oracle_teams = [
-    "VIP North Oracle Data",
-    "VIP South Oracle Data",
-    "Tier 2 North Oracle Data",
-    "Tier 2 South Oracle Data"
-]
-
-if st.session_state.screen == "dashboard_view" and st.session_state.selected_dataset in oracle_teams:
-    # Back button
-    if st.button("⬅️ Back to Dataset Selection", use_container_width=True, key="back_oracle_15"):
-        st.session_state.screen = "dashboard"
-        st.session_state.selected_dataset = None
-        st.rerun()
-
-    st.subheader("📂 Oracle Team Visit Overview")
-
+    # Copy and clean filtered_data into df_oracle for detailed analysis
     df_oracle = filtered_data.copy()
     df_oracle.columns = df_oracle.columns.str.strip()
     columns_to_clean = [col for col in df_oracle.columns if col != "Activity Status"]
 
     df_oracle[columns_to_clean] = df_oracle[columns_to_clean].replace(
         ["", " ", "00:00", "00:00:00", 0, "0", None], pd.NA
-    )  
+    )
     df_oracle.dropna(how="all", inplace=True)
 
-    # Parse date if needed
+    # Parse date columns
     if "Date" in df_oracle.columns:
         df_oracle["Date"] = pd.to_datetime(df_oracle["Date"], errors="coerce")
         df_oracle["Week"] = df_oracle["Date"].dt.isocalendar().week
         df_oracle["Month"] = df_oracle["Date"].dt.strftime("%B")
 
-# ── 7. Activity-completion breakdown (Full Enhanced Version) ─────────────
+    # Load full raw Oracle data for completion breakdown (adjust loading method if needed)
+    vip_south_df = load_file("VIP South Oracle Data.xlsx")
+    vip_north_df = load_file("VIP North Oracle Data.xlsx")
+    tier2_south_df = load_file("Tier 2 South Oracle Data.xlsx")
+    tier2_north_df = load_file("Tier 2 North Oracle Data.xlsx")
 
-    import pandas as pd
-    import streamlit as st
+    df_all = pd.concat([vip_south_df, vip_north_df, tier2_south_df, tier2_north_df], ignore_index=True)
 
-# 0️⃣ Load the full unfiltered data (adjust as needed)
-    df_raw = df_all  # ← ONLY IF df_all contains *all rows* including cancelled
-
-
-# 1️⃣ Normalize status column
+    # Normalize status column
     status = (
-        df_raw["Activity Status"]
+        df_all["Activity Status"]
             .astype(str)
             .str.strip()
             .str.casefold()
     )
 
-# 2️⃣ Count values
+    # Count status values
     vc = status.value_counts()
 
     completed  = vc.get("completed", 0)
@@ -1126,11 +2970,11 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
     total      = int(vc.sum())
     other      = total - known
 
-# 3️⃣ Metrics
+    # Calculate metrics
     completion_rate_pct       = (completed / known * 100) if known else 0
     completion_vs_failed_ratio = (completed / (cancelled + not_done)) if (cancelled + not_done) > 0 else float("inf")
 
-# 4️⃣ Display in Streamlit
+    # Display Activity Completion Breakdown
     with st.expander("🧩 Activity Completion Breakdown", expanded=False):
         st.markdown(f"""
         ✅ **Completed**: {completed:,} ({completed / total:.1%})  
@@ -1148,14 +2992,13 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
 
         st.bar_chart(vc)
 
-# 5️⃣ Optional Debug Output
-    with st.expander("📊 Unique statuses in data", expanded=False):
-        st.dataframe(
-            pd.DataFrame(vc).reset_index().rename(
-                columns={"index": "Activity Status", 0: "Count"}
-            )
-        )
-
+    # Optional Debug Output (commented)
+    # with st.expander("📊 Unique statuses in data", expanded=False):
+    #     st.dataframe(
+    #         pd.DataFrame(vc).reset_index().rename(
+    #             columns={"index": "Activity Status", 0: "Count"}
+    #         )
+    #     )
 
     # --- KPIs ---
     with st.expander("📋 Summary KPIs", expanded=True):
@@ -1262,10 +3105,13 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
             pie.columns = ["Visit Type", "Count"]
             fig = px.pie(pie, names="Visit Type", values="Count", title="Visit Type Distribution")
             st.plotly_chart(fig, use_container_width=True)
-  
+
     # --- Table View ---
     with st.expander("📋 Full Oracle Visit Table", expanded=False):
         st.dataframe(df_oracle, use_container_width=True)
+
+
+
 
 
 
@@ -1274,211 +3120,380 @@ if st.session_state.screen == "dashboard_view" and st.session_state.selected_dat
 # --- SECTION: Operational AI Chat Assistant -------------------------------
 # Appears when the user clicks **🤖 Operational AI Area** on the main menu
 
-import os, time, csv, datetime, re
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-# --- Optional OpenAI import (won't break if package missing) ------------
-try:
-    from openai import OpenAIError
-except ModuleNotFoundError:
-    class OpenAIError(Exception):      # fall-back stub
-        """Placeholder so downstream `except OpenAIError:` still works."""
-        pass
-from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain.chat_models import ChatOpenAI
+# ── 1. Horizontal uploader and chat input (inline layout) ─────
+if st.session_state.get("screen") == "ai":
 
-# ──────────────────────────────────────────────────────────────────────────
-# 1⃣  SHOW ONLY WHEN USER IS ON THE AI SCREEN
-# ──────────────────────────────────────────────────────────────────────────
+    # Inline CSS for horizontal layout
+    st.markdown(
+        """
+        <style>
+        .upload-chat-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .upload-chat-row > div {
+            flex: 1;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Inline uploader + chat bar
+    with st.container():
+        st.markdown('<div class="upload-chat-row">', unsafe_allow_html=True)
+
+        uploaded = st.file_uploader(
+            label="Upload Excel / CSV",
+            type=["xlsx", "csv"],
+            key="upload_bar",
+            label_visibility="collapsed"
+        )
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+
+    # Store and preview uploaded file
+    if uploaded:
+        try:
+            if uploaded.name.endswith(".csv"):
+                st.session_state.user_df = pd.read_csv(uploaded)
+            else:
+                st.session_state.user_df = pd.read_excel(uploaded)
+
+            st.session_state.user_file_name = uploaded.name
+            st.success(f"✅ Upload complete: **{uploaded.name}** loaded into DataFrame")
+            st.caption("Preview of first 10 rows:")
+            st.dataframe(st.session_state.user_df.head(10))
+
+        except Exception as e:
+            st.session_state.user_df = None
+            st.error(f"❌ Couldn’t read file: {e}")
+
+    # Always set a reference
+    user_df = st.session_state.get("user_df", None)
+
+# Ensure these keys always exist so later code never KeyErrors
+st.session_state.setdefault("user_df", None)
+st.session_state.setdefault("user_file_name", None)
+
+
+# Section 3 of Block 16 #
 if st.session_state.screen == "ai":
     # ---------- Navigation ----------
     if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_ai_16"):
         st.session_state.screen = "area_selection"
         st.rerun()
 
-    st.markdown("## 🤖 Operational AI Assistant")
+    st.markdown("## 🤖 Sky Orbit")
     st.markdown(
-        "Ask natural-language questions about **any** Oracle, Call Log, "
-        "Productivity, or Visit data. The agent can return answers, KPIs, or "
-        "auto-generated charts (bar, line, pie, heat-map, treemap, sunburst, "
-        "correlation, parallel sets)."
+        "**SKY ORBIT** stands for: Sky Business focus, Knowledge & Intelligence (AI-powered), Your Data Unified, Oracle integration, Reporting & Results, Business Insights, Interactive Visualizations, Tracking visits & forecasts."
     )
+    user_df = st.session_state.get("user_df", None)
 
-    # ──────────────────────────────────────────────────────────────────────
-    # 2⃣  LOAD & CLEAN ALL DATASETS (CACHED)
-    # ──────────────────────────────────────────────────────────────────────
-    @st.cache_data(show_spinner=False)
-    def load_all_data():
-        def clean_df(df: pd.DataFrame) -> pd.DataFrame:
-            df.replace({"0": pd.NA, "": pd.NA, " ": pd.NA}, inplace=True)
-            for c in df.select_dtypes("object").columns:
-                df[c] = df[c].astype(str).str.strip()
-            df.replace({"": pd.NA, "nan": pd.NA, "None": pd.NA}, inplace=True)
-            if "Date" in df.columns:
-                df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-                df.dropna(subset=["Date"], inplace=True)
-            for td in ("Activate", "Deactivate", "Total Time"):
-                if td in df.columns:
-                    df[td] = pd.to_timedelta(df[td].astype(str), errors="coerce")
-            return df
+    # Button to show logs
+    if st.button("Show AI Chat Logs"):
+        st.session_state.show_logs = True
 
-        oracle_files = {
-            "VIP South":   "VIP South Oracle Data.xlsx",
-            "VIP North":   "VIP North Oracle Data.xlsx",
-            "Tier 2 South":"Tier 2 South Oracle Data.xlsx",
-            "Tier 2 North":"Tier 2 North Oracle Data.xlsx",
-        }
-        oracle_frames, missing = [], []
-        for team, path in oracle_files.items():
-            if os.path.exists(path):
-                tmp = pd.read_excel(path)
-                tmp["Team"] = team
-                oracle_frames.append(tmp)
-            else:
-                missing.append(path)
+    # Button to clear chat screen
+    if st.button("Clear Chat Screen"):
+        st.session_state.ai_chat = []  # Clears visible chat messages only
+        st.rerun()        # Refresh the page to clear UI
 
-        if missing:
-            st.warning("Missing Oracle files: " + ", ".join(missing))
-
-        oracle_df = clean_df(pd.concat(oracle_frames, ignore_index=True)) if oracle_frames else pd.DataFrame()
-        calllog_df = clean_df(pd.read_excel("Call Log Data.xlsx"))       if os.path.exists("Call Log Data.xlsx")       else pd.DataFrame()
-        prod_df    = clean_df(pd.read_excel("Productivity Report.xlsx")) if os.path.exists("Productivity Report.xlsx") else pd.DataFrame()
-        visits_df  = clean_df(pd.read_excel("AI Test SB Visits.xlsx"))   if os.path.exists("AI Test SB Visits.xlsx")   else pd.DataFrame()
-        return oracle_df, calllog_df, prod_df, visits_df
-
-    oracle_df, calllog_df, prod_df, visits_df = load_all_data()
-    if oracle_df.empty and calllog_df.empty and prod_df.empty and visits_df.empty:
-        st.warning("No data sources loaded successfully.")
-        st.stop()
-
-    all_dataframes = {
-        "oracle_df":  oracle_df,
-        "calllog_df": calllog_df,
-        "prod_df":    prod_df,
-        "visits_df":  visits_df,
-    }
-    combined_schema = "\n".join(
-        f"{name}: {list(df.columns)}" for name, df in all_dataframes.items() if not df.empty
-    )
-    with st.expander("🧾 Loaded DataFrames (debug)", expanded=False):
-        st.markdown(
-            f"""
-            <div style='font-size:0.9rem;color:grey;'>
-            <strong>📂 Loaded DataFrames:</strong><br>{combined_schema}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    # ──────────────────────────────────────────────────────────────────────
-    # 3⃣  LLM (LangChain) SET-UP
-    # ──────────────────────────────────────────────────────────────────────
-    from langchain.agents.agent_types import AgentType
-    from langchain_openai import ChatOpenAI
-    from openai import OpenAI
-
-    ALIASES = {
-        "activate time": "Activate", "activate": "Activate",
-        "deactivate time": "Deactivate", "deactivate": "Deactivate",
-        "visit type": "Visit Type",
-        "total £": "Total Value", "total value": "Total Value",
-        "total cost": "Total Cost Inc Travel",
-        "total time": "Total Time", "total working time": "Total Working Time",
-        "travel time": "Travel Time",
-        "stakeholder": "Sky Retail Stakeholder",
-    }
-
-    KEYWORDS = {
-        "stakeholder": "Sky Retail Stakeholder",
-        "engineer":    "Name" if "Name" in oracle_df.columns else "Engineer",
-        "postcode":    "Postcode",
-        "visit type":  "Visit Type",
-        "status":      "Activity Status",
-        "team":        "Team",
-        "month":       "Month",
-        "week":        "Week",
-        "day":         "Day",
-    }
-
-    def alias(text: str) -> str:
-        t = text.lower()
-        for k, v in ALIASES.items():
-            t = t.replace(k, v)
-        return t
-
-    llm_stream = ChatOpenAI(
-        api_key=st.secrets["openai"]["api_key"],
-        model_name="gpt-4o-mini",
-        streaming=True,
-    )
-    df_agent = create_pandas_dataframe_agent(
-        llm_stream, oracle_df, verbose=False,
-        agent_type=AgentType.OPENAI_FUNCTIONS,
-        allow_dangerous_code=True,
-    )
-    fallback_client = OpenAI(api_key=st.secrets["openai"]["api_key"]).chat.completions
-
-    # ──────────────────────────────────────────────────────────────────────
-    # 4⃣  TYPING EFFECT HELPER
-    # ──────────────────────────────────────────────────────────────────────
-    def slow_stream(token_iter, placeholder, delay: float = 0.03):
-        buf = ""
-        for chunk in token_iter:
-            buf += chunk
-            placeholder.markdown(
-                f"<div class='streaming-token'>{buf}</div>",
-                unsafe_allow_html=True,
-            )
-            time.sleep(delay)
-        placeholder.markdown(buf, unsafe_allow_html=True)
-        return buf
-
-    # ──────────────────────────────────────────────────────────────────────
-    # 5⃣  CHAT HISTORY UI
-    # ──────────────────────────────────────────────────────────────────────
-    if "ai_chat" not in st.session_state:
-        st.session_state.ai_chat = []
-    if "ai" not in st.session_state:
-        st.session_state.ai = True
-
+    # Then below this, render the chat messages as usual:
     for msg in st.session_state.ai_chat:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"], unsafe_allow_html=True)
 
-   
-    # ──────────────────────────────────────────────────────────────────────
-    # 6⃣  CHART-TYPE PICKER (RULE-BASED)  ← ***FIXED***
-    #     • Only returns a chart type when the question clearly implies one.
-    #     • If the user doesn’t hint at a visual, returns None.
-    # ──────────────────────────────────────────────────────────────────────
-    def pick_chart_type(q: str) -> str | None:
-        q = q.lower()
-        if any(k in q for k in ("sunburst", "treemap", "parallel")):           return "sunburst"
-        if any(k in q for k in ("corr", "correlation", "matrix")):             return "corr"
-        if any(k in q for k in ("parallel", "flow")):                           return "parallel"
-        if any(k in q for k in ("kpi", "dashboard")):                           return "kpi"
-        if any(k in q for k in ("trend", "over time", "line")):                 return "line"
-        if any(k in q for k in ("share", "proportion", "percentage", "pie")):   return "pie"
-        if any(k in q for k in ("bar chart", "histogram", "distribution", 
-                                "grouped", "split", "vs", "versus", "by ")):    return "bar"
-        return None  # ← default is now *no* chart
+    # Show chat logs if toggled
+    if st.session_state.get("show_logs", False):
+        password = st.text_input("Enter admin password to view logs:", type="password")
+        if password == "AI Chat":  # Change this to your secret password
+            st.success("Access granted to chat logs 📊")
+            import os
+            import pandas as pd
 
-    # ──────────────────────────────────────────────────────────────────────
-# 7⃣  INTELLIGENT CHART RENDERER   ← ***TRAVEL-TIME BAR NOW GUARDED***
+            log_file_path = os.path.join(os.getcwd(), "chat_logs.csv")
+            if os.path.exists(log_file_path):
+                logs_df = pd.read_csv(log_file_path, parse_dates=["timestamp"], on_bad_lines='skip')
+                if logs_df.empty:
+                    st.warning("No chat logs found!")
+                else:
+                    st.dataframe(logs_df)
+            else:
+                st.warning("No chat logs file found!")
+        elif password:
+            st.error("Incorrect password. Access denied.")
+
+
+
+# Section 4 of Block 16
+import os
+import pandas as pd
+import streamlit as st
+from langchain_openai import ChatOpenAI
+from langchain.agents.agent_types import AgentType
+from langchain_experimental.agents import create_pandas_dataframe_agent  # make sure this is imported
+
+@st.cache_data(show_spinner=False)
+def load_all_data():
+    def clean_df(df: pd.DataFrame) -> pd.DataFrame:
+        df.replace({"0": pd.NA, "": pd.NA, " ": pd.NA}, inplace=True)
+        for c in df.select_dtypes("object").columns:
+            df[c] = df[c].astype(str).str.strip()
+        df.replace({"": pd.NA, "nan": pd.NA, "None": pd.NA}, inplace=True)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            df.dropna(subset=["Date"], inplace=True)
+        for td in ("Activate", "Deactivate", "Total Time"):
+            if td in df.columns:
+                df[td] = pd.to_timedelta(df[td].astype(str), errors="coerce")
+        return df
+
+    oracle_files = {
+        "VIP South":   "VIP South Oracle Data.xlsx",
+        "VIP North":   "VIP North Oracle Data.xlsx",
+        "Tier 2 South":"Tier 2 South Oracle Data.xlsx",
+        "Tier 2 North":"Tier 2 North Oracle Data.xlsx",
+    }
+
+    oracle_frames, missing = [], []
+    for team, path in oracle_files.items():
+        if os.path.exists(path):
+            tmp = pd.read_excel(path)
+            tmp["Team"] = team
+            oracle_frames.append(tmp)
+        else:
+            missing.append(path)
+
+    if missing:
+        st.warning("Missing Oracle files: " + ", ".join(missing))
+
+    if oracle_frames:
+        df_oracle = clean_df(pd.concat(oracle_frames, ignore_index=True))
+    else:
+        df_oracle = pd.DataFrame()
+
+    return df_oracle
+
+# Load Oracle data (only once per session)
+df_oracle = load_all_data()
+
+if df_oracle.empty:
+    st.warning("No Oracle data loaded.")
+    st.stop()
+
+# Use uploaded file if exists, else default to df_oracle
+user_df = st.session_state.get("user_df", None)
+default_df = user_df if user_df is not None else df_oracle
+
+# Setup LangChain LLM agent with streaming
+llm_stream = ChatOpenAI(
+    api_key=st.secrets["openai"]["api_key"],
+    model_name="gpt-4o-mini",
+    streaming=True,
+)
+
+df_agent = create_pandas_dataframe_agent(
+    llm=llm_stream,
+    df=default_df,
+    verbose=False,
+    agent_type=AgentType.OPENAI_FUNCTIONS,
+    allow_dangerous_code=True,
+)
+
+# Optional debugging info (uncomment if needed)
+# df_map = {"df_oracle": df_oracle}
+# if user_df is not None:
+#     df_map["uploaded"] = user_df
+# combined_schema = "\n".join(f"{name}: {list(df.columns)}" for name, df in df_map.items())
+# with st.expander("🧾 Loaded DataFrames (debug)", expanded=False):
+#     st.markdown(
+#         f"""
+#         <div style='font-size:0.9rem;color:grey;'>
+#         <strong>📂 Loaded DataFrames:</strong><br>{combined_schema}
+#         </div>
+#         """,
+#         unsafe_allow_html=True,
+#     )
+
+
+
+# Section 5 of Block 16
+
+# (Imports already done at the top, no need to re-import)
+# from langchain.agents.agent_types import AgentType
+# from langchain_openai import ChatOpenAI
+# from openai import OpenAI
+
+def filter_zero_values(df: pd.DataFrame, query: str) -> pd.DataFrame:
+    qlc = query.lower()
+    
+    # If user explicitly asks about zeros or similar, return full dataframe without filtering
+    if any(keyword in qlc for keyword in ["0 entries", "zero counts", "show zero", "count zero", "how many zero"]):
+        return df
+
+    df_filtered = df.copy()
+
+    # Exclude invalid postcodes like "0", empty or nan values
+    if "Postcode" in df_filtered.columns:
+        df_filtered = df_filtered[~df_filtered["Postcode"].astype(str).str.strip().isin(["0", "", "nan", "None"])]
+
+    # Columns to filter out zero or missing numeric values (customize as needed)
+    numeric_cols = ["Visit Count", "Total Time", "Total Value", "Total Cost Inc Travel"]
+    time_cols = ["Activate", "Deactivate", "Total Time", "Travel Time", "Total Time (Inc Travel)"]
+
+    for col in numeric_cols:
+        if col in df_filtered.columns:
+            df_filtered = df_filtered[~((df_filtered[col] == 0) | (df_filtered[col].isna()))]
+
+    for col in time_cols:
+        if col in df_filtered.columns:
+            # Filter rows where time duration is zero or formatted as '00:00'
+            df_filtered = df_filtered[~((df_filtered[col] == pd.Timedelta(0)) | (df_filtered[col].astype(str).str.startswith("00:00")))]
+
+    return df_filtered
+
+# --- Section 6 of Block 16 -----------------------
+
+ALIASES = {
+    # Oracle column aliases
+    "activate time": "Activate",
+    "activate": "Activate",
+    "deactivate time": "Deactivate",
+    "deactivate": "Deactivate",
+    "visit type": "Visit Type",
+    "total £": "Total Value",
+    "total value": "Total Value",
+    "total cost": "Total Cost Inc Travel",
+    "total time": "Total Time",
+    "total working time": "Total Working Time",
+    "travel time": "Travel Time",
+    "stakeholder": "Sky Retail Stakeholder",
+}
+
+# --- Quick keyword map for common shorthand ----------------------
+
+KEYWORDS = {
+    "stakeholder": "Sky Retail Stakeholder",
+    "engineer": "Name" if "Name" in df_oracle.columns else "Engineer",
+    "postcode": "Postcode",
+    "visit type": "Visit Type",
+    "status": "Activity Status",
+    "team": "Team",
+    "month": "Month",
+    "week": "Week",
+    "day": "Day",
+}
+
+def alias(text: str) -> str:
+    """Replace friendly phrases in the user prompt with canonical column names."""
+    t = text.lower()
+    for k, v in ALIASES.items():
+        t = t.replace(k, v)
+    return t
+
+# --- Create the streaming OpenAI chat model ----------------------
+
+llm_stream = ChatOpenAI(
+    api_key=st.secrets["openai"]["api_key"],
+    model_name="gpt-4o-mini",
+    streaming=True,
+)
+
+# --- Build the pandas-agent on that dataframe --------------------
+
+df_agent = create_pandas_dataframe_agent(
+    llm=llm_stream,
+    df=default_df,
+    verbose=False,
+    agent_type=AgentType.OPENAI_FUNCTIONS,
+    allow_dangerous_code=True,  # required by recent langchain versions
+)
+
+# --- Fallback non-LangChain streaming client --------------------
+
+fallback_client = OpenAI(api_key=st.secrets["openai"]["api_key"]).chat.completions
+
+
+
 # ──────────────────────────────────────────────────────────────────────
+# 4⃣  TYPING EFFECT HELPER
+# ──────────────────────────────────────────────────────────────────────
+def slow_stream(token_iter, placeholder, delay: float = 0.03):
+    buf = ""
+    for chunk in token_iter:
+        buf += chunk
+        placeholder.markdown(
+            f"<div class='streaming-token'>{buf}</div>",
+            unsafe_allow_html=True,
+        )
+        time.sleep(delay)
+    placeholder.markdown(buf, unsafe_allow_html=True)
+    return buf
+
+# ── 0. Remember any file the user has already dropped ──────────
+if "user_df" not in st.session_state:
+    st.session_state.user_df = None         # holds the DataFrame
+if "user_file_name" not in st.session_state:
+    st.session_state.user_file_name = None  # keeps the name for display
+
+# ──────────────────────────────────────────────────────────────────────
+# 5⃣  CHAT HISTORY UI
+# ──────────────────────────────────────────────────────────────────────
+if "ai_chat" not in st.session_state:
+    st.session_state.ai_chat = []
+if "ai" not in st.session_state:
+    st.session_state.ai = True
+
+for msg in st.session_state.ai_chat:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"], unsafe_allow_html=True)
+
+# ──────────────────────────────────────────────────────────────────────
+# 6⃣  CHART-TYPE PICKER (RULE-BASED)  ← ***FIXED***
+#     • Only returns a chart type when the question clearly implies one.
+#     • If the user doesn’t hint at a visual, returns None.
+# ──────────────────────────────────────────────────────────────────────
+def pick_chart_type(q: str) -> str | None:
+    q = q.lower()
+    if any(k in q for k in ("sunburst", "treemap", "parallel")):
+        return "sunburst"
+    if any(k in q for k in ("corr", "correlation", "matrix")):
+        return "corr"
+    if any(k in q for k in ("parallel", "flow")):
+        return "parallel"
+    if any(k in q for k in ("kpi", "dashboard")):
+        return "kpi"
+    if any(k in q for k in ("trend", "over time", "line")):
+        return "line"
+    if any(k in q for k in ("share", "proportion", "percentage", "pie")):
+        return "pie"
+    if any(k in q for k in ("bar chart", "histogram", "distribution", 
+                            "grouped", "split", "vs", "versus", "by ")):
+        return "bar"
+    return None  # ← default is now *no* chart
+
+
 def render_chart(chart_type: str, df: pd.DataFrame, query: str = ""):
     query_lc = query.lower()
 
     # ----- SPECIAL CASE: Including vs Excluding Travel ----------------
     if "including travel" in query_lc and "excluding travel" in query_lc:
-        df = oracle_df.copy()
-        df["Total Time"]  = pd.to_timedelta(df["Total Time"],  errors="coerce")
+        # Use df_oracle, ensure it's defined in global scope before calling
+        global df_oracle
+        df = df_oracle.copy()
+        df["Total Time"] = pd.to_timedelta(df["Total Time"], errors="coerce")
         df["Travel Time"] = pd.to_timedelta(df["Travel Time"], errors="coerce")
         df["Excluding Travel"] = df["Total Time"] - df["Travel Time"]
         df["Including Travel"] = df["Total Time"]
-        summary = (df.groupby("Team")[["Including Travel", "Excluding Travel"]]
-                     .mean().reset_index())
+        summary = (
+            df.groupby("Team")[["Including Travel", "Excluding Travel"]]
+              .mean()
+              .reset_index()
+        )
         melt = summary.melt(id_vars="Team", var_name="Type", value_name="Avg Time")
         melt["Seconds"] = melt["Avg Time"].dt.total_seconds()
         fig = px.bar(
@@ -1486,7 +3501,7 @@ def render_chart(chart_type: str, df: pd.DataFrame, query: str = ""):
             title="Avg Time by Team (Including vs Excluding Travel)",
         )
         st.plotly_chart(fig, use_container_width=True)
-        return  # ← don’t draw anything else for this query
+        return  # don’t draw anything else for this query
 
     # ---------- Helpers ----------
     def pick_col(cols):
@@ -1501,2622 +3516,527 @@ def render_chart(chart_type: str, df: pd.DataFrame, query: str = ""):
             None,
         )
 
-    # ---------- KPI DASHBOARD ----------
-    if chart_type == "kpi":
-        st.subheader("📌 KPI Snapshot")
-        st.markdown(f"- **Total Visits:** {len(df):,}")
-        if "Total Value" in df.columns:
-            st.markdown(f"- **Total Value:** £{df['Total Value'].sum():,.2f}")
-        if "Date" in df.columns:
-            tmp = df.copy(); tmp["Day"] = tmp["Date"].dt.day_name()
-            st.markdown(
-                f"- **Busiest Day:** {tmp['Day'].value_counts().idxmax()} "
-                f"({tmp['Day'].value_counts().max()})"
-            )
-        if "Name" in df.columns:
-            st.markdown(f"- **Top Engineer:** {df['Name'].value_counts().idxmax()}")
-        if "Team" in df.columns:
-            st.subheader("Visits by Team")
-            st.bar_chart(df["Team"].value_counts())
-        if "Visit Type" in df.columns:
-            st.subheader("Visit Type Share (Top 10)")
-            top_types = df["Visit Type"].value_counts().head(10)
-            st.plotly_chart(px.pie(names=top_types.index, values=top_types.values),
-                            use_container_width=True)
+    def filter_invalid_postcodes(df: pd.DataFrame):
+        df_clean = df.copy()
+        # Remove rows where 'Total Value' is 0 or missing
+        df_clean = df_clean[df_clean['Total Value'].fillna(0) > 0]
+        # Exclude numeric-looking postcodes
+        df_clean = df_clean[~df_clean['Postcode'].str.strip().str.isnumeric()]
+        return df_clean
 
-    # ---------- LINE CHART ----------
-    elif chart_type == "line" and "Date" in df.columns:
-        tmp = df.copy()
-        tmp["Month"] = tmp["Date"].dt.to_period("M").dt.to_timestamp()
-        m = tmp.groupby("Month").size().reset_index(name="Visits")
-        st.line_chart(m.set_index("Month"))
+    def get_top_postcodes_by_value(df, top_n=5):
+        filtered = df[df["Total Value"].fillna(0) > 0].copy()
+        filtered = filtered[~filtered["Postcode"].astype(str).str.strip().isin(["0", "", "nan", "None"])]
+        grouped = filtered.groupby("Postcode")["Total Value"].sum().reset_index()
+        top_postcodes = grouped.sort_values("Total Value", ascending=False).head(top_n)
+        lines = []
+        for i, row in enumerate(top_postcodes.itertuples(), 1):
+            postcode = row.Postcode
+            value = f"£{row._2:,.2f}"  # format as currency
+            lines.append(f"{i}. Postcode: {postcode} - Total Value: {value}")
+        return "\n".join(lines)
 
-    # ---------- BAR / PIE ----------
-    elif chart_type in {"bar", "pie"}:
-        col = pick_col(df.columns)
-        if col:
-            vc = (
-                df[col].astype(str).str.strip()
-                  .replace({"0": pd.NA, "nan": pd.NA})
-                  .dropna()
-                  .value_counts()
-                  .head(12)
-            )
-            if not vc.empty:
-                if chart_type == "bar":
-                    st.bar_chart(vc)
-                else:
-                    st.plotly_chart(px.pie(names=vc.index, values=vc.values),
-                                    use_container_width=True)
-            else:
-                st.info("No data to chart after removing blanks/zeros.")
-
-    # ---------- CORRELATION ----------
-    elif chart_type == "corr":
-        ignore = {"Week","Quarter","Date","Team","Visit Type",
-                  "Sky Retail Stakeholder","Name"}
-        num_cols = [
-            c for c in df.columns
-            if pd.api.types.is_numeric_dtype(df[c]) and c not in ignore
-        ]
-        if not num_cols:
-            st.warning("No numeric columns for correlation.")
-        else:
-            dfc = df[num_cols].copy()
-            for td in ("Activate","Deactivate","Total Time"):
-                if td in dfc.columns and pd.api.types.is_timedelta64_dtype(dfc[td]):
-                    dfc[td] = dfc[td].dt.total_seconds()
-            cm = dfc.corr()
-            st.dataframe(cm.style.background_gradient(cmap="Blues").format("{:.3f}"))
-            st.caption("Values near 1/-1: strong correlation • near 0: weak/none")
-
-    # ---------- SUNBURST ----------
-    elif chart_type == "sunburst" and {"Team","Visit Type"}.issubset(df.columns):
-        sb = df.groupby(["Team","Visit Type"]).size().reset_index(name="Visits")
-        st.plotly_chart(px.sunburst(sb, path=["Team","Visit Type"], values="Visits"),
-                        use_container_width=True)
-
-    # ---------- PARALLEL CATEGORIES ----------
-    elif chart_type == "parallel":
-        dims = [c for c in ("Team","Visit Type","Name","Postcode") if c in df.columns]
-        if len(dims) >= 3:
-            pc = df[dims].dropna().astype(str)
-            st.plotly_chart(px.parallel_categories(
-                                pc, dimensions=dims,
-                                title="Flow across " + " → ".join(dims)),
-                            use_container_width=True)
-
-# ──────────────────────────────────────────────────────────────────────
-# 7b️⃣  FORECAST RENDERER  (NOW TOP-LEVEL, NOT NESTED)
-# ──────────────────────────────────────────────────────────────────────
-from sklearn.linear_model import LinearRegression
-import numpy as np
-
-def render_forecast(query: str, df: pd.DataFrame):
-    qlc = query.lower()
-    if "forecast" not in qlc and "projection" not in qlc:
-        return
-    if "completed" not in qlc:
-        st.info("Only 'completed visits' forecasting is supported currently.")
-        return
-    if "Date" not in df.columns or "Visit Type" not in df.columns:
-        st.warning("Data is missing Date or Visit Type columns.")
-        return
-
-    df = df.copy()
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df.dropna(subset=["Date"], inplace=True)
-
-    # ✅ UPDATED FILTERING HERE
-    df = df[df["Activity Status"].str.lower() == "completed"]
-    if df.empty:
-        st.warning("No completed visits found in the dataset.")
-        return
-
-    df["Month"] = df["Date"].dt.to_period("M").dt.to_timestamp()
-    monthly = df.groupby("Month").size().reset_index(name="Completed Visits")
-    if len(monthly) < 3:
-        st.warning("Not enough data to forecast.")
-        return
-
-    monthly["Month_Num"] = np.arange(len(monthly))
-    X = monthly["Month_Num"].values.reshape(-1, 1)
-    y = monthly["Completed Visits"].values
-    model = LinearRegression().fit(X, y)
-
-    fut = 6
-    future_X = np.arange(len(monthly), len(monthly) + fut).reshape(-1, 1)
-    future_dates = pd.date_range(
-        start=monthly["Month"].max() + pd.DateOffset(months=1),
-        periods=fut, freq="MS"
-    )
-    forecast_vals = model.predict(future_X).round().astype(int)
-
-    forecast_df = pd.DataFrame({
-        "Month": future_dates.strftime("%B %Y"),
-        "Forecasted Completed Visits": forecast_vals
-    })
-    st.subheader("📈 Forecasted Completed Visits (Next 6 Months)")
-    st.dataframe(forecast_df)
-
-    full = pd.concat([
-        monthly[["Month", "Completed Visits"]],
-        pd.DataFrame({"Month": future_dates, "Completed Visits": forecast_vals})
-    ], ignore_index=True)
-    full["Type"] = ["Historical"] * len(monthly) + ["Forecast"] * fut
-
-    fig = px.line(full, x="Month", y="Completed Visits", color="Type",
-                  title="Completed Visits Forecast (Historical + Next 6 Months)",
-                  markers=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ──────────────────────────────────────────────────────────────────────
-# ──────────────────────────────────────────────────────────────────────
-# 7c️⃣  FORECAST TOTAL VALUE (£)  – helper runs for “forecast value …”
-#      Place this ABOVE the MAIN Q&A LOOP
-# ──────────────────────────────────────────────────────────────────────
-import streamlit as st
-import pandas as pd, numpy as np, plotly.express as px
-from statsmodels.tsa.arima.model import ARIMA
-
-def render_value_forecast(query: str, df: pd.DataFrame):
-    """Forecast total £ value for each Visit Type (ex-Lunch(30)) next 6 months."""
-    qlc = query.lower()
-    if "forecast" not in qlc or "value" not in qlc or "visit type" not in qlc:
-        return                                # user didn’t ask for this
-
-    needed = {"Date", "Visit Type", "Total Value"}
-    if not needed.issubset(df.columns):
-        st.warning(f"Missing columns: {needed}")
-        return
-
-    # ── clean & filter ────────────────────────────────────────────────
-    df = df.copy()
-    df["Date"]        = pd.to_datetime(df["Date"], errors="coerce")
-    df["Total Value"] = pd.to_numeric(df["Total Value"], errors="coerce")
-    df.dropna(subset=["Date", "Total Value"], inplace=True)
-    df = df[~df["Visit Type"].str.contains("Lunch(30)", case=False, na=False)]
-    df = df[df["Visit Type"].str.strip().ne("")]
-
-    if df.empty:
-        st.warning("No rows after excluding Lunch(30) / blanks.")
-        return
-
-    # ── monthly totals ───────────────────────────────────────────────
-    df["Month"] = df["Date"].dt.to_period("M").dt.to_timestamp()
-    monthly = (df.groupby(["Month", "Visit Type"])["Total Value"]
-                 .sum().reset_index())
-
-    fut = 6
-    rows = []
-    for vtype, grp in monthly.groupby("Visit Type"):
-        if len(grp) < 3:
-            continue                       # not enough history
-        grp = grp.sort_values("Month")
-        grp["n"] = np.arange(len(grp))
-        # simple linear trend
-        coeffs = np.polyfit(grp["n"], grp["Total Value"], 1)
-        future_n = np.arange(len(grp), len(grp)+fut)
-        preds = np.poly1d(coeffs)(future_n).clip(0).round(2)
-        future_dates = pd.date_range(grp["Month"].max()+pd.DateOffset(months=1),
-                                     periods=fut, freq="MS")
-        rows.append(pd.DataFrame({"Month": future_dates,
-                                  "Visit Type": vtype,
-                                  "Forecasted Total Value": preds}))
-    if not rows:
-        st.warning("Nothing to forecast.")
-        return
-
-    fc = pd.concat(rows, ignore_index=True)
-
-    # ── table (formatted £) ──────────────────────────────────────────
-    table = fc.copy()
-    table["Month"] = table["Month"].dt.strftime("%B %Y")
-    table["Forecasted Total Value (£)"] = table["Forecasted Total Value"].map("£{:,.2f}".format)
-
-    st.subheader("💰 Forecasted Total Value by Visit Type (Next 6 Months)")
-    st.dataframe(table[["Month", "Visit Type", "Forecasted Total Value (£)"]])
-
-    # ── chart ────────────────────────────────────────────────────────
-    st.plotly_chart(
-        px.line(fc, x="Month", y="Forecasted Total Value",
-                color="Visit Type", markers=True),
-        use_container_width=True
-    )
-# ──────────────────────────────────────────────────────────────────────
-# (MAIN Q&A LOOP comes AFTER this block)
-# ──────────────────────────────────────────────────────────────────────
-
-
-
-
-
-# ──────────────────────────────────────────────────────────────────────
-# ──────────────────────────────────────────────────────────────────────
-# 8⃣  MAIN Q&A LOOP  – runs **only** on the 🤖 Operational AI Area screen
-# ──────────────────────────────────────────────────────────────────────
 if st.session_state.get("screen") == "ai":
+	# ──────────── Helpers (Used by Main Q&A Loop) ────────────
 
-    # ── 1.  Chat-input box ────────────────────────────────────────────
+	def get_total_cost_completed_visits(df, team=None):
+		"""Calculate total cost for completed visits, optionally filtered by team."""
+		if "Activity Status" not in df.columns or "Total Cost Inc Travel" not in df.columns:
+			return None
+		filtered = df[df["Activity Status"].str.lower() == "completed"]
+		if team:
+			filtered = filtered[filtered["Team"] == team]
+		total_cost = filtered["Total Cost Inc Travel"].sum()
+		return total_cost
+
+	def calculate_percentage_diff_avg(df, group_col="Team", value_col="Total Value"):
+		"""Calculate percentage difference from average total value per group."""
+		totals = df.groupby(group_col)[value_col].sum().reset_index()
+		baseline = totals[value_col].mean()
+		totals["Pct Difference"] = ((totals[value_col] - baseline) / baseline * 100).round(2)
+		totals["Total Value"] = totals[value_col].map("£{:,.2f}".format)
+		totals["Pct Difference"] = totals["Pct Difference"].map(lambda x: f"{x:.2f}%")
+
+		output_lines = []
+		for _, row in totals.iterrows():
+			output_lines.append(f"{row[group_col]}: {row['Total Value']} ({row['Pct Difference']})")
+
+		return output_lines
+
+	def clean_postcodes(df):
+		"""Clean postcode column: uppercase, strip, and exclude invalid postcodes."""
+		df = df.copy()
+		df['Postcode'] = df['Postcode'].astype(str).str.strip().str.upper()
+
+		invalids = {"", "0", "NAN", "NONE", "NULL"}
+
+		df = df[~df['Postcode'].isin(invalids)]
+		return df
+
+	def filter_zero_values(df: pd.DataFrame, query: str) -> pd.DataFrame:
+		"""
+		Remove rows with zero or missing values in important numeric/time columns,
+		unless user specifically requests to see zeros.
+		"""
+		qlc = query.lower()
+		if any(keyword in qlc for keyword in ["0 entries", "zero counts", "show zero", "count zero", "how many zero"]):
+			return df  # user explicitly wants zeros
+
+		df_filtered = df.copy()
+
+		if "Postcode" in df_filtered.columns:
+			df_filtered = df_filtered[
+				~df_filtered["Postcode"].astype(str).str.strip().isin(["0", "", "nan", "None"])
+			]
+
+		numeric_cols = ["Visit Count", "Total Value", "Total Cost Inc Travel"]
+		time_cols = ["Activate", "Deactivate", "Total Time", "Travel Time", "Total Time (Inc Travel)"]
+
+		for col in numeric_cols:
+			if col in df_filtered.columns:
+				df_filtered = df_filtered[~((df_filtered[col] == 0) | (df_filtered[col].isna()))]
+
+		for col in time_cols:
+			if col in df_filtered.columns:
+				df_filtered = df_filtered[
+					~((df_filtered[col] == pd.Timedelta(0)) | df_filtered[col].astype(str).str.startswith("00:00"))
+				]
+
+		return df_filtered
+
+
+if st.session_state.get("screen") == "ai":
+    # ──────────────────────────────────────────────────────────────────────
+    # 7b️⃣  FORECAST RENDERER  (NOW TOP-LEVEL, NOT NESTED)
+    # ──────────────────────────────────────────────────────────────────────
+    from sklearn.linear_model import LinearRegression
+    import numpy as np
+
+    def render_forecast(query: str, df: pd.DataFrame):
+        qlc = query.lower()
+        if "forecast" not in qlc and "projection" not in qlc:
+            return
+        if "completed" not in qlc:
+            st.info("Only 'completed visits' forecasting is supported currently.")
+            return
+        if "Date" not in df.columns or "Visit Type" not in df.columns:
+            st.warning("Data is missing Date or Visit Type columns.")
+            return
+
+        df = df.copy()
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df.dropna(subset=["Date"], inplace=True)
+
+        # ✅ UPDATED FILTERING HERE
+        df = df[df["Activity Status"].str.lower() == "completed"]
+        if df.empty:
+            st.warning("No completed visits found in the dataset.")
+            return
+
+        df["Month"] = df["Date"].dt.to_period("M").dt.to_timestamp()
+        monthly = df.groupby("Month").size().reset_index(name="Completed Visits")
+        if len(monthly) < 3:
+            st.warning("Not enough data to forecast.")
+            return
+
+        monthly["Month_Num"] = np.arange(len(monthly))
+        X = monthly["Month_Num"].values.reshape(-1, 1)
+        y = monthly["Completed Visits"].values
+        model = LinearRegression().fit(X, y)
+
+        fut = 6
+        future_X = np.arange(len(monthly), len(monthly) + fut).reshape(-1, 1)
+        future_dates = pd.date_range(
+            start=monthly["Month"].max() + pd.DateOffset(months=1),
+            periods=fut, freq="MS"
+        )
+        forecast_vals = model.predict(future_X).round().astype(int)
+
+        forecast_df = pd.DataFrame({
+            "Month": future_dates.strftime("%B %Y"),
+            "Forecasted Completed Visits": forecast_vals
+        })
+        st.subheader("📈 Forecasted Completed Visits (Next 6 Months)")
+        st.dataframe(forecast_df)
+
+        full = pd.concat([
+            monthly[["Month", "Completed Visits"]],
+            pd.DataFrame({"Month": future_dates, "Completed Visits": forecast_vals})
+        ], ignore_index=True)
+        full["Type"] = ["Historical"] * len(monthly) + ["Forecast"] * fut
+
+        fig = px.line(full, x="Month", y="Completed Visits", color="Type",
+                      title="Completed Visits Forecast (Historical + Next 6 Months)",
+                      markers=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+
+    # ──────────────────────────────────────────────────────────────────────
+    # 7c️⃣  FORECAST TOTAL VALUE (£)  – helper runs for “forecast value …”
+    # ──────────────────────────────────────────────────────────────────────
+    import pandas as pd, plotly.express as px
+    from statsmodels.tsa.arima.model import ARIMA
+
+    def render_value_forecast(query: str, df: pd.DataFrame):
+        """Forecast total £ value for each Visit Type (ex-Lunch(30)) next 6 months."""
+        qlc = query.lower()
+        if "forecast" not in qlc or "value" not in qlc or "visit type" not in qlc:
+            return  # user didn’t ask for this
+
+        needed = {"Date", "Visit Type", "Total Value"}
+        if not needed.issubset(df.columns):
+            st.warning(f"Missing columns: {needed}")
+            return
+
+        # ── clean & filter ────────────────────────────────────────────────
+        df = df.copy()
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df["Total Value"] = pd.to_numeric(df["Total Value"], errors="coerce")
+        df.dropna(subset=["Date", "Total Value"], inplace=True)
+        df = df[~df["Visit Type"].str.contains("Lunch(30)", case=False, na=False)]
+        df = df[df["Visit Type"].str.strip().ne("")]
+
+        if df.empty:
+            st.warning("No rows after excluding Lunch(30) / blanks.")
+            return
+
+        # ── monthly totals ───────────────────────────────────────────────
+        df["Month"] = df["Date"].dt.to_period("M").dt.to_timestamp()
+        monthly = (df.groupby(["Month", "Visit Type"])["Total Value"]
+                   .sum().reset_index())
+
+        fut = 6
+        rows = []
+        for vtype, grp in monthly.groupby("Visit Type"):
+            if len(grp) < 3:
+                continue  # not enough history
+            grp = grp.sort_values("Month")
+            grp["n"] = np.arange(len(grp))
+            # simple linear trend
+            coeffs = np.polyfit(grp["n"], grp["Total Value"], 1)
+            future_n = np.arange(len(grp), len(grp)+fut)
+            preds = np.poly1d(coeffs)(future_n).clip(0).round(2)
+            future_dates = pd.date_range(grp["Month"].max()+pd.DateOffset(months=1),
+                                         periods=fut, freq="MS")
+            rows.append(pd.DataFrame({"Month": future_dates,
+                                      "Visit Type": vtype,
+                                      "Forecasted Total Value": preds}))
+        if not rows:
+            st.warning("Nothing to forecast.")
+            return
+
+        fc = pd.concat(rows, ignore_index=True)
+
+        # ── table (formatted £) ──────────────────────────────────────────
+        table = fc.copy()
+        table["Month"] = table["Month"].dt.strftime("%B %Y")
+        table["Forecasted Total Value (£)"] = table["Forecasted Total Value"].map("£{:,.2f}".format)
+
+        st.subheader("💰 Forecasted Total Value by Visit Type (Next 6 Months)")
+        st.dataframe(table[["Month", "Visit Type", "Forecasted Total Value (£)"]])
+
+        # ── chart ────────────────────────────────────────────────────────
+        st.plotly_chart(
+            px.line(fc, x="Month", y="Forecasted Total Value",
+                    color="Visit Type", markers=True),
+            use_container_width=True
+        )
+
+    # ──────────── Helpers (Used by Main Q&A Loop) ────────────
+
+    def get_total_cost_completed_visits(df, team=None):
+        """Calculate total cost for completed visits, optionally filtered by team."""
+        if "Activity Status" not in df.columns or "Total Cost Inc Travel" not in df.columns:
+            return None
+        filtered = df[df["Activity Status"].str.lower() == "completed"]
+        if team:
+            filtered = filtered[filtered["Team"] == team]
+        total_cost = filtered["Total Cost Inc Travel"].sum()
+        return total_cost
+
+    def calculate_percentage_diff_avg(df, group_col="Team", value_col="Total Value"):
+        """Calculate percentage difference from average total value per group."""
+        totals = df.groupby(group_col)[value_col].sum().reset_index()
+        baseline = totals[value_col].mean()
+        totals["Pct Difference"] = ((totals[value_col] - baseline) / baseline * 100).round(2)
+        totals["Total Value"] = totals[value_col].map("£{:,.2f}".format)
+        totals["Pct Difference"] = totals["Pct Difference"].map(lambda x: f"{x:.2f}%")
+
+        output_lines = []
+        for _, row in totals.iterrows():
+            output_lines.append(f"{row[group_col]}: {row['Total Value']} ({row['Pct Difference']})")
+
+        return output_lines
+
+    def clean_postcodes(df):
+        """Clean postcode column: uppercase, strip, and exclude invalid postcodes."""
+        df = df.copy()
+        df['Postcode'] = df['Postcode'].astype(str).str.strip().str.upper()
+        invalids = {"", "0", "NAN", "NONE", "NULL"}
+        df = df[~df['Postcode'].isin(invalids)]
+        return df
+
+    def filter_zero_values(df: pd.DataFrame, query: str) -> pd.DataFrame:
+        """
+        Remove rows with zero or missing values in important numeric/time columns,
+        unless user specifically requests to see zeros.
+        """
+        qlc = query.lower()
+        if any(keyword in qlc for keyword in ["0 entries", "zero counts", "show zero", "count zero", "how many zero"]):
+            return df  # user explicitly wants zeros
+
+        df_filtered = df.copy()
+
+        if "Postcode" in df_filtered.columns:
+            df_filtered = df_filtered[
+                ~df_filtered["Postcode"].astype(str).str.strip().isin(["0", "", "nan", "None"])
+            ]
+
+        numeric_cols = ["Visit Count", "Total Value", "Total Cost Inc Travel"]
+        time_cols = ["Activate", "Deactivate", "Total Time", "Travel Time", "Total Time (Inc Travel)"]
+
+        for col in numeric_cols:
+            if col in df_filtered.columns:
+                df_filtered = df_filtered[~((df_filtered[col] == 0) | (df_filtered[col].isna()))]
+
+        for col in time_cols:
+            if col in df_filtered.columns:
+                df_filtered = df_filtered[
+                    ~((df_filtered[col] == pd.Timedelta(0)) | df_filtered[col].astype(str).str.startswith("00:00"))
+                ]
+
+        return df_filtered
+
+    # ────────────── Main Q&A Loop ──────────────
+
     user_q = st.chat_input(
-        "Ask about Oracle visits … e.g. 'average Activate time for VIP North'"
+        "Ask me anything … e.g. 'Can you write me an email'",
+        key="oracle_ai"   # always provide a unique key!
     )
-    # make sure we always have a string (never None)
     user_q = (user_q or "").strip()
-
-    # ── 2.  Nothing to do?  Bail out early ────────────────────────────
     if not user_q:
-        st.stop()               # ← nothing typed yet, end the block
+        st.stop()
 
-    # ── 3.  Echo the question in the chat pane ───────────────────────
+    chart_type = pick_chart_type(user_q)
+
+    # Function to get top postcodes by Total Value
+    def get_top_postcodes_by_value(df, top_n=5):
+        df_clean = clean_postcodes(df)
+        grouped = (
+            df_clean.groupby("Postcode")["Total Value"]
+            .sum()
+            .reset_index()
+            .sort_values("Total Value", ascending=False)
+            .head(top_n)
+        )
+        return grouped
+
+    # Use uploaded data if available, else df_oracle
+    df_for_ai_raw = st.session_state.user_df if st.session_state.user_df is not None else df_oracle
+    df_for_ai = filter_zero_values(df_for_ai_raw, user_q)
+    default_df = df_for_ai
+
+    # Log user question
     st.session_state.ai_chat.append({"role": "user", "content": user_q})
     with st.chat_message("user"):
         st.markdown(user_q)
 
-    # ── 4.  Generate the assistant’s answer (LangChain or fallback) ──
-    with st.chat_message("assistant"):
-        placeholder = st.empty()
-        try:
-            answer = slow_stream(
-                (chunk if isinstance(chunk, str) else chunk.get("output", "")
-                 for chunk in df_agent.stream(alias(user_q))),
-                placeholder,
-            )
-        except Exception:
-            stream = fallback_client.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": user_q}],
-                stream=True,
-            )
-            answer = slow_stream(
-                (p.choices[0].delta.content or "" for p in stream),
-                placeholder
-            )
+    handled_manually = False
+    answer = ""
 
-    st.session_state.ai_chat.append({"role": "assistant", "content": answer})
+    # Handle specific queries manually for quick replies
+    if "total cost" in user_q.lower() and "completed visits" in user_q.lower():
+        team = None
+        for t in ["VIP South", "VIP North", "Tier 2 South", "Tier 2 North"]:
+            if t.lower() in user_q.lower():
+                team = t
+                break
+        total_cost = get_total_cost_completed_visits(default_df, team)
+        if total_cost is not None:
+            answer = f"Total cost including travel for completed visits{f' in {team}' if team else ''} is £{total_cost:,.2f}."
+        else:
+            answer = "Sorry, unable to calculate total cost for that query."
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.ai_chat.append({"role": "assistant", "content": answer})
+        handled_manually = True
 
-    # ── 5.  “by X and Y” quick summary table / chart ─────────────────
+    elif "top postcodes by total value" in user_q.lower():
+        filtered_df = filter_zero_values(default_df, user_q)
+        filtered_df["Postcode"] = filtered_df["Postcode"].astype(str).str.strip()
+        filtered_df = filtered_df[~filtered_df["Postcode"].isin(["", "0", "nan", "None"])]
+        grouped = (
+            filtered_df.groupby("Postcode")["Total Value"]
+            .sum()
+            .reset_index()
+            .sort_values("Total Value", ascending=False)
+            .head(5)
+        )
+        lines = []
+        for i, row in enumerate(grouped.itertuples(index=False), 1):
+            postcode = row.Postcode if row.Postcode and str(row.Postcode).strip() else "(blank)"
+            formatted_val = f"£{row._2:,.2f}"
+            lines.append(f"{i}. Postcode: {postcode} - Total Value: {formatted_val}")
+        answer = "The top 5 postcodes by Total Value are as follows:\n\n" + "\n".join(lines)
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.ai_chat.append({"role": "assistant", "content": answer})
+        handled_manually = True
+
+    elif "percentage difference" in user_q.lower():
+        filtered_df = filter_zero_values(default_df, user_q)
+        lines = calculate_percentage_diff_avg(filtered_df)
+        answer = "The percentage difference in total value between the teams is as follows:\n\n" + "\n".join(lines)
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.ai_chat.append({"role": "assistant", "content": answer})
+        handled_manually = True
+
+    # If none of the manual handlers match, fallback to AI agent
+    if not handled_manually:
+        with st.chat_message("assistant"):
+            placeholder = st.empty()
+            try:
+                answer = slow_stream(
+                    (chunk if isinstance(chunk, str) else chunk.get("output", "")
+                        for chunk in df_agent.stream(alias(user_q))),
+                    placeholder,
+                )
+            except Exception:
+                stream = fallback_client.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": user_q}],
+                    stream=True,
+                )
+                answer = slow_stream(
+                    (p.choices[0].delta.content or "" for p in stream),
+                    placeholder
+                )
+        st.session_state.ai_chat.append({"role": "assistant", "content": answer})
+
+    # Save Q&A to chat logs CSV
+    import csv
+    import datetime
+    with open("chat_logs.csv", "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if f.tell() == 0:
+            w.writerow(["timestamp", "question", "answer", "feedback"])
+        last_feedback = st.session_state.ai_chat[-1].get("feedback", "")
+        w.writerow([datetime.datetime.now().isoformat(timespec="seconds"),
+                    user_q, answer, last_feedback])
+
+    # Logs viewer toggle & password protection
+    show_logs = st.checkbox("Show AI Chat Logs", key="show_logs_checkbox")
+    if show_logs:
+        password = st.text_input("Enter admin password to view logs:", type="password", key="logs_password")
+        if password == "AI Chat":  # Change your password here
+            st.success("Access granted to chat logs 📊")
+            import pandas as pd
+            def load_logs(file_path):
+                df = pd.read_csv(file_path, parse_dates=["timestamp"])
+                return df
+            log_file = "chat_logs.csv"
+            logs_df = load_logs(log_file)
+            if logs_df.empty:
+                st.warning("No chat logs found!")
+            else:
+                st.markdown(f"### Total Questions Asked: {len(logs_df)}")
+                min_date = logs_df['timestamp'].min().date()
+                max_date = logs_df['timestamp'].max().date()
+                date_range = st.date_input("Filter by date range:", [min_date, max_date], key="log_date_filter")
+                filtered_logs = logs_df[
+                    (logs_df['timestamp'].dt.date >= date_range[0]) &
+                    (logs_df['timestamp'].dt.date <= date_range[1])
+                ]
+                keyword = st.text_input("Search questions or answers:", key="log_keyword").strip().lower()
+                if keyword:
+                    filtered_logs = filtered_logs[
+                        filtered_logs['question'].str.lower().str.contains(keyword) |
+                        filtered_logs['answer'].str.lower().str.contains(keyword)
+                    ]
+                st.markdown(f"### Showing {len(filtered_logs)} chat logs")
+                st.dataframe(filtered_logs)
+                freq_data = filtered_logs.groupby(filtered_logs['timestamp'].dt.date).size().reset_index(name='Count')
+                st.markdown("### Questions Over Time")
+                st.line_chart(freq_data.rename(columns={'timestamp': 'Date'}).set_index('timestamp'))
+                if "feedback" in logs_df.columns and logs_df["feedback"].dropna().any():
+                    st.markdown("### Feedback Summary")
+                    feedback_counts = filtered_logs["feedback"].fillna("No Feedback").value_counts()
+                    st.bar_chart(feedback_counts)
+                st.markdown("---")
+                st.caption("Chat logs loaded from `chat_logs.csv`")
+        elif password:
+            st.error("Incorrect password. Access denied.")
+
+    # Auto-generate chart if answer suggests it
+    # After the assistant gives a reply...
+    # After the assistant reply, show a chart if the query or answer asks for it
+    chart_keywords = [
+        "chart", "graph", "distribution", "plot", "visual", "pie", "bar", "line", "trend", "correlation", "sunburst", "parallel"
+    ]
+    if any(k in user_q.lower() for k in chart_keywords) or any(k in answer.lower() for k in chart_keywords):
+        # Guess a sensible column to plot
+        col_candidates = [
+            "Visit Type", "Activity Status", "Team", "Name"
+        ]
+        chart_col = None
+        for c in col_candidates:
+            if c.lower() in user_q.lower() or c.lower() in answer.lower():
+                if c in df_for_ai.columns:
+                    chart_col = c
+                    break
+        # Fallback to Visit Type if not found
+        if not chart_col and "Visit Type" in df_for_ai.columns:
+            chart_col = "Visit Type"
+        # Render a bar chart if column found
+        if chart_col:
+            st.subheader(f"Chart: {chart_col} distribution")
+            vc = (
+                df_for_ai[chart_col]
+                .astype(str)
+                .str.strip()
+                .replace({"0": pd.NA, "nan": pd.NA})
+                .dropna()
+                .value_counts()
+                .head(12)
+            )
+            st.bar_chart(vc)
+        else:
+            st.info("Sorry, couldn't find a suitable column for charting.")
+
+
+
+
+
+    # Quick summary by two columns if requested
+    import re
     by_two = re.search(r"\bby ([\w ]+?) and ([\w ]+?)\b", user_q.lower())
     if by_two:
         a, b = by_two.group(1).strip(), by_two.group(2).strip()
         a_col = KEYWORDS.get(a, a.title())
         b_col = KEYWORDS.get(b, b.title())
-        if {a_col, b_col}.issubset(oracle_df.columns):
-            summary = oracle_df.groupby([a_col, b_col]).size().reset_index(name="Visits")
+        if {a_col, b_col}.issubset(df_oracle.columns):
+            summary = df_oracle.groupby([a_col, b_col]).size().reset_index(name="Visits")
             st.dataframe(summary.head(200))
             try:
                 fig = px.sunburst(summary, path=[a_col, b_col],
-                                  values="Visits",
-                                  title=f"Visits by {a_col} → {b_col}")
+                                values="Visits",
+                                title=f"Visits by {a_col} → {b_col}")
                 st.plotly_chart(fig, use_container_width=True)
             except Exception:
                 st.bar_chart(summary.set_index(a_col)["Visits"])
 
-    # ── 6.  Auto-chart if the user explicitly asked for one ───────────
-    ctype = pick_chart_type(user_q)
-    if ctype:
-        st.subheader("📊 Auto-generated chart")
-        render_chart(ctype, oracle_df, query=user_q)
+    # Always run forecast helper
+    render_value_forecast(user_q, df_for_ai)
 
-    # ── 7.  Domain-specific helpers – run every time ──────────────────
-    render_value_forecast(user_q, oracle_df)      # £ forecast table + chart
-    # render_top_visit_types(user_q, oracle_df)   # ← enable if you need it
-    # render_forecast(user_q, oracle_df)          # ← completed-visits forecast
-    # render_arima_value_forecast(user_q, oracle_df)  # ← optional ARIMA version
 
-    # ── 8.  Very light logging (silent failure if the file is locked) ─
-    try:
-        with open("chat_logs.csv", "a", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            if f.tell() == 0:
-                w.writerow(["timestamp", "question", "answer"])
-            w.writerow([datetime.datetime.now().isoformat(timespec="seconds"),
-                        user_q, answer])
-    except Exception:
-        pass
 
 
 
 
-# ── BLOCK 17 ─────────────────────────────────────────────────────────────
-# ── SECTION: Operational Area – Global KPI Hub ───────────────────────────
 
-import streamlit as st
-from collections import OrderedDict
 
-# ── 0. Exit if not on the right screen ───────────────────────────────────
-if st.session_state.get("screen") != "operational_area":
-    st.stop()
 
-# ── 1. Dataset config ────────────────────────────────────────────────────
-DATASETS = OrderedDict([
-    ("AI Test SB Visits",        "AI Test SB Visits.xlsx"),
-    ("Call Log Data",            "Call Log Data.xlsx"),
-    ("Productivity Report",      "Productivity Report.xlsx"),
-    ("VIP North Oracle Data",    "VIP North Oracle Data.xlsx"),
-    ("VIP South Oracle Data",    "VIP South Oracle Data.xlsx"),
-    ("Tier 2 North Oracle Data", "Tier 2 North Oracle Data.xlsx"),
-    ("Tier 2 South Oracle Data", "Tier 2 South Oracle Data.xlsx"),
-    ("Sky Business Area",        "None")
-])
-
-# ── 2. Back button ───────────────────────────────────────────────────────
-if st.button("⬅️ Back to Main Menu", use_container_width=True):
-    st.session_state.screen = "area_selection"
-    st.session_state.pop("kpi_dataset", None)
-    st.rerun()
-
-# ── 3. Title and intro ───────────────────────────────────────────────────
-st.title("🏢 Organisation-wide KPI Centre")
-st.write("Browse KPIs for every dataset. Values are grouped **by calendar month**; deltas compare the latest month to the previous.")
-
-# ── 4. Dataset selector ─────────────────────────────────────────────────
-st.subheader("📂 Select a dataset to view KPIs")
-
-rows = list(DATASETS.items())
-for i in range(0, len(rows), 4):
-    cols = st.columns(4)
-    for col, (label, path) in zip(cols, rows[i:i+4]):
-        if col.button(label, key=f"ds_{label}", use_container_width=True):
-            st.session_state.kpi_dataset = (label, path)
-            st.rerun()
-
-
-
-# ── KPI: AI Test SB Visits ──────────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "AI Test SB Visits":
-    # 🔁 PLACE YOUR AI Test SB Visits CODE HERE (Block 18)
-    # e.g., df_all = st.session_state.kpi_df.copy(), etc.
-    # ── BLOCK 18 ───────────────────────────────────────────────────────────
-# ── SECTION: KPI pack – AI Test SB Visits ──────────────────────────────
-
-    import streamlit as st, pandas as pd, numpy as np, plotly.express as px
-    from pathlib import Path
-
-# ── 0. Guardrail ───────────────────────────────────────────────────────
-    if st.session_state.get("kpi_dataset", (None,))[0] != "AI Test SB Visits":
-        st.stop()
-
-# ── 1. Helper: load + prep dataframe ───────────────────────────────────
-    def _prep_df(path: Path) -> pd.DataFrame:
-        """Load the Excel file, tidy column names, and add a Month column."""
-        if not path.exists():
-            return pd.DataFrame()
-
-        df = pd.read_excel(path)
-        df.columns = df.columns.str.strip()
-
-        # Pick the first plausible date column
-        date_col = next(
-            (c for c in ["Date", "Date of visit", "Date of Call Taken"] if c in df.columns),
-            None,
-        )
-        if date_col:
-            df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
-            df.dropna(subset=[date_col], inplace=True)
-            df["Month"] = df[date_col].dt.to_period("M").dt.to_timestamp()
-
-        return df
-
-# ── 2. Load data for this dataset only ─────────────────────────────────
-    file_path = Path("AI Test SB Visits.xlsx")
-    df_all = _prep_df(file_path)
-
-    if df_all.empty or "Month" not in df_all.columns:
-        st.warning("⚠️ No valid data or date column found in AI Test SB Visits file.")
-        st.stop()
-
-# ── 3. Build monthly aggregate + store for later use if desired ────────
-    use_value = "Total Value" in df_all.columns
-    monthly = (
-        df_all.groupby("Month")["Total Value"].sum()
-        if use_value else
-        df_all.groupby("Month").size()
-    ).sort_index()
-
-# Keep a copy in session_state in case other blocks want it
-    st.session_state.kpi_df = df_all
-    st.session_state.kpi_monthly = monthly
-
-    metric_label = "Total Value (£)" if use_value else "Total Visits"
-
-# ── 4. Simple month selector (local to this block) ─────────────────────
-    focus_month = st.session_state.get("kpi_month")          # may be None from earlier runs
-    months = list(monthly.index)
-
-    if "kpi_month" not in st.session_state:
-        st.subheader("📆 Select a month (or leave blank for full trend)")
-        for i in range(0, len(months), 4):
-            cols = st.columns(4)
-            for col, m in zip(cols, months[i:i+4]):
-                if col.button(m.strftime("%b %Y"), key=f"sb_{m}"):
-                    st.session_state.kpi_month = m
-                    st.rerun()
-    else:
-        if st.button("❌ Clear month filter"):
-            st.session_state.pop("kpi_month")
-            st.rerun()
-
-    # Slice data if a month is chosen
-    if "kpi_month" in st.session_state:
-        focus_month = st.session_state.kpi_month
-        df = df_all[df_all["Month"] == focus_month]
-        # keep prev + current month for MoM delta
-        if focus_month in monthly.index:
-            idx = monthly.index.get_loc(focus_month)
-            monthly = monthly.iloc[max(idx - 1, 0): idx + 1]
-    else:
-        df = df_all
-
-# ── 5. HEADLINE KPIs ───────────────────────────────────────────────────
-    with st.expander("📊 Headline metrics", expanded=True):
-        latest_month = monthly.index[-1]
-        latest_val   = monthly.iloc[-1]
-        prev_val     = monthly.iloc[-2] if len(monthly) > 1 else np.nan
-        delta        = latest_val - prev_val
-        pct_delta    = (delta / prev_val * 100) if pd.notna(prev_val) else np.nan
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric(f"{metric_label} — {latest_month.strftime('%b %Y')}",
-                  f"{latest_val:,.0f}" if not use_value else f"£{latest_val:,.0f}",
-                  f"{delta:+,.0f}"     if not use_value else f"£{delta:+,.0f}")
-        c2.metric("MoM change (%)", f"{pct_delta:+.1f}%")
-        c3.metric("Data points", f"{df.shape[0]:,}")
-
-# ── 6. Monthly trend charts ────────────────────────────────────────────
-    with st.expander("📈 Monthly trend", expanded=False):
-        st.plotly_chart(
-            px.line(monthly, labels={"value": metric_label, "index": "Month"},
-                    title=f"{metric_label} over time"),
-            use_container_width=True
-        )
-
-        if use_value:
-            visits = df_all.groupby("Month").size()
-            st.plotly_chart(
-                px.line(visits, labels={"value": "Visit count", "index": "Month"},
-                        title="Visit count over time"),
-                use_container_width=True
-            )
-
-# ── 7. Peaks & troughs ────────────────────────────────────────────────
-    with st.expander("🔺 Peaks & 🔻 troughs", expanded=False):
-        st.markdown(
-            f"* Highest **{metric_label}**: **{monthly.max():,.0f}** "
-            f"({monthly.idxmax().strftime('%b %Y')})\n"
-            f"* Lowest  **{metric_label}**: **{monthly.min():,.0f}** "
-            f"({monthly.idxmin().strftime('%b %Y')})"
-        )
-
-# ── 8. Top-5 engineers ────────────────────────────────────────────────
-    with st.expander("👷 Top 5 engineers", expanded=False):
-        col_name = "Business Engineers Name"
-        if col_name in df.columns and not df.empty:
-            st.bar_chart(df[col_name].value_counts().head(5))
-        else:
-            st.info("Engineer-name column not found in this dataset.")
-
-# ── 9. Narrative paragraph ────────────────────────────────────────────
-    with st.expander("📝 Narrative", expanded=False):
-        up_down = "up" if delta > 0 else "down"
-        st.write(
-            f"In **{latest_month.strftime('%B %Y')}** the team recorded "
-            f"{'£' if use_value else ''}{latest_val:,.0f}. "
-            f"That’s **{abs(pct_delta):.1f}% {up_down}** on the previous month."
-        )
-
-# ── 10. Visit-type breakdown (only when a month selected) ─────────────
-    with st.expander("📋 Visit type breakdown", expanded=False):
-        vt_col = next((c for c in df.columns if "visit" in c.lower() and "type" in c.lower()), None)
-        if vt_col and "kpi_month" in st.session_state:
-            pivot = df_all.groupby(["Month", vt_col]).size().unstack(fill_value=0)
-            if focus_month in pivot.index:
-                this_m = pivot.loc[focus_month]
-                prev_m = pivot.loc[pivot.index[pivot.index.get_loc(focus_month) - 1]] \
-                         if focus_month != pivot.index[0] else pd.Series(dtype=int)
-
-                tbl = pd.DataFrame({
-                    "This Month":  this_m,
-                    "Last Month":  prev_m.reindex_like(this_m).fillna(0).astype(int)
-                })
-                tbl["Change"]   = tbl["This Month"] - tbl["Last Month"]
-                tbl["% Change"] = np.where(tbl["Last Month"] == 0, np.nan,
-                                           tbl["Change"] / tbl["Last Month"] * 100)
-                tbl["Share"]    = tbl["This Month"] / tbl["This Month"].sum()
-                tbl = tbl[tbl["This Month"] > 0].sort_values("This Month", ascending=False)
-
-                tbl["% Change"] = tbl["% Change"].map("{:+.1f}%".format)
-                tbl["Share"]    = tbl["Share"].map("{:.1%}".format)
-
-                st.dataframe(tbl, use_container_width=True)
-            else:
-                st.info("Select a month with data to see visit-type details.")
-        else:
-            st.info("Select a month to enable the visit-type breakdown.")
-
-# ── 11. Full monthly table ────────────────────────────────────────────
-    with st.expander("📑 Full monthly table", expanded=False):
-        st.dataframe(monthly.rename(metric_label).to_frame(), use_container_width=True)
-
-
-
-# ── KPI: Call Log Data ───────────────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "Call Log Data":
-    # 🔁 PLACE YOUR Call Log Data CODE HERE (Block 19)
-    # e.g., df_all = st.session_state.kpi_df.copy(), etc.
-    # ── BLOCK 19 ──────────────────────────────────────────────────────────────
-# ── SECTION: KPI pack – Call Log Data (No Month Version) ─────────────────
-
-    import streamlit as st, pandas as pd, numpy as np, plotly.express as px
-    from pathlib import Path
-
-# ── 0. Guardrail ──────────────────────────────────────────────────────────
-    if st.session_state.get("kpi_dataset", (None,))[0] != "Call Log Data":
-        st.stop()
-
-# ── 1. Load file ──────────────────────────────────────────────────────────
-    file_path = Path("Call Log Data.xlsx")
-    if not file_path.exists():
-        st.warning("⚠️ Call Log Data.xlsx not found.")
-        st.stop()
-
-    df = pd.read_excel(file_path)
-    df.columns = df.columns.str.strip()
-
-# ── 2. Clean numeric fields ───────────────────────────────────────────────
-    for col in ["Time Required Hours", "Time Required Mins"]:
-        df[col] = pd.to_numeric(df.get(col, 0), errors="coerce").fillna(0)
-
-    df["TotalMinutes"] = df["Time Required Hours"] * 60 + df["Time Required Mins"]
-
-# ── 3. HEADLINE KPIs ──────────────────────────────────────────────────────
-    with st.expander("📊 Headline metrics", expanded=True):
-        total_calls = len(df)
-        avg_time = df["TotalMinutes"].mean() if "TotalMinutes" in df.columns else np.nan
-        total_time = df["TotalMinutes"].sum()
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("📞 Total Calls", f"{total_calls:,}")
-        c2.metric("⏱️ Avg. Time per Call", f"{avg_time/60:.2f} h" if pd.notna(avg_time) else "N/A")
-        c3.metric("🧮 Total Call Time", f"{total_time/60:.1f} h")
-
-# ── 4. Top engineers ──────────────────────────────────────────────────────
-    with st.expander("👷 Top Engineers (Caller)", expanded=False):
-        col = "Name Of Engineer Who Made The Call"
-        if col in df.columns:
-            st.bar_chart(df[col].value_counts().head(5))
-        else:
-            st.info("Caller-engineer column not found.")
-
-    with st.expander("🛠️ Top Engineers (Visit)", expanded=False):
-        col = "Name of Engineer"
-        if col in df.columns:
-            st.bar_chart(df[col].value_counts().head(5))
-        else:
-            st.info("Visit-engineer column not found.")
-
-# ── 5. Option & Region breakdowns ─────────────────────────────────────────
-    with st.expander("📋 Top Options Selected", expanded=False):
-        col = "Option Selected"
-        if col in df.columns:
-            st.bar_chart(df[col].value_counts().head(5))
-        else:
-            st.info("Option Selected column not found.")
-
-    with st.expander("🌍 Region Distribution", expanded=False):
-        col = "Region"
-        if col in df.columns:
-            st.bar_chart(df[col].value_counts())
-        else:
-            st.info("Region column not found.")
-
-# ── 6. Raw table ──────────────────────────────────────────────────────────
-    with st.expander("🧾 Raw Call Log Table", expanded=False):
-        st.dataframe(df, use_container_width=True)
-
-# ---------------------------------------------------------------------
-# KPI: Productivity Report
-# ---------------------------------------------------------------------
-if st.session_state.get("kpi_dataset", (None,))[0] == "Productivity Report":
-
-    import streamlit as st, pandas as pd, numpy as np, plotly.express as px
-    from pathlib import Path
-
-    # 1️⃣  LOAD & CLEAN
-    file_path = Path("Productivity Report.xlsx")
-    if not file_path.exists():
-        st.warning("⚠️ Productivity Report.xlsx not found.")
-        st.stop()
-
-    df = pd.read_excel(file_path)
-    df.columns = df.columns.str.strip()
-
-    # force numerics just in case
-    num_cols = df.select_dtypes("number").columns.tolist()
-    for c in num_cols:
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-
-    # 2️⃣  HEADLINE KPIs (whole company)
-    total_revenue          = df["TOTAL REVENUE"].sum()
-    target_revenue         = df["TARGET REVENUE"].sum()
-    revenue_delta          = total_revenue - target_revenue
-    revenue_pct            = revenue_delta / target_revenue if target_revenue else np.nan
-    visits_completed       = df["TOTAL VISITS COMPLETED"].sum()
-    avg_invoice_rate       = df["Invoice Completeion Rate"].mean()
-    target_met_count       = df["TARGET MET YES/NO"].str.upper().eq("YES").sum()
-    teams_total            = df["Team"].nunique()
-
-    with st.expander("📊 Headline metrics", expanded=True):
-        c1, c2, c3 = st.columns(3)
-        c1.metric("💰 Total Revenue", f"£{total_revenue:,.0f}",
-                  f"£{revenue_delta:+,.0f}")
-        c2.metric("🎯 vs Target (%)",
-                  f"{revenue_pct:+.1%}" if pd.notna(revenue_pct) else "N/A")
-        c3.metric("✅ Targets Met", f"{target_met_count}/{teams_total}")
-
-        c4, c5 = st.columns(2)
-        c4.metric("📥 Visits Completed", f"{visits_completed:,}")
-        c5.metric("🧾 Avg. Invoice Completion", f"{avg_invoice_rate:.1%}")
-
-    # 3️⃣  REVENUE vs TARGET (per team)
-    with st.expander("🏷️ Revenue vs Target per Team", expanded=False):
-        rev_tbl = df[["Team", "TOTAL REVENUE", "TARGET REVENUE"]].copy()
-        rev_tbl = rev_tbl.melt(id_vars="Team",
-                               var_name="Metric",
-                               value_name="Value")
-        fig = px.bar(rev_tbl, x="Team", y="Value", color="Metric",
-                     barmode="group", title="Revenue vs Target (by Team)")
-        st.plotly_chart(fig, use_container_width=True)
-
-    # 4️⃣  VISITS COMPLETED vs ISSUED
-    with st.expander("📋 Visits Issued vs Completed", expanded=False):
-        visit_tbl = df[["Team", "TOTAL VISITS ISSUED",
-                        "TOTAL VISITS COMPLETED"]].melt(
-                            id_vars="Team", var_name="Metric", value_name="Value")
-        fig = px.bar(visit_tbl, x="Team", y="Value", color="Metric",
-                     barmode="group", title="Visits Issued vs Completed")
-        st.plotly_chart(fig, use_container_width=True)
-
-    # 5️⃣  COMPLETION RATE BAR
-    with st.expander("📈 Invoice Completion Rate (by Team)", expanded=False):
-        fig = px.bar(df, x="Team", y="Invoice Completeion Rate",
-                     title="Invoice Completion Rate",
-                     labels={"Invoice Completeion Rate": "Rate"})
-        fig.update_yaxes(tickformat=".0%")
-        st.plotly_chart(fig, use_container_width=True)
-
-    # 6️⃣  KEY METRICS TABLE (per team)
-    with st.expander("🗂️ Key metrics table", expanded=False):
-        cols_to_show = [
-            "Team",
-            "TOTAL REVENUE",
-            "TARGET REVENUE",
-            "TARGET REVENUE +/-",
-            "TARGET REVENUE % +/-",
-            "TOTAL VISITS COMPLETED",
-            "Invoice Completeion Rate",
-            "Average Completed Visits per day",
-            "TARGET MET YES/NO",
-        ]
-        st.dataframe(df[cols_to_show], use_container_width=True)
-
-    # 7️⃣  RAW DATA
-    with st.expander("🧾 Full Productivity Report", expanded=False):
-        st.dataframe(df, use_container_width=True)
-
-
-
-# ── KPI: VIP North Oracle Data ──────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "VIP North Oracle Data":
-    import pandas as pd, plotly.express as px
-    from pathlib import Path
-    from datetime import time, timedelta
-
-    # ── 1. Load file
-    fp = Path("VIP North Oracle Data.xlsx")
-    if not fp.exists():
-        st.error("File not found."); st.stop()
-
-    df = pd.read_excel(fp)
-
-    # ── 2. Basic clean  -------------------------------------------------
-    df = df.dropna(how="all")
-    
-    for col in ["Total Time", "Total Time (Inc Travel)"]:
-        df = df[~df[col].astype(str).isin(["00:00", "00:00:00"])]
-
-    # ── 3. Convert duration columns safely -----------------------------
-    dur_cols = ["Total Working Time", "Travel Time",
-                "Total Time", "Total Time (Inc Travel)"]
-
-    def excel_to_timedelta(x):
-        """Handle time-of-day, Excel float, or string to Timedelta."""
-        if pd.isna(x):                    return pd.NaT
-        if isinstance(x, time):           # 07:30:00
-            return timedelta(hours=x.hour, minutes=x.minute, seconds=x.second)
-        if isinstance(x, (int, float)):   # 0.3125  etc.
-            return timedelta(days=float(x))
-        return pd.to_timedelta(str(x), errors="coerce")
-
-    for c in dur_cols:
-        df[c] = df[c].apply(excel_to_timedelta)
-
-    # ── 4. Activate / Deactivate  --------------------------------------
-    def tod_to_td(val):
-        if pd.isna(val): return pd.NaT
-        if isinstance(val, time):
-            return timedelta(hours=val.hour, minutes=val.minute, seconds=val.second)
-        try:
-            h, m, *s = map(int, str(val).split(":")); s = s[0] if s else 0
-            return timedelta(hours=h, minutes=m, seconds=s)
-        except: return pd.NaT
-
-    for c in ["Activate", "Deactivate"]:
-        if c in df.columns:
-            df[c] = df[c].apply(tod_to_td)
-
-    from datetime import timedelta
-
-    def to_seconds(t):
-        """Converts HH:MM:SS or timedelta to seconds, ignoring zero values."""
-        if pd.isna(t):
-            return None
-        try:
-            if isinstance(t, timedelta):
-                total_secs = int(t.total_seconds())
-                return total_secs if total_secs > 0 else None
-            h, m, *s = map(int, str(t).split(":"))
-            s = s[0] if s else 0
-            total_secs = h * 3600 + m * 60 + s
-            return total_secs if total_secs > 0 else None
-        except Exception:
-            return None
-
-
-    # ── 5. Month selector ---------------------------------------------
-    # Ensure Month column is clean
-    df["Month"] = df["Month"].astype(str).str.strip().str.title()
-
-    # Get available months
-    available_months = sorted(df["Month"].dropna().unique())
-
-    # Month selection UI
-    month_options = ["All"] + available_months
-    selected_month = st.selectbox("📅 Select Month", month_options)
-
-    # Save full dataset for charts before filtering
-    df_all = df.copy()
-    if selected_month != "All":
-        df = df[df["Month"] == selected_month]
-
-    # Filter only for selected month
-    
-    if df.empty:
-        st.warning("No data for selected month.")
-        st.stop()
-
-    summary_label = selected_month if selected_month != "All" else "All Months"
-    st.subheader(f"📊 KPI Summary for {summary_label}")
-
-# ───────────────────────────────────────────────────────────────────
-    # Helper functions you requested
-    # ───────────────────────────────────────────────────────────────────
-    def valid_times(series):
-        return series.dropna().loc[~series.astype(str).isin(["00:00", "00:00:00"])]
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty:
-            return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds() // 3600), int(td.total_seconds() % 3600 // 60)
-        return f"{h:02d}:{m:02d}"
-
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds()//3600), int((td.total_seconds()%3600)//60)
-        return f"{h:02d}:{m:02d}"
-
-    def max_min_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—", "—"
-        fmt = lambda td: f"{int(td.total_seconds()//3600):02d}:{int((td.total_seconds()%3600)//60):02d}"
-        return fmt(clean.max()), fmt(clean.min())
-    # ── average lunch duration ───────────────────────────────────────────
-        avg_lunch_str = "N/A"
-        if "Visit Type" in df.columns:
-    # Try to find the column that contains lunch duration
-            lunch_col = next((c for c in df.columns if c.lower().startswith("total time")), None)
-
-            if lunch_col:
-                raw_lunch_times = df.loc[df["Visit Type"].str.lower() == "lunch (30)", lunch_col]
-
-        # Convert to timedelta, drop NAs and zero durations
-                lunch_durations = pd.to_timedelta(raw_lunch_times, errors='coerce').dropna()
-                lunch_durations = lunch_durations[lunch_durations.dt.total_seconds() > 0]
-
-                if not lunch_durations.empty:
-                    avg_td = lunch_durations.mean()
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-
-    # ── 6. Time breakdown expander ------------------------------------
-    with st.expander("🕒 Time Breakdown", expanded=True):
-        summary = {
-            "Avg. Working Time": avg_hhmm(df["Total Working Time"]),
-            "Avg. Travel Time": avg_hhmm(df["Travel Time"]),
-            "Avg. Total Time": avg_hhmm(df["Total Time"]),
-            "Avg. Time (Inc Travel)": avg_hhmm(df["Total Time (Inc Travel)"]),
-            "Avg. Activate Time": avg_hhmm(df["Activate"]),
-            "Avg. Deactivate Time": avg_hhmm(df["Deactivate"]),
-        }
-
-        max_wt, min_wt = max_min_hhmm(df["Total Working Time"])
-        summary["Max Working Time"] = max_wt
-        summary["Min Working Time"] = min_wt
-
-        st.dataframe(pd.DataFrame(summary, index=["Value"]).T, use_container_width=True)
-        st.caption("All times shown in HH:MM format.")
-
-    # ▼▬▬▬▬▬▬▬▬▬▬▬▬  REPLACE THE CURRENT SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▼
-    if df.empty:
-         st.warning("No data for the current selection.")
-    else:
-        try:
-        # ── 1. Exclude Lunch visits where needed ────────────────────
-            no_lunch = df[df["Visit Type"].str.lower() != "lunch (30)"]
-
-        # ── 2. Average Activate / Deactivate using your helper ─────
-            avg_activate_time   = avg_hhmm(df["Activate"])   if "Activate"   in df.columns else "N/A"
-            avg_deactivate_time = avg_hhmm(df["Deactivate"]) if "Deactivate" in df.columns else "N/A"
-
-        # ── Average Lunch Duration (HH:MM) ────────────────────────────────────
-            avg_lunch_str = "N/A"
-            if "Visit Type" in df.columns and "Total Time" in df.columns:
-                lunch_times = df[df["Visit Type"].str.lower() == "lunch (30)"]["Total Time"].dropna()
-
-    # Clean out empty / zero durations
-                lunch_durations = (
-                    pd.to_timedelta(lunch_times.astype(str), errors="coerce")
-                    .dropna()
-                    .loc[lambda x: x.dt.total_seconds() > 0]
-                )
-
-                if not lunch_durations.empty:
-                    avg_secs = lunch_durations.dt.total_seconds().mean()
-                    avg_td = pd.to_timedelta(avg_secs, unit="s")
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-        # ── 4. Value metrics ───────────────────────────────────────
-            value_col = "Total Value" if "Total Value" in df.columns else (
-                        "Value"       if "Value"       in df.columns else None)
-            total_value = f"£{df[value_col].sum():,.2f}"   if value_col else "N/A"
-            avg_value   = f"£{df[value_col].mean():,.2f}" if value_col else "N/A"
-
-        # ── 5. Date range & busiest day ────────────────────────────
-            if "Date" in df.columns:
-                dt           = pd.to_datetime(df["Date"], errors="coerce").dropna()
-                earliest     = dt.min().strftime("%d %b %Y") if not dt.empty else "N/A"
-                latest       = dt.max().strftime("%d %b %Y") if not dt.empty else "N/A"
-                day_counts   = dt.dt.date.value_counts()
-                busiest_day  = day_counts.idxmax().strftime("%d %b %Y") if not day_counts.empty else "N/A"
-                busiest_cnt  = int(day_counts.max()) if not day_counts.empty else "N/A"
-            else:
-                earliest = latest = busiest_day = busiest_cnt = "N/A"
-
-        # ── 6. Common visit type (ex-Lunch) ────────────────────────
-            common_type = (
-                no_lunch["Visit Type"].mode()[0]
-                if "Visit Type" in no_lunch.columns and not no_lunch["Visit Type"].mode().empty
-                else "N/A"
-            )
-
-        # ── 7. Top engineer by value ───────────────────────────────
-            if value_col and "Name" in df.columns and not df.empty:
-                eng_tot = df.groupby("Name")[value_col].sum()
-                top_engineer   = eng_tot.idxmax()
-                top_eng_val_fx = f"≈ £{eng_tot.max():,.0f}"
-            else:
-                top_engineer, top_eng_val_fx = "N/A", ""
-
-        # ── 8. Advanced paragraph ─────────────────────────────────
-            st.markdown(f"""
-    <div style='background:#1f2937;padding:16px 20px;border-radius:10px;
-                color:#e0e0e0;font-size:1.05em;line-height:1.6em'>
-    <b>Advanced Summary:</b><br><br>
-    Across <b>{len(df):,}</b> rows, engineers completed <b>{len(no_lunch):,}</b> visits
-    (<i>excluding lunch</i>), generating <b>{total_value}</b>
-    in total value (avg <b>{avg_value}</b> per visit).<br>
-    The most common visit type was <b>{common_type}</b>.<br><br>
-    Shifts typically began at <b>{avg_activate_time}</b> and ended by
-    <b>{avg_deactivate_time}</b>; average lunch duration was <b>{avg_lunch_str}</b>.<br><br>
-    Top-earning engineer: <b>{top_engineer}</b> {top_eng_val_fx}.<br>
-    Busiest day: <b>{busiest_day}</b> with <b>{busiest_cnt}</b> visits.<br>
-    Data range: <b>{earliest}</b> → <b>{latest}</b>.
-    </div>
-    """, unsafe_allow_html=True)
-
-        # ── 9. Bullet list quick view ──────────────────────────────
-            st.markdown(f"""
-    - **Total Rows:** {len(df):,}
-    - **Unique Engineers:** {df['Name'].nunique() if 'Name' in df.columns else 'N/A'}
-    - **Unique Visit Types:** {df['Visit Type'].nunique() if 'Visit Type' in df.columns else 'N/A'}
-    - **Date Range:** {earliest} – {latest}
-    - **Total Value:** {total_value}
-    - **Avg Value / Visit:** {avg_value}
-    - **Avg Activate Time:** {avg_activate_time}
-    - **Avg Deactivate Time:** {avg_deactivate_time}
-    - **Most Common Visit Type:** {common_type}
-    - **Top Engineer (Value):** {top_engineer}
-    - **Avg Lunch Duration:** {avg_lunch_str}
-    - **Busiest Day:** {busiest_day} ({busiest_cnt} visits)
-    """)
-        except Exception as e:
-            st.error(f"Summary block error: {e}")
-# ▲▬▬▬▬▬▬▬▬▬▬▬▬  END OF PATCHED SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▲
-
-
-
-
-    
-# ── 7. Activity-completion breakdown (Full Enhanced Version) ─────────────
-
-    import pandas as pd
-    import streamlit as st
-
-# 0️⃣ Load the full unfiltered data (adjust as needed)
-    df_raw = pd.read_excel("VIP North Oracle Data.xlsx")  # ⬅️ or your real file
-
-# 1️⃣ Normalize status column
-    status = (
-        df_raw["Activity Status"]
-            .astype(str)
-            .str.strip()
-            .str.casefold()
-    )
-
-# 2️⃣ Count values
-    vc = status.value_counts()
-
-    completed  = vc.get("completed", 0)
-    not_done   = vc.get("not done", 0)
-    cancelled  = status.str.contains("cancel", na=False).sum()
-
-    known      = completed + cancelled + not_done
-    total      = int(vc.sum())
-    other      = total - known
-
-# 3️⃣ Metrics
-    completion_rate_pct       = (completed / known * 100) if known else 0
-    completion_vs_failed_ratio = (completed / (cancelled + not_done)) if (cancelled + not_done) > 0 else float("inf")
-
-# 4️⃣ Display in Streamlit
-    with st.expander("🧩 Activity Completion Breakdown", expanded=False):
-        st.markdown(f"""
-        ✅ **Completed**: {completed:,} ({completed / total:.1%})  
-        ❌ **Cancelled**: {cancelled:,} ({cancelled / total:.1%})  
-        🚫 **Not Done**:  {not_done:,} ({not_done / total:.1%})  
-        ❓ **Other/Unknown**: {other:,} ({other / total:.1%})
-        """)
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
-        col2.metric("🔁 Completed : Failed", f"{completion_vs_failed_ratio:.1f} ×")
-        col3.markdown(
-            f"🔁 **{completion_vs_failed_ratio:.1f}** visits completed for every **1** cancelled or not done visit"
-        )
-
-        st.bar_chart(vc)
-
-# 5️⃣ Optional Debug Output
-    with st.expander("📊 Unique statuses in data", expanded=False):
-        st.dataframe(
-            pd.DataFrame(vc).reset_index().rename(
-                columns={"index": "Activity Status", 0: "Count"}
-            )
-        )
-
-
-
-# ── 7. Activity-completion breakdown (full version) ────────────────────
-    import pandas as pd
-    import streamlit as st
-
-# 0️⃣  USE YOUR ORIGINAL (un-filtered) DATAFRAME here
-    df_raw = pd.read_excel("VIP North Oracle Data.xlsx")  # direct load
-    date_col   = "Date"        # <-- change if your column is named differently
-    start_col  = "Start"       # <-- "
-    end_col    = "End"         # <-- "
-
-# 1️⃣  NORMALISE the status text once
-    status = (
-        df_raw["Activity Status"]
-            .astype(str)
-            .str.strip()
-            .str.casefold()
-    )
-    df_raw = df_raw.assign(status=status)      # add it to the frame for later use
-
-# 2️⃣  BASIC COUNTS
-    vc = status.value_counts()
-    completed  = vc.get("completed", 0)
-    not_done   = vc.get("not done", 0)
-    cancelled  = status.str.contains("cancel", na=False).sum()
-
-    known   = completed + cancelled + not_done
-    total   = int(vc.sum())
-    other   = total - known
-
-# 3️⃣  EXTRA KPIs
-    total_failed          = cancelled + not_done
-    failure_rate_pct      = total_failed / known * 100 if known else 0
-    completion_rate_pct   = completed / known * 100 if known else 0
-    completed_vs_failed   = completed / total_failed if total_failed else float("inf")
-
-# 4️⃣  COMPLETION % BY VISIT TYPE
-    vt_completion = (
-        df_raw
-          .groupby("Visit Type")["status"]
-          .apply(lambda s: (s.eq("completed").sum() / len(s)) * 100)
-          .sort_values(ascending=False)
-    )
-
-# 5️⃣  DAILY COMPLETION TREND  (only if Date column exists)
-    if date_col in df_raw.columns:
-        daily_completed = (
-            df_raw.assign(date=pd.to_datetime(df_raw[date_col]).dt.date)
-                  .groupby("date")["status"]
-                  .apply(lambda s: s.eq("completed").sum())
-        )
-
-# 6️⃣  AVERAGE DURATION BY STATUS  (robust time handling)
-    from datetime import time
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        def _to_timedelta_like(col: pd.Series) -> pd.Series:
-            """
-            Convert a column that may contain
-            - datetime64[ns]
-            - datetime.time objects
-            - strings like "08:30"  or "2025-06-25 08:30"
-            to something we can subtract safely.
-            """
-            # Already datetime64? keep as-is
-            if pd.api.types.is_datetime64_any_dtype(col):
-                return col
-
-            # Column of datetime.time objects → Timedelta
-            if pd.api.types.infer_dtype(col) == "datetime":
-                return pd.to_timedelta(col.astype(str))
-
-        # Try parse as full datetime; if that fails, parse as pure time
-            dt_parsed = pd.to_datetime(col, errors="coerce", utc=False)
-            if dt_parsed.notna().all():
-                return dt_parsed
-
-        # Fallback: treat as HH:MM[:SS] strings
-            return pd.to_timedelta(col.astype(str), errors="coerce")
-
-        start_ser = _to_timedelta_like(df_raw[start_col])
-        end_ser   = _to_timedelta_like(df_raw[end_col])
-
-    # If both are Timedelta → duration = end - start
-    # If they’re datetimes → duration = end - start
-        df_raw["duration"] = end_ser - start_ser
-
-    # Average duration per status, display nicely
-        avg_duration_by_status = (
-            df_raw.groupby("status")["duration"]
-                  .mean()
-                  .dt.round("1s")            # tidy to nearest second
-                  .dt.components.apply(
-                      lambda r: f"{int(r.hours):02d}:{int(r.minutes):02d}:{int(r.seconds):02d}",
-                      axis=1
-                  )
-                  .rename("Avg Duration (hh:mm:ss)")
-        )
-
-# 7️⃣  UNEXPECTED STATUSES
-    expected = {"completed", "cancelled", "not done", "pending",
-                "suspended", "started"}
-    unexpected = set(status.unique()) - expected
-# ────────────────────────────────────────────────────────────────────────
-
-
-# ── STREAMLIT OUTPUT  ──────────────────────────────────────────────────
-    with st.expander("🧩 Activity Completion KPIs", expanded=False):
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
-        if completed_vs_failed == float('inf'):
-            c2.metric("🔁 Completed : Failed", "∞")       # no failures
-        else:
-            c2.metric("🔁 Completed : Failed", f"{completed_vs_failed:.1f}×")
-
-        c3.metric("❌ Total Failed", f"{total_failed:,}")
-        c4.metric("⚠ Failure Rate", f"{failure_rate_pct:.1f}%")
-
-    with st.expander("📊 Completion Rate by Visit Type", expanded=False):
-        st.bar_chart(vt_completion)
-
-    if date_col in df_raw.columns:
-        with st.expander("📈 Daily Completed Trend", expanded=False):
-            st.line_chart(daily_completed)
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        with st.expander("⏱ Average Duration by Status", expanded=False):
-            st.dataframe(
-                avg_duration_by_status.rename("Avg Duration").to_frame()
-            )
-
-    with st.expander("🔎 Status Breakdown & Bar Chart", expanded=False):
-        st.bar_chart(vc)
-        st.dataframe(
-            pd.DataFrame(vc).reset_index()
-              .rename(columns={"index": "Activity Status", 0: "Count"})
-        )
-
-    if unexpected:
-        st.warning(f"⚠ Unexpected Statuses Found: {', '.join(unexpected)}")
-
-
-
-    # ── 8. Monthly value / cost / visits ------------------------------
-    # Monthly trends
-    with st.expander("📈 Monthly trends", expanded=False):
-        v_by_m = df_all.groupby("Month")["Total Value"].sum()
-        c_by_m = df_all.groupby("Month")["Total Cost Inc Travel"].sum()
-        n_by_m = df_all.groupby("Month").size()
-
-        st.plotly_chart(px.line(v_by_m, title="Total Value (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(c_by_m, title="Total Cost (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(n_by_m, title="Total Visits by Month"), use_container_width=True)
-
-    with st.expander("🌞 Visit Type Breakdown by Engineer (Sunburst)", expanded=False):
-        if "Name" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Name"],
-                values=None,
-                title="Visit Type → Engineer Breakdown",
-                color="Visit Type",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Activity Status by Visit Type", expanded=False):
-        if "Activity Status" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Activity Status"],
-                values=None,
-                title="Visit Type → Activity Status Breakdown",
-                color="Activity Status",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Value Distribution by Month & Visit Type", expanded=False):
-        if "Month" in df.columns and "Visit Type" in df.columns and "Total Value" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Month", "Visit Type"],
-                values="Total Value",
-                title="Monthly Value → Visit Type",
-                color="Month",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-
-
-    # ── 9. Visit type distribution ------------------------------------
-    if "Visit Type" in df.columns:
-        with st.expander("📋 Visit type breakdown"):
-            st.bar_chart(df["Visit Type"].value_counts())
-
-    # 🔟 Top engineers by value ----------------------------------------
-    if {"Name", "Total Value"}.issubset(df.columns):
-        with st.expander("🏅 Top engineers by value"):
-            eng_val = df.groupby("Name")["Total Value"].sum().sort_values(ascending=False).head(5)
-            st.bar_chart(eng_val)
-
-    # ── 11. Raw data ---------------------------------------------------
-    with st.expander("📑 Raw data", expanded=False):
-        st.dataframe(df, use_container_width=True)
-
-
-
-
-
-# ── KPI: VIP South Oracle Data ──────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "VIP South Oracle Data":
-    import pandas as pd, plotly.express as px
-    from pathlib import Path
-    from datetime import time, timedelta
-
-    # ── 1. Load file
-    fp = Path("VIP South Oracle Data.xlsx")
-    if not fp.exists():
-        st.error("File not found."); st.stop()
-
-    df = pd.read_excel(fp)
-
-    # ── 2. Basic clean  -------------------------------------------------
-    df = df.dropna(how="all")
-    
-    for col in ["Total Time", "Total Time (Inc Travel)"]:
-        df = df[~df[col].astype(str).isin(["00:00", "00:00:00"])]
-
-    # ── 3. Convert duration columns safely -----------------------------
-    dur_cols = ["Total Working Time", "Travel Time",
-                "Total Time", "Total Time (Inc Travel)"]
-
-    def excel_to_timedelta(x):
-        """Handle time-of-day, Excel float, or string to Timedelta."""
-        if pd.isna(x):                    return pd.NaT
-        if isinstance(x, time):           # 07:30:00
-            return timedelta(hours=x.hour, minutes=x.minute, seconds=x.second)
-        if isinstance(x, (int, float)):   # 0.3125  etc.
-            return timedelta(days=float(x))
-        return pd.to_timedelta(str(x), errors="coerce")
-
-    for c in dur_cols:
-        df[c] = df[c].apply(excel_to_timedelta)
-
-    # ── 4. Activate / Deactivate  --------------------------------------
-    def tod_to_td(val):
-        if pd.isna(val): return pd.NaT
-        if isinstance(val, time):
-            return timedelta(hours=val.hour, minutes=val.minute, seconds=val.second)
-        try:
-            h, m, *s = map(int, str(val).split(":")); s = s[0] if s else 0
-            return timedelta(hours=h, minutes=m, seconds=s)
-        except: return pd.NaT
-
-    for c in ["Activate", "Deactivate"]:
-        if c in df.columns:
-            df[c] = df[c].apply(tod_to_td)
-
-    from datetime import timedelta
-
-    def to_seconds(t):
-        """Converts HH:MM:SS or timedelta to seconds, ignoring zero values."""
-        if pd.isna(t):
-            return None
-        try:
-            if isinstance(t, timedelta):
-                total_secs = int(t.total_seconds())
-                return total_secs if total_secs > 0 else None
-            h, m, *s = map(int, str(t).split(":"))
-            s = s[0] if s else 0
-            total_secs = h * 3600 + m * 60 + s
-            return total_secs if total_secs > 0 else None
-        except Exception:
-            return None
-
-
-    # ── 5. Month selector ---------------------------------------------
-    # Ensure Month column is clean
-    df["Month"] = df["Month"].astype(str).str.strip().str.title()
-
-    # Get available months
-    available_months = sorted(df["Month"].dropna().unique())
-
-    # Month selection UI
-    month_options = ["All"] + available_months
-    selected_month = st.selectbox("📅 Select Month", month_options)
-
-    # Save full dataset for charts before filtering
-    df_all = df.copy()
-    if selected_month != "All":
-        df = df[df["Month"] == selected_month]
-
-    # Filter only for selected month
-    
-    if df.empty:
-        st.warning("No data for selected month.")
-        st.stop()
-
-    summary_label = selected_month if selected_month != "All" else "All Months"
-    st.subheader(f"📊 KPI Summary for {summary_label}")
-
-# ───────────────────────────────────────────────────────────────────
-    # Helper functions you requested
-    # ───────────────────────────────────────────────────────────────────
-    def valid_times(series):
-        return series.dropna().loc[~series.astype(str).isin(["00:00", "00:00:00"])]
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty:
-            return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds() // 3600), int(td.total_seconds() % 3600 // 60)
-        return f"{h:02d}:{m:02d}"
-
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds()//3600), int((td.total_seconds()%3600)//60)
-        return f"{h:02d}:{m:02d}"
-
-    def max_min_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—", "—"
-        fmt = lambda td: f"{int(td.total_seconds()//3600):02d}:{int((td.total_seconds()%3600)//60):02d}"
-        return fmt(clean.max()), fmt(clean.min())
-    # ── average lunch duration ───────────────────────────────────────────
-        avg_lunch_str = "N/A"
-        if "Visit Type" in df.columns:
-    # Try to find the column that contains lunch duration
-            lunch_col = next((c for c in df.columns if c.lower().startswith("total time")), None)
-
-            if lunch_col:
-                raw_lunch_times = df.loc[df["Visit Type"].str.lower() == "lunch (30)", lunch_col]
-
-        # Convert to timedelta, drop NAs and zero durations
-                lunch_durations = pd.to_timedelta(raw_lunch_times, errors='coerce').dropna()
-                lunch_durations = lunch_durations[lunch_durations.dt.total_seconds() > 0]
-
-                if not lunch_durations.empty:
-                    avg_td = lunch_durations.mean()
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-
-    # ── 6. Time breakdown expander ------------------------------------
-    with st.expander("🕒 Time Breakdown", expanded=True):
-        summary = {
-            "Avg. Working Time": avg_hhmm(df["Total Working Time"]),
-            "Avg. Travel Time": avg_hhmm(df["Travel Time"]),
-            "Avg. Total Time": avg_hhmm(df["Total Time"]),
-            "Avg. Time (Inc Travel)": avg_hhmm(df["Total Time (Inc Travel)"]),
-            "Avg. Activate Time": avg_hhmm(df["Activate"]),
-            "Avg. Deactivate Time": avg_hhmm(df["Deactivate"]),
-        }
-
-        max_wt, min_wt = max_min_hhmm(df["Total Working Time"])
-        summary["Max Working Time"] = max_wt
-        summary["Min Working Time"] = min_wt
-
-        st.dataframe(pd.DataFrame(summary, index=["Value"]).T, use_container_width=True)
-        st.caption("All times shown in HH:MM format.")
-
-    # ▼▬▬▬▬▬▬▬▬▬▬▬▬  REPLACE THE CURRENT SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▼
-    if df.empty:
-         st.warning("No data for the current selection.")
-    else:
-        try:
-        # ── 1. Exclude Lunch visits where needed ────────────────────
-            no_lunch = df[df["Visit Type"].str.lower() != "lunch (30)"]
-
-        # ── 2. Average Activate / Deactivate using your helper ─────
-            avg_activate_time   = avg_hhmm(df["Activate"])   if "Activate"   in df.columns else "N/A"
-            avg_deactivate_time = avg_hhmm(df["Deactivate"]) if "Deactivate" in df.columns else "N/A"
-
-        # ── Average Lunch Duration (HH:MM) ────────────────────────────────────
-            avg_lunch_str = "N/A"
-            if "Visit Type" in df.columns and "Total Time" in df.columns:
-                lunch_times = df[df["Visit Type"].str.lower() == "lunch (30)"]["Total Time"].dropna()
-
-    # Clean out empty / zero durations
-                lunch_durations = (
-                    pd.to_timedelta(lunch_times.astype(str), errors="coerce")
-                    .dropna()
-                    .loc[lambda x: x.dt.total_seconds() > 0]
-                )
-
-                if not lunch_durations.empty:
-                    avg_secs = lunch_durations.dt.total_seconds().mean()
-                    avg_td = pd.to_timedelta(avg_secs, unit="s")
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-        # ── 4. Value metrics ───────────────────────────────────────
-            value_col = "Total Value" if "Total Value" in df.columns else (
-                        "Value"       if "Value"       in df.columns else None)
-            total_value = f"£{df[value_col].sum():,.2f}"   if value_col else "N/A"
-            avg_value   = f"£{df[value_col].mean():,.2f}" if value_col else "N/A"
-
-        # ── 5. Date range & busiest day ────────────────────────────
-            if "Date" in df.columns:
-                dt           = pd.to_datetime(df["Date"], errors="coerce").dropna()
-                earliest     = dt.min().strftime("%d %b %Y") if not dt.empty else "N/A"
-                latest       = dt.max().strftime("%d %b %Y") if not dt.empty else "N/A"
-                day_counts   = dt.dt.date.value_counts()
-                busiest_day  = day_counts.idxmax().strftime("%d %b %Y") if not day_counts.empty else "N/A"
-                busiest_cnt  = int(day_counts.max()) if not day_counts.empty else "N/A"
-            else:
-                earliest = latest = busiest_day = busiest_cnt = "N/A"
-
-        # ── 6. Common visit type (ex-Lunch) ────────────────────────
-            common_type = (
-                no_lunch["Visit Type"].mode()[0]
-                if "Visit Type" in no_lunch.columns and not no_lunch["Visit Type"].mode().empty
-                else "N/A"
-            )
-
-        # ── 7. Top engineer by value ───────────────────────────────
-            if value_col and "Name" in df.columns and not df.empty:
-                eng_tot = df.groupby("Name")[value_col].sum()
-                top_engineer   = eng_tot.idxmax()
-                top_eng_val_fx = f"≈ £{eng_tot.max():,.0f}"
-            else:
-                top_engineer, top_eng_val_fx = "N/A", ""
-
-        # ── 8. Advanced paragraph ─────────────────────────────────
-            st.markdown(f"""
-    <div style='background:#1f2937;padding:16px 20px;border-radius:10px;
-                color:#e0e0e0;font-size:1.05em;line-height:1.6em'>
-    <b>Advanced Summary:</b><br><br>
-    Across <b>{len(df):,}</b> rows, engineers completed <b>{len(no_lunch):,}</b> visits
-    (<i>excluding lunch</i>), generating <b>{total_value}</b>
-    in total value (avg <b>{avg_value}</b> per visit).<br>
-    The most common visit type was <b>{common_type}</b>.<br><br>
-    Shifts typically began at <b>{avg_activate_time}</b> and ended by
-    <b>{avg_deactivate_time}</b>; average lunch duration was <b>{avg_lunch_str}</b>.<br><br>
-    Top-earning engineer: <b>{top_engineer}</b> {top_eng_val_fx}.<br>
-    Busiest day: <b>{busiest_day}</b> with <b>{busiest_cnt}</b> visits.<br>
-    Data range: <b>{earliest}</b> → <b>{latest}</b>.
-    </div>
-    """, unsafe_allow_html=True)
-
-        # ── 9. Bullet list quick view ──────────────────────────────
-            st.markdown(f"""
-    - **Total Rows:** {len(df):,}
-    - **Unique Engineers:** {df['Name'].nunique() if 'Name' in df.columns else 'N/A'}
-    - **Unique Visit Types:** {df['Visit Type'].nunique() if 'Visit Type' in df.columns else 'N/A'}
-    - **Date Range:** {earliest} – {latest}
-    - **Total Value:** {total_value}
-    - **Avg Value / Visit:** {avg_value}
-    - **Avg Activate Time:** {avg_activate_time}
-    - **Avg Deactivate Time:** {avg_deactivate_time}
-    - **Most Common Visit Type:** {common_type}
-    - **Top Engineer (Value):** {top_engineer}
-    - **Avg Lunch Duration:** {avg_lunch_str}
-    - **Busiest Day:** {busiest_day} ({busiest_cnt} visits)
-    """)
-        except Exception as e:
-            st.error(f"Summary block error: {e}")
-# ▲▬▬▬▬▬▬▬▬▬▬▬▬  END OF PATCHED SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▲
-
-
-
-
-# ── 7. Activity-completion breakdown (full version) ────────────────────
-    import pandas as pd
-    import streamlit as st
-
-# 0️⃣  USE YOUR ORIGINAL (un-filtered) DATAFRAME here
-    df_raw = pd.read_excel("VIP South Oracle Data.xlsx")  # direct load
-    date_col   = "Date"        # <-- change if your column is named differently
-    start_col  = "Start"       # <-- "
-    end_col    = "End"         # <-- "
-
-# 1️⃣  NORMALISE the status text once
-    status = (
-        df_raw["Activity Status"]
-            .astype(str)
-            .str.strip()
-            .str.casefold()
-    )
-    df_raw = df_raw.assign(status=status)      # add it to the frame for later use
-
-# 2️⃣  BASIC COUNTS
-    vc = status.value_counts()
-    completed  = vc.get("completed", 0)
-    not_done   = vc.get("not done", 0)
-    cancelled  = status.str.contains("cancel", na=False).sum()
-
-    known   = completed + cancelled + not_done
-    total   = int(vc.sum())
-    other   = total - known
-
-# 3️⃣  EXTRA KPIs
-    total_failed          = cancelled + not_done
-    failure_rate_pct      = total_failed / known * 100 if known else 0
-    completion_rate_pct   = completed / known * 100 if known else 0
-    completed_vs_failed   = completed / total_failed if total_failed else float("inf")
-
-# 4️⃣  COMPLETION % BY VISIT TYPE
-    vt_completion = (
-        df_raw
-          .groupby("Visit Type")["status"]
-          .apply(lambda s: (s.eq("completed").sum() / len(s)) * 100)
-          .sort_values(ascending=False)
-    )
-
-# 5️⃣  DAILY COMPLETION TREND  (only if Date column exists)
-    if date_col in df_raw.columns:
-        daily_completed = (
-            df_raw.assign(date=pd.to_datetime(df_raw[date_col]).dt.date)
-                  .groupby("date")["status"]
-                  .apply(lambda s: s.eq("completed").sum())
-        )
-
-# 6️⃣  AVERAGE DURATION BY STATUS  (robust time handling)
-    from datetime import time
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        def _to_timedelta_like(col: pd.Series) -> pd.Series:
-            """
-            Convert a column that may contain
-            - datetime64[ns]
-            - datetime.time objects
-            - strings like "08:30"  or "2025-06-25 08:30"
-            to something we can subtract safely.
-            """
-            # Already datetime64? keep as-is
-            if pd.api.types.is_datetime64_any_dtype(col):
-                return col
-
-            # Column of datetime.time objects → Timedelta
-            if pd.api.types.infer_dtype(col) == "datetime":
-                return pd.to_timedelta(col.astype(str))
-
-        # Try parse as full datetime; if that fails, parse as pure time
-            dt_parsed = pd.to_datetime(col, errors="coerce", utc=False)
-            if dt_parsed.notna().all():
-                return dt_parsed
-
-        # Fallback: treat as HH:MM[:SS] strings
-            return pd.to_timedelta(col.astype(str), errors="coerce")
-
-        start_ser = _to_timedelta_like(df_raw[start_col])
-        end_ser   = _to_timedelta_like(df_raw[end_col])
-
-    # If both are Timedelta → duration = end - start
-    # If they’re datetimes → duration = end - start
-        df_raw["duration"] = end_ser - start_ser
-
-    # Average duration per status, display nicely
-        avg_duration_by_status = (
-            df_raw.groupby("status")["duration"]
-                  .mean()
-                  .dt.round("1s")            # tidy to nearest second
-                  .dt.components.apply(
-                      lambda r: f"{int(r.hours):02d}:{int(r.minutes):02d}:{int(r.seconds):02d}",
-                      axis=1
-                  )
-                  .rename("Avg Duration (hh:mm:ss)")
-        )
-
-# 7️⃣  UNEXPECTED STATUSES
-    expected = {"completed", "cancelled", "not done", "pending",
-                "suspended", "started"}
-    unexpected = set(status.unique()) - expected
-# ────────────────────────────────────────────────────────────────────────
-
-
-# ── STREAMLIT OUTPUT  ──────────────────────────────────────────────────
-    with st.expander("🧩 Activity Completion KPIs", expanded=False):
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
-        if completed_vs_failed == float('inf'):
-            c2.metric("🔁 Completed : Failed", "∞")       # no failures
-        else:
-            c2.metric("🔁 Completed : Failed", f"{completed_vs_failed:.1f}×")
-
-        c3.metric("❌ Total Failed", f"{total_failed:,}")
-        c4.metric("⚠ Failure Rate", f"{failure_rate_pct:.1f}%")
-
-    with st.expander("📊 Completion Rate by Visit Type", expanded=False):
-        st.bar_chart(vt_completion)
-
-    if date_col in df_raw.columns:
-        with st.expander("📈 Daily Completed Trend", expanded=False):
-            st.line_chart(daily_completed)
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        with st.expander("⏱ Average Duration by Status", expanded=False):
-            st.dataframe(
-                avg_duration_by_status.rename("Avg Duration").to_frame()
-            )
-
-    with st.expander("🔎 Status Breakdown & Bar Chart", expanded=False):
-        st.bar_chart(vc)
-        st.dataframe(
-            pd.DataFrame(vc).reset_index()
-              .rename(columns={"index": "Activity Status", 0: "Count"})
-        )
-
-    if unexpected:
-        st.warning(f"⚠ Unexpected Statuses Found: {', '.join(unexpected)}")
-
-
-    # ── 8. Monthly value / cost / visits ------------------------------
-    # Monthly trends
-    with st.expander("📈 Monthly trends", expanded=False):
-        v_by_m = df_all.groupby("Month")["Total Value"].sum()
-        c_by_m = df_all.groupby("Month")["Total Cost Inc Travel"].sum()
-        n_by_m = df_all.groupby("Month").size()
-
-        st.plotly_chart(px.line(v_by_m, title="Total Value (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(c_by_m, title="Total Cost (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(n_by_m, title="Total Visits by Month"), use_container_width=True)
-
-    with st.expander("🌞 Visit Type Breakdown by Engineer (Sunburst)", expanded=False):
-        if "Name" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Name"],
-                values=None,
-                title="Visit Type → Engineer Breakdown",
-                color="Visit Type",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Activity Status by Visit Type", expanded=False):
-        if "Activity Status" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Activity Status"],
-                values=None,
-                title="Visit Type → Activity Status Breakdown",
-                color="Activity Status",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Value Distribution by Month & Visit Type", expanded=False):
-        if "Month" in df.columns and "Visit Type" in df.columns and "Total Value" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Month", "Visit Type"],
-                values="Total Value",
-                title="Monthly Value → Visit Type",
-                color="Month",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-
-
-    # ── 9. Visit type distribution ------------------------------------
-    if "Visit Type" in df.columns:
-        with st.expander("📋 Visit type breakdown"):
-            st.bar_chart(df["Visit Type"].value_counts())
-
-    # 🔟 Top engineers by value ----------------------------------------
-    if {"Name", "Total Value"}.issubset(df.columns):
-        with st.expander("🏅 Top engineers by value"):
-            eng_val = df.groupby("Name")["Total Value"].sum().sort_values(ascending=False).head(5)
-            st.bar_chart(eng_val)
-
-    # ── 11. Raw data ---------------------------------------------------
-    with st.expander("📑 Raw data", expanded=False):
-        st.dataframe(df, use_container_width=True)
-
-
-
-
-
-
-# ── KPI: Tier 2 South Oracle Data ──────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "Tier 2 South Oracle Data":
-    import pandas as pd, plotly.express as px
-    from pathlib import Path
-    from datetime import time, timedelta
-
-    # ── 1. Load file
-    fp = Path("Tier 2 South Oracle Data.xlsx")
-    if not fp.exists():
-        st.error("File not found."); st.stop()
-
-    df = pd.read_excel(fp)
-
-    # ── 2. Basic clean  -------------------------------------------------
-    df = df.dropna(how="all")
-    
-    for col in ["Total Time", "Total Time (Inc Travel)"]:
-        df = df[~df[col].astype(str).isin(["00:00", "00:00:00"])]
-
-    # ── 3. Convert duration columns safely -----------------------------
-    dur_cols = ["Total Working Time", "Travel Time",
-                "Total Time", "Total Time (Inc Travel)"]
-
-    def excel_to_timedelta(x):
-        """Handle time-of-day, Excel float, or string to Timedelta."""
-        if pd.isna(x):                    return pd.NaT
-        if isinstance(x, time):           # 07:30:00
-            return timedelta(hours=x.hour, minutes=x.minute, seconds=x.second)
-        if isinstance(x, (int, float)):   # 0.3125  etc.
-            return timedelta(days=float(x))
-        return pd.to_timedelta(str(x), errors="coerce")
-
-    for c in dur_cols:
-        df[c] = df[c].apply(excel_to_timedelta)
-
-    # ── 4. Activate / Deactivate  --------------------------------------
-    def tod_to_td(val):
-        if pd.isna(val): return pd.NaT
-        if isinstance(val, time):
-            return timedelta(hours=val.hour, minutes=val.minute, seconds=val.second)
-        try:
-            h, m, *s = map(int, str(val).split(":")); s = s[0] if s else 0
-            return timedelta(hours=h, minutes=m, seconds=s)
-        except: return pd.NaT
-
-    for c in ["Activate", "Deactivate"]:
-        if c in df.columns:
-            df[c] = df[c].apply(tod_to_td)
-
-    from datetime import timedelta
-
-    def to_seconds(t):
-        """Converts HH:MM:SS or timedelta to seconds, ignoring zero values."""
-        if pd.isna(t):
-            return None
-        try:
-            if isinstance(t, timedelta):
-                total_secs = int(t.total_seconds())
-                return total_secs if total_secs > 0 else None
-            h, m, *s = map(int, str(t).split(":"))
-            s = s[0] if s else 0
-            total_secs = h * 3600 + m * 60 + s
-            return total_secs if total_secs > 0 else None
-        except Exception:
-            return None
-
-
-    # ── 5. Month selector ---------------------------------------------
-    # Ensure Month column is clean
-    df["Month"] = df["Month"].astype(str).str.strip().str.title()
-
-    # Get available months
-    available_months = sorted(df["Month"].dropna().unique())
-
-    # Month selection UI
-    month_options = ["All"] + available_months
-    selected_month = st.selectbox("📅 Select Month", month_options)
-
-    # Save full dataset for charts before filtering
-    df_all = df.copy()
-    if selected_month != "All":
-        df = df[df["Month"] == selected_month]
-
-    # Filter only for selected month
-    
-    if df.empty:
-        st.warning("No data for selected month.")
-        st.stop()
-
-    summary_label = selected_month if selected_month != "All" else "All Months"
-    st.subheader(f"📊 KPI Summary for {summary_label}")
-
-# ───────────────────────────────────────────────────────────────────
-    # Helper functions you requested
-    # ───────────────────────────────────────────────────────────────────
-    def valid_times(series):
-        return series.dropna().loc[~series.astype(str).isin(["00:00", "00:00:00"])]
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty:
-            return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds() // 3600), int(td.total_seconds() % 3600 // 60)
-        return f"{h:02d}:{m:02d}"
-
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds()//3600), int((td.total_seconds()%3600)//60)
-        return f"{h:02d}:{m:02d}"
-
-    def max_min_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—", "—"
-        fmt = lambda td: f"{int(td.total_seconds()//3600):02d}:{int((td.total_seconds()%3600)//60):02d}"
-        return fmt(clean.max()), fmt(clean.min())
-    # ── average lunch duration ───────────────────────────────────────────
-        avg_lunch_str = "N/A"
-        if "Visit Type" in df.columns:
-    # Try to find the column that contains lunch duration
-            lunch_col = next((c for c in df.columns if c.lower().startswith("total time")), None)
-
-            if lunch_col:
-                raw_lunch_times = df.loc[df["Visit Type"].str.lower() == "lunch (30)", lunch_col]
-
-        # Convert to timedelta, drop NAs and zero durations
-                lunch_durations = pd.to_timedelta(raw_lunch_times, errors='coerce').dropna()
-                lunch_durations = lunch_durations[lunch_durations.dt.total_seconds() > 0]
-
-                if not lunch_durations.empty:
-                    avg_td = lunch_durations.mean()
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-
-    # ── 6. Time breakdown expander ------------------------------------
-    with st.expander("🕒 Time Breakdown", expanded=True):
-        summary = {
-            "Avg. Working Time": avg_hhmm(df["Total Working Time"]),
-            "Avg. Travel Time": avg_hhmm(df["Travel Time"]),
-            "Avg. Total Time": avg_hhmm(df["Total Time"]),
-            "Avg. Time (Inc Travel)": avg_hhmm(df["Total Time (Inc Travel)"]),
-            "Avg. Activate Time": avg_hhmm(df["Activate"]),
-            "Avg. Deactivate Time": avg_hhmm(df["Deactivate"]),
-        }
-
-        max_wt, min_wt = max_min_hhmm(df["Total Working Time"])
-        summary["Max Working Time"] = max_wt
-        summary["Min Working Time"] = min_wt
-
-        st.dataframe(pd.DataFrame(summary, index=["Value"]).T, use_container_width=True)
-        st.caption("All times shown in HH:MM format.")
-
-    # ▼▬▬▬▬▬▬▬▬▬▬▬▬  REPLACE THE CURRENT SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▼
-    if df.empty:
-         st.warning("No data for the current selection.")
-    else:
-        try:
-        # ── 1. Exclude Lunch visits where needed ────────────────────
-            no_lunch = df[df["Visit Type"].str.lower() != "lunch (30)"]
-
-        # ── 2. Average Activate / Deactivate using your helper ─────
-            avg_activate_time   = avg_hhmm(df["Activate"])   if "Activate"   in df.columns else "N/A"
-            avg_deactivate_time = avg_hhmm(df["Deactivate"]) if "Deactivate" in df.columns else "N/A"
-
-        # ── Average Lunch Duration (HH:MM) ────────────────────────────────────
-            avg_lunch_str = "N/A"
-            if "Visit Type" in df.columns and "Total Time" in df.columns:
-                lunch_times = df[df["Visit Type"].str.lower() == "lunch (30)"]["Total Time"].dropna()
-
-    # Clean out empty / zero durations
-                lunch_durations = (
-                    pd.to_timedelta(lunch_times.astype(str), errors="coerce")
-                    .dropna()
-                    .loc[lambda x: x.dt.total_seconds() > 0]
-                )
-
-                if not lunch_durations.empty:
-                    avg_secs = lunch_durations.dt.total_seconds().mean()
-                    avg_td = pd.to_timedelta(avg_secs, unit="s")
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-        # ── 4. Value metrics ───────────────────────────────────────
-            value_col = "Total Value" if "Total Value" in df.columns else (
-                        "Value"       if "Value"       in df.columns else None)
-            total_value = f"£{df[value_col].sum():,.2f}"   if value_col else "N/A"
-            avg_value   = f"£{df[value_col].mean():,.2f}" if value_col else "N/A"
-
-        # ── 5. Date range & busiest day ────────────────────────────
-            if "Date" in df.columns:
-                dt           = pd.to_datetime(df["Date"], errors="coerce").dropna()
-                earliest     = dt.min().strftime("%d %b %Y") if not dt.empty else "N/A"
-                latest       = dt.max().strftime("%d %b %Y") if not dt.empty else "N/A"
-                day_counts   = dt.dt.date.value_counts()
-                busiest_day  = day_counts.idxmax().strftime("%d %b %Y") if not day_counts.empty else "N/A"
-                busiest_cnt  = int(day_counts.max()) if not day_counts.empty else "N/A"
-            else:
-                earliest = latest = busiest_day = busiest_cnt = "N/A"
-
-        # ── 6. Common visit type (ex-Lunch) ────────────────────────
-            common_type = (
-                no_lunch["Visit Type"].mode()[0]
-                if "Visit Type" in no_lunch.columns and not no_lunch["Visit Type"].mode().empty
-                else "N/A"
-            )
-
-        # ── 7. Top engineer by value ───────────────────────────────
-            if value_col and "Name" in df.columns and not df.empty:
-                eng_tot = df.groupby("Name")[value_col].sum()
-                top_engineer   = eng_tot.idxmax()
-                top_eng_val_fx = f"≈ £{eng_tot.max():,.0f}"
-            else:
-                top_engineer, top_eng_val_fx = "N/A", ""
-
-        # ── 8. Advanced paragraph ─────────────────────────────────
-            st.markdown(f"""
-    <div style='background:#1f2937;padding:16px 20px;border-radius:10px;
-                color:#e0e0e0;font-size:1.05em;line-height:1.6em'>
-    <b>Advanced Summary:</b><br><br>
-    Across <b>{len(df):,}</b> rows, engineers completed <b>{len(no_lunch):,}</b> visits
-    (<i>excluding lunch</i>), generating <b>{total_value}</b>
-    in total value (avg <b>{avg_value}</b> per visit).<br>
-    The most common visit type was <b>{common_type}</b>.<br><br>
-    Shifts typically began at <b>{avg_activate_time}</b> and ended by
-    <b>{avg_deactivate_time}</b>; average lunch duration was <b>{avg_lunch_str}</b>.<br><br>
-    Top-earning engineer: <b>{top_engineer}</b> {top_eng_val_fx}.<br>
-    Busiest day: <b>{busiest_day}</b> with <b>{busiest_cnt}</b> visits.<br>
-    Data range: <b>{earliest}</b> → <b>{latest}</b>.
-    </div>
-    """, unsafe_allow_html=True)
-
-        # ── 9. Bullet list quick view ──────────────────────────────
-            st.markdown(f"""
-    - **Total Rows:** {len(df):,}
-    - **Unique Engineers:** {df['Name'].nunique() if 'Name' in df.columns else 'N/A'}
-    - **Unique Visit Types:** {df['Visit Type'].nunique() if 'Visit Type' in df.columns else 'N/A'}
-    - **Date Range:** {earliest} – {latest}
-    - **Total Value:** {total_value}
-    - **Avg Value / Visit:** {avg_value}
-    - **Avg Activate Time:** {avg_activate_time}
-    - **Avg Deactivate Time:** {avg_deactivate_time}
-    - **Most Common Visit Type:** {common_type}
-    - **Top Engineer (Value):** {top_engineer}
-    - **Avg Lunch Duration:** {avg_lunch_str}
-    - **Busiest Day:** {busiest_day} ({busiest_cnt} visits)
-    """)
-        except Exception as e:
-            st.error(f"Summary block error: {e}")
-# ▲▬▬▬▬▬▬▬▬▬▬▬▬  END OF PATCHED SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▲
-
-
-
-
-# ── 7. Activity-completion breakdown (full version) ────────────────────
-    import pandas as pd
-    import streamlit as st
-
-# 0️⃣  USE YOUR ORIGINAL (un-filtered) DATAFRAME here
-    df_raw = pd.read_excel("Tier 2 South Oracle Data.xlsx")  # direct load
-    date_col   = "Date"        # <-- change if your column is named differently
-    start_col  = "Start"       # <-- "
-    end_col    = "End"         # <-- "
-
-# 1️⃣  NORMALISE the status text once
-    status = (
-        df_raw["Activity Status"]
-            .astype(str)
-            .str.strip()
-            .str.casefold()
-    )
-    df_raw = df_raw.assign(status=status)      # add it to the frame for later use
-
-# 2️⃣  BASIC COUNTS
-    vc = status.value_counts()
-    completed  = vc.get("completed", 0)
-    not_done   = vc.get("not done", 0)
-    cancelled  = status.str.contains("cancel", na=False).sum()
-
-    known   = completed + cancelled + not_done
-    total   = int(vc.sum())
-    other   = total - known
-
-# 3️⃣  EXTRA KPIs
-    total_failed          = cancelled + not_done
-    failure_rate_pct      = total_failed / known * 100 if known else 0
-    completion_rate_pct   = completed / known * 100 if known else 0
-    completed_vs_failed   = completed / total_failed if total_failed else float("inf")
-
-# 4️⃣  COMPLETION % BY VISIT TYPE
-    vt_completion = (
-        df_raw
-          .groupby("Visit Type")["status"]
-          .apply(lambda s: (s.eq("completed").sum() / len(s)) * 100)
-          .sort_values(ascending=False)
-    )
-
-# 5️⃣  DAILY COMPLETION TREND  (only if Date column exists)
-    if date_col in df_raw.columns:
-        daily_completed = (
-            df_raw.assign(date=pd.to_datetime(df_raw[date_col]).dt.date)
-                  .groupby("date")["status"]
-                  .apply(lambda s: s.eq("completed").sum())
-        )
-
-# 6️⃣  AVERAGE DURATION BY STATUS  (robust time handling)
-    from datetime import time
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        def _to_timedelta_like(col: pd.Series) -> pd.Series:
-            """
-            Convert a column that may contain
-            - datetime64[ns]
-            - datetime.time objects
-            - strings like "08:30"  or "2025-06-25 08:30"
-            to something we can subtract safely.
-            """
-            # Already datetime64? keep as-is
-            if pd.api.types.is_datetime64_any_dtype(col):
-                return col
-
-            # Column of datetime.time objects → Timedelta
-            if pd.api.types.infer_dtype(col) == "datetime":
-                return pd.to_timedelta(col.astype(str))
-
-        # Try parse as full datetime; if that fails, parse as pure time
-            dt_parsed = pd.to_datetime(col, errors="coerce", utc=False)
-            if dt_parsed.notna().all():
-                return dt_parsed
-
-        # Fallback: treat as HH:MM[:SS] strings
-            return pd.to_timedelta(col.astype(str), errors="coerce")
-
-        start_ser = _to_timedelta_like(df_raw[start_col])
-        end_ser   = _to_timedelta_like(df_raw[end_col])
-
-    # If both are Timedelta → duration = end - start
-    # If they’re datetimes → duration = end - start
-        df_raw["duration"] = end_ser - start_ser
-
-    # Average duration per status, display nicely
-        avg_duration_by_status = (
-            df_raw.groupby("status")["duration"]
-                  .mean()
-                  .dt.round("1s")            # tidy to nearest second
-                  .dt.components.apply(
-                      lambda r: f"{int(r.hours):02d}:{int(r.minutes):02d}:{int(r.seconds):02d}",
-                      axis=1
-                  )
-                  .rename("Avg Duration (hh:mm:ss)")
-        )
-
-# 7️⃣  UNEXPECTED STATUSES
-    expected = {"completed", "cancelled", "not done", "pending",
-                "suspended", "started"}
-    unexpected = set(status.unique()) - expected
-# ────────────────────────────────────────────────────────────────────────
-
-
-# ── STREAMLIT OUTPUT  ──────────────────────────────────────────────────
-    with st.expander("🧩 Activity Completion KPIs", expanded=False):
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
-        if completed_vs_failed == float('inf'):
-            c2.metric("🔁 Completed : Failed", "∞")       # no failures
-        else:
-            c2.metric("🔁 Completed : Failed", f"{completed_vs_failed:.1f}×")
-
-        c3.metric("❌ Total Failed", f"{total_failed:,}")
-        c4.metric("⚠ Failure Rate", f"{failure_rate_pct:.1f}%")
-
-    with st.expander("📊 Completion Rate by Visit Type", expanded=False):
-        st.bar_chart(vt_completion)
-
-    if date_col in df_raw.columns:
-        with st.expander("📈 Daily Completed Trend", expanded=False):
-            st.line_chart(daily_completed)
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        with st.expander("⏱ Average Duration by Status", expanded=False):
-            st.dataframe(
-                avg_duration_by_status.rename("Avg Duration").to_frame()
-            )
-
-    with st.expander("🔎 Status Breakdown & Bar Chart", expanded=False):
-        st.bar_chart(vc)
-        st.dataframe(
-            pd.DataFrame(vc).reset_index()
-              .rename(columns={"index": "Activity Status", 0: "Count"})
-        )
-
-    if unexpected:
-        st.warning(f"⚠ Unexpected Statuses Found: {', '.join(unexpected)}")
-    # ── 8. Monthly value / cost / visits ------------------------------
-    # Monthly trends
-    with st.expander("📈 Monthly trends", expanded=False):
-        v_by_m = df_all.groupby("Month")["Total Value"].sum()
-        c_by_m = df_all.groupby("Month")["Total Cost Inc Travel"].sum()
-        n_by_m = df_all.groupby("Month").size()
-
-        st.plotly_chart(px.line(v_by_m, title="Total Value (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(c_by_m, title="Total Cost (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(n_by_m, title="Total Visits by Month"), use_container_width=True)
-
-    with st.expander("🌞 Visit Type Breakdown by Engineer (Sunburst)", expanded=False):
-        if "Name" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Name"],
-                values=None,
-                title="Visit Type → Engineer Breakdown",
-                color="Visit Type",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Activity Status by Visit Type", expanded=False):
-        if "Activity Status" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Activity Status"],
-                values=None,
-                title="Visit Type → Activity Status Breakdown",
-                color="Activity Status",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Value Distribution by Month & Visit Type", expanded=False):
-        if "Month" in df.columns and "Visit Type" in df.columns and "Total Value" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Month", "Visit Type"],
-                values="Total Value",
-                title="Monthly Value → Visit Type",
-                color="Month",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-
-
-    # ── 9. Visit type distribution ------------------------------------
-    if "Visit Type" in df.columns:
-        with st.expander("📋 Visit type breakdown"):
-            st.bar_chart(df["Visit Type"].value_counts())
-
-    # 🔟 Top engineers by value ----------------------------------------
-    if {"Name", "Total Value"}.issubset(df.columns):
-        with st.expander("🏅 Top engineers by value"):
-            eng_val = df.groupby("Name")["Total Value"].sum().sort_values(ascending=False).head(5)
-            st.bar_chart(eng_val)
-
-    # ── 11. Raw data ---------------------------------------------------
-    with st.expander("📑 Raw data", expanded=False):
-        st.dataframe(df, use_container_width=True)
-
-
-
-
-
-# ── KPI: Tier 2 North Oracle Data ──────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "Tier 2 North Oracle Data":
-
-    import pandas as pd, plotly.express as px
-    from pathlib import Path
-    from datetime import time, timedelta
-
-    # ── 1. Load file
-    fp = Path("Tier 2 North Oracle Data.xlsx")
-    if not fp.exists():
-        st.error("File not found."); st.stop()
-
-    df = pd.read_excel(fp)
-
-    # ── 2. Basic clean  -------------------------------------------------
-    df = df.dropna(how="all")
-    
-    for col in ["Total Time", "Total Time (Inc Travel)"]:
-        df = df[~df[col].astype(str).isin(["00:00", "00:00:00"])]
-
-    # ── 3. Convert duration columns safely -----------------------------
-    dur_cols = ["Total Working Time", "Travel Time",
-                "Total Time", "Total Time (Inc Travel)"]
-
-    def excel_to_timedelta(x):
-        """Handle time-of-day, Excel float, or string to Timedelta."""
-        if pd.isna(x):                    return pd.NaT
-        if isinstance(x, time):           # 07:30:00
-            return timedelta(hours=x.hour, minutes=x.minute, seconds=x.second)
-        if isinstance(x, (int, float)):   # 0.3125  etc.
-            return timedelta(days=float(x))
-        return pd.to_timedelta(str(x), errors="coerce")
-
-    for c in dur_cols:
-        df[c] = df[c].apply(excel_to_timedelta)
-
-    # ── 4. Activate / Deactivate  --------------------------------------
-    def tod_to_td(val):
-        if pd.isna(val): return pd.NaT
-        if isinstance(val, time):
-            return timedelta(hours=val.hour, minutes=val.minute, seconds=val.second)
-        try:
-            h, m, *s = map(int, str(val).split(":")); s = s[0] if s else 0
-            return timedelta(hours=h, minutes=m, seconds=s)
-        except: return pd.NaT
-
-    for c in ["Activate", "Deactivate"]:
-        if c in df.columns:
-            df[c] = df[c].apply(tod_to_td)
-
-    from datetime import timedelta
-
-    def to_seconds(t):
-        """Converts HH:MM:SS or timedelta to seconds, ignoring zero values."""
-        if pd.isna(t):
-            return None
-        try:
-            if isinstance(t, timedelta):
-                total_secs = int(t.total_seconds())
-                return total_secs if total_secs > 0 else None
-            h, m, *s = map(int, str(t).split(":"))
-            s = s[0] if s else 0
-            total_secs = h * 3600 + m * 60 + s
-            return total_secs if total_secs > 0 else None
-        except Exception:
-            return None
-
-
-    # ── 5. Month selector ---------------------------------------------
-    # Ensure Month column is clean
-    df["Month"] = df["Month"].astype(str).str.strip().str.title()
-
-    # Get available months
-    available_months = sorted(df["Month"].dropna().unique())
-
-    # Month selection UI
-    month_options = ["All"] + available_months
-    selected_month = st.selectbox("📅 Select Month", month_options)
-
-    # Save full dataset for charts before filtering
-    df_all = df.copy()
-    if selected_month != "All":
-        df = df[df["Month"] == selected_month]
-
-    # Filter only for selected month
-    
-    if df.empty:
-        st.warning("No data for selected month.")
-        st.stop()
-
-    summary_label = selected_month if selected_month != "All" else "All Months"
-    st.subheader(f"📊 KPI Summary for {summary_label}")
-
-# ───────────────────────────────────────────────────────────────────
-    # Helper functions you requested
-    # ───────────────────────────────────────────────────────────────────
-    def valid_times(series):
-        return series.dropna().loc[~series.astype(str).isin(["00:00", "00:00:00"])]
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty:
-            return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds() // 3600), int(td.total_seconds() % 3600 // 60)
-        return f"{h:02d}:{m:02d}"
-
-
-    def avg_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—"
-        secs = clean.dt.total_seconds().mean()
-        td   = pd.to_timedelta(secs, unit="s")
-        h, m = int(td.total_seconds()//3600), int((td.total_seconds()%3600)//60)
-        return f"{h:02d}:{m:02d}"
-
-    def max_min_hhmm(series):
-        clean = valid_times(series)
-        if clean.empty: return "—", "—"
-        fmt = lambda td: f"{int(td.total_seconds()//3600):02d}:{int((td.total_seconds()%3600)//60):02d}"
-        return fmt(clean.max()), fmt(clean.min())
-    # ── average lunch duration ───────────────────────────────────────────
-        avg_lunch_str = "N/A"
-        if "Visit Type" in df.columns:
-    # Try to find the column that contains lunch duration
-            lunch_col = next((c for c in df.columns if c.lower().startswith("total time")), None)
-
-            if lunch_col:
-                raw_lunch_times = df.loc[df["Visit Type"].str.lower() == "lunch (30)", lunch_col]
-
-        # Convert to timedelta, drop NAs and zero durations
-                lunch_durations = pd.to_timedelta(raw_lunch_times, errors='coerce').dropna()
-                lunch_durations = lunch_durations[lunch_durations.dt.total_seconds() > 0]
-
-                if not lunch_durations.empty:
-                    avg_td = lunch_durations.mean()
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-
-    # ── 6. Time breakdown expander ------------------------------------
-    with st.expander("🕒 Time Breakdown", expanded=True):
-        summary = {
-            "Avg. Working Time": avg_hhmm(df["Total Working Time"]),
-            "Avg. Travel Time": avg_hhmm(df["Travel Time"]),
-            "Avg. Total Time": avg_hhmm(df["Total Time"]),
-            "Avg. Time (Inc Travel)": avg_hhmm(df["Total Time (Inc Travel)"]),
-            "Avg. Activate Time": avg_hhmm(df["Activate"]),
-            "Avg. Deactivate Time": avg_hhmm(df["Deactivate"]),
-        }
-
-        max_wt, min_wt = max_min_hhmm(df["Total Working Time"])
-        summary["Max Working Time"] = max_wt
-        summary["Min Working Time"] = min_wt
-
-        st.dataframe(pd.DataFrame(summary, index=["Value"]).T, use_container_width=True)
-        st.caption("All times shown in HH:MM format.")
-
-    # ▼▬▬▬▬▬▬▬▬▬▬▬▬  REPLACE THE CURRENT SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▼
-    if df.empty:
-         st.warning("No data for the current selection.")
-    else:
-        try:
-        # ── 1. Exclude Lunch visits where needed ────────────────────
-            no_lunch = df[df["Visit Type"].str.lower() != "lunch (30)"]
-
-        # ── 2. Average Activate / Deactivate using your helper ─────
-            avg_activate_time   = avg_hhmm(df["Activate"])   if "Activate"   in df.columns else "N/A"
-            avg_deactivate_time = avg_hhmm(df["Deactivate"]) if "Deactivate" in df.columns else "N/A"
-
-        # ── Average Lunch Duration (HH:MM) ────────────────────────────────────
-            avg_lunch_str = "N/A"
-            if "Visit Type" in df.columns and "Total Time" in df.columns:
-                lunch_times = df[df["Visit Type"].str.lower() == "lunch (30)"]["Total Time"].dropna()
-
-    # Clean out empty / zero durations
-                lunch_durations = (
-                    pd.to_timedelta(lunch_times.astype(str), errors="coerce")
-                    .dropna()
-                    .loc[lambda x: x.dt.total_seconds() > 0]
-                )
-
-                if not lunch_durations.empty:
-                    avg_secs = lunch_durations.dt.total_seconds().mean()
-                    avg_td = pd.to_timedelta(avg_secs, unit="s")
-                    avg_lunch_str = f"{int(avg_td.total_seconds() // 3600):02}:{int((avg_td.total_seconds() % 3600) // 60):02}"
-
-        # ── 4. Value metrics ───────────────────────────────────────
-            value_col = "Total Value" if "Total Value" in df.columns else (
-                        "Value"       if "Value"       in df.columns else None)
-            total_value = f"£{df[value_col].sum():,.2f}"   if value_col else "N/A"
-            avg_value   = f"£{df[value_col].mean():,.2f}" if value_col else "N/A"
-
-        # ── 5. Date range & busiest day ────────────────────────────
-            if "Date" in df.columns:
-                dt           = pd.to_datetime(df["Date"], errors="coerce").dropna()
-                earliest     = dt.min().strftime("%d %b %Y") if not dt.empty else "N/A"
-                latest       = dt.max().strftime("%d %b %Y") if not dt.empty else "N/A"
-                day_counts   = dt.dt.date.value_counts()
-                busiest_day  = day_counts.idxmax().strftime("%d %b %Y") if not day_counts.empty else "N/A"
-                busiest_cnt  = int(day_counts.max()) if not day_counts.empty else "N/A"
-            else:
-                earliest = latest = busiest_day = busiest_cnt = "N/A"
-
-        # ── 6. Common visit type (ex-Lunch) ────────────────────────
-            common_type = (
-                no_lunch["Visit Type"].mode()[0]
-                if "Visit Type" in no_lunch.columns and not no_lunch["Visit Type"].mode().empty
-                else "N/A"
-            )
-
-        # ── 7. Top engineer by value ───────────────────────────────
-            if value_col and "Name" in df.columns and not df.empty:
-                eng_tot = df.groupby("Name")[value_col].sum()
-                top_engineer   = eng_tot.idxmax()
-                top_eng_val_fx = f"≈ £{eng_tot.max():,.0f}"
-            else:
-                top_engineer, top_eng_val_fx = "N/A", ""
-
-        # ── 8. Advanced paragraph ─────────────────────────────────
-            st.markdown(f"""
-    <div style='background:#1f2937;padding:16px 20px;border-radius:10px;
-                color:#e0e0e0;font-size:1.05em;line-height:1.6em'>
-    <b>Advanced Summary:</b><br><br>
-    Across <b>{len(df):,}</b> rows, engineers completed <b>{len(no_lunch):,}</b> visits
-    (<i>excluding lunch</i>), generating <b>{total_value}</b>
-    in total value (avg <b>{avg_value}</b> per visit).<br>
-    The most common visit type was <b>{common_type}</b>.<br><br>
-    Shifts typically began at <b>{avg_activate_time}</b> and ended by
-    <b>{avg_deactivate_time}</b>; average lunch duration was <b>{avg_lunch_str}</b>.<br><br>
-    Top-earning engineer: <b>{top_engineer}</b> {top_eng_val_fx}.<br>
-    Busiest day: <b>{busiest_day}</b> with <b>{busiest_cnt}</b> visits.<br>
-    Data range: <b>{earliest}</b> → <b>{latest}</b>.
-    </div>
-    """, unsafe_allow_html=True)
-
-        # ── 9. Bullet list quick view ──────────────────────────────
-            st.markdown(f"""
-    - **Total Rows:** {len(df):,}
-    - **Unique Engineers:** {df['Name'].nunique() if 'Name' in df.columns else 'N/A'}
-    - **Unique Visit Types:** {df['Visit Type'].nunique() if 'Visit Type' in df.columns else 'N/A'}
-    - **Date Range:** {earliest} – {latest}
-    - **Total Value:** {total_value}
-    - **Avg Value / Visit:** {avg_value}
-    - **Avg Activate Time:** {avg_activate_time}
-    - **Avg Deactivate Time:** {avg_deactivate_time}
-    - **Most Common Visit Type:** {common_type}
-    - **Top Engineer (Value):** {top_engineer}
-    - **Avg Lunch Duration:** {avg_lunch_str}
-    - **Busiest Day:** {busiest_day} ({busiest_cnt} visits)
-    """)
-        except Exception as e:
-            st.error(f"Summary block error: {e}")
-# ▲▬▬▬▬▬▬▬▬▬▬▬▬  END OF PATCHED SUMMARY BODY  ▬▬▬▬▬▬▬▬▬▬▬▬▲
-
-
-
-
-    # ── 7. Activity-completion breakdown (full version) ────────────────────
-    import pandas as pd
-    import streamlit as st
-
-# 0️⃣  USE YOUR ORIGINAL (un-filtered) DATAFRAME here
-    df_raw = pd.read_excel("Tier 2 North Oracle Data.xlsx")  # direct load
-    date_col   = "Date"        # <-- change if your column is named differently
-    start_col  = "Start"       # <-- "
-    end_col    = "End"         # <-- "
-
-# 1️⃣  NORMALISE the status text once
-    status = (
-        df_raw["Activity Status"]
-            .astype(str)
-            .str.strip()
-            .str.casefold()
-    )
-    df_raw = df_raw.assign(status=status)      # add it to the frame for later use
-
-# 2️⃣  BASIC COUNTS
-    vc = status.value_counts()
-    completed  = vc.get("completed", 0)
-    not_done   = vc.get("not done", 0)
-    cancelled  = status.str.contains("cancel", na=False).sum()
-
-    known   = completed + cancelled + not_done
-    total   = int(vc.sum())
-    other   = total - known
-
-# 3️⃣  EXTRA KPIs
-    total_failed          = cancelled + not_done
-    failure_rate_pct      = total_failed / known * 100 if known else 0
-    completion_rate_pct   = completed / known * 100 if known else 0
-    completed_vs_failed   = completed / total_failed if total_failed else float("inf")
-
-# 4️⃣  COMPLETION % BY VISIT TYPE
-    vt_completion = (
-        df_raw
-          .groupby("Visit Type")["status"]
-          .apply(lambda s: (s.eq("completed").sum() / len(s)) * 100)
-          .sort_values(ascending=False)
-    )
-
-# 5️⃣  DAILY COMPLETION TREND  (only if Date column exists)
-    if date_col in df_raw.columns:
-        daily_completed = (
-            df_raw.assign(date=pd.to_datetime(df_raw[date_col]).dt.date)
-                  .groupby("date")["status"]
-                  .apply(lambda s: s.eq("completed").sum())
-        )
-
-# 6️⃣  AVERAGE DURATION BY STATUS  (robust time handling)
-    from datetime import time
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        def _to_timedelta_like(col: pd.Series) -> pd.Series:
-            """
-            Convert a column that may contain
-            - datetime64[ns]
-            - datetime.time objects
-            - strings like "08:30"  or "2025-06-25 08:30"
-            to something we can subtract safely.
-            """
-            # Already datetime64? keep as-is
-            if pd.api.types.is_datetime64_any_dtype(col):
-                return col
-
-            # Column of datetime.time objects → Timedelta
-            if pd.api.types.infer_dtype(col) == "datetime":
-                return pd.to_timedelta(col.astype(str))
-
-        # Try parse as full datetime; if that fails, parse as pure time
-            dt_parsed = pd.to_datetime(col, errors="coerce", utc=False)
-            if dt_parsed.notna().all():
-                return dt_parsed
-
-        # Fallback: treat as HH:MM[:SS] strings
-            return pd.to_timedelta(col.astype(str), errors="coerce")
-
-        start_ser = _to_timedelta_like(df_raw[start_col])
-        end_ser   = _to_timedelta_like(df_raw[end_col])
-
-    # If both are Timedelta → duration = end - start
-    # If they’re datetimes → duration = end - start
-        df_raw["duration"] = end_ser - start_ser
-
-    # Average duration per status, display nicely
-        avg_duration_by_status = (
-            df_raw.groupby("status")["duration"]
-                  .mean()
-                  .dt.round("1s")            # tidy to nearest second
-                  .dt.components.apply(
-                      lambda r: f"{int(r.hours):02d}:{int(r.minutes):02d}:{int(r.seconds):02d}",
-                      axis=1
-                  )
-                  .rename("Avg Duration (hh:mm:ss)")
-        )
-
-# 7️⃣  UNEXPECTED STATUSES
-    expected = {"completed", "cancelled", "not done", "pending",
-                "suspended", "started"}
-    unexpected = set(status.unique()) - expected
-# ────────────────────────────────────────────────────────────────────────
-
-
-# ── STREAMLIT OUTPUT  ──────────────────────────────────────────────────
-    with st.expander("🧩 Activity Completion KPIs", expanded=False):
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
-        if completed_vs_failed == float('inf'):
-            c2.metric("🔁 Completed : Failed", "∞")       # no failures
-        else:
-            c2.metric("🔁 Completed : Failed", f"{completed_vs_failed:.1f}×")
-
-        c3.metric("❌ Total Failed", f"{total_failed:,}")
-        c4.metric("⚠ Failure Rate", f"{failure_rate_pct:.1f}%")
-
-    with st.expander("📊 Completion Rate by Visit Type", expanded=False):
-        st.bar_chart(vt_completion)
-
-    if date_col in df_raw.columns:
-        with st.expander("📈 Daily Completed Trend", expanded=False):
-            st.line_chart(daily_completed)
-
-    if {start_col, end_col}.issubset(df_raw.columns):
-        with st.expander("⏱ Average Duration by Status", expanded=False):
-            st.dataframe(
-                avg_duration_by_status.rename("Avg Duration").to_frame()
-            )
-
-    with st.expander("🔎 Status Breakdown & Bar Chart", expanded=False):
-        st.bar_chart(vc)
-        st.dataframe(
-            pd.DataFrame(vc).reset_index()
-              .rename(columns={"index": "Activity Status", 0: "Count"})
-        )
-
-    if unexpected:
-        st.warning(f"⚠ Unexpected Statuses Found: {', '.join(unexpected)}")
-
-    # ── 8. Monthly value / cost / visits ------------------------------
-    # Monthly trends
-    with st.expander("📈 Monthly trends", expanded=False):
-        v_by_m = df_all.groupby("Month")["Total Value"].sum()
-        c_by_m = df_all.groupby("Month")["Total Cost Inc Travel"].sum()
-        n_by_m = df_all.groupby("Month").size()
-
-        st.plotly_chart(px.line(v_by_m, title="Total Value (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(c_by_m, title="Total Cost (£) by Month"), use_container_width=True)
-        st.plotly_chart(px.line(n_by_m, title="Total Visits by Month"), use_container_width=True)
-
-    with st.expander("🌞 Visit Type Breakdown by Engineer (Sunburst)", expanded=False):
-        if "Name" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Name"],
-                values=None,
-                title="Visit Type → Engineer Breakdown",
-                color="Visit Type",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Activity Status by Visit Type", expanded=False):
-        if "Activity Status" in df.columns and "Visit Type" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Visit Type", "Activity Status"],
-                values=None,
-                title="Visit Type → Activity Status Breakdown",
-                color="Activity Status",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with st.expander("🌞 Value Distribution by Month & Visit Type", expanded=False):
-        if "Month" in df.columns and "Visit Type" in df.columns and "Total Value" in df.columns:
-            fig = px.sunburst(
-                df,
-                path=["Month", "Visit Type"],
-                values="Total Value",
-                title="Monthly Value → Visit Type",
-                color="Month",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-
-
-    # ── 9. Visit type distribution ------------------------------------
-    if "Visit Type" in df.columns:
-        with st.expander("📋 Visit type breakdown"):
-            st.bar_chart(df["Visit Type"].value_counts())
-
-    # 🔟 Top engineers by value ----------------------------------------
-    if {"Name", "Total Value"}.issubset(df.columns):
-        with st.expander("🏅 Top engineers by value"):
-            eng_val = df.groupby("Name")["Total Value"].sum().sort_values(ascending=False).head(5)
-            st.bar_chart(eng_val)
-
-    # ── 11. Raw data ---------------------------------------------------
-    with st.expander("📑 Raw data", expanded=False):
-        st.dataframe(df, use_container_width=True)
 
 
 # ── BLOCK 24 ─────────────────────────────────────────────────────────────
@@ -4822,96 +4742,93 @@ if st.session_state.get("kpi_dataset", (None,))[0] == "Sky Business Area":
                 use_container_width=True,
                 key=f"sla_fc_{clean_key}"
             )
-# ── SLA VENUE MATRIX ────────────────────────────────────────────────
-st.markdown("## 🏢 Venue SLA Matrix – SLA Counts per Site")
 
-# 0️⃣  Use previously loaded `sla_df` or load fresh
-if "sla_df" not in locals():
-    try:
-        sla_df = pd.read_excel("AI Test SB Visits.xlsx")
-    except Exception as e:
-        st.error(f"Could not reload SLA file: {e}")
-        st.stop()
+if st.session_state.get("kpi_dataset", (None,))[0] == "Sky Business Area":
+    # ── SLA VENUE MATRIX ──────────────────────────────────────────────── 
+    st.markdown("## 🏢 Venue SLA Matrix – SLA Counts per Site")
 
-    sla_df.columns = sla_df.columns.str.strip()
-    sla_df = sla_df.dropna(subset=["Visit type", "Date of visit"])
-    sla_df["Date of visit"] = pd.to_datetime(sla_df["Date of visit"], errors="coerce")
-    sla_df = sla_df.dropna(subset=["Date of visit"])
-    sla_df["Visit type"] = sla_df["Visit type"].astype(str).str.strip().str.lower()
+    # 0️⃣  Use previously loaded `sla_df` or load fresh
+    if "sla_df" not in locals():
+        try:
+            sla_df = pd.read_excel("AI Test SB Visits.xlsx")
+        except Exception as e:
+            st.error(f"Could not reload SLA file: {e}")
+            st.stop()
 
-# 1️⃣  Filter SLA buckets
-SLA_BUCKETS = ["2hr", "4hr", "5 day", "8h", "8 hr", "8hr"]
-sla_ven = sla_df[
-    sla_df["Visit type"].str.lower().isin(SLA_BUCKETS)
-].copy()
+        sla_df.columns = sla_df.columns.str.strip()
+        sla_df = sla_df.dropna(subset=["Visit type", "Date of visit"])
+        sla_df["Date of visit"] = pd.to_datetime(sla_df["Date of visit"], errors="coerce")
+        sla_df = sla_df.dropna(subset=["Date of visit"])
+        sla_df["Visit type"] = sla_df["Visit type"].astype(str).str.strip().str.lower()
 
-# 2️⃣  Standardise SLA labels
-sla_ven["SLA"] = sla_ven["Visit type"].str.lower().replace({"8 hr": "8h"})
+    # 1️⃣  Filter SLA buckets
+    SLA_BUCKETS = ["2hr", "4hr", "5 day", "8h", "8 hr", "8hr"]
+    sla_ven = sla_df[
+        sla_df["Visit type"].str.lower().isin(SLA_BUCKETS)
+    ].copy()
 
-# 3️⃣  Pivot: Venue × SLA Counts
-pivot = (
-    sla_ven.pivot_table(
-        index="Venue Name",
-        columns="SLA",
-        values="VR Number",
-        aggfunc="count",
-        fill_value=0
+    # 2️⃣  Standardise SLA labels
+    sla_ven["SLA"] = sla_ven["Visit type"].str.lower().replace({"8 hr": "8h"})
+
+    # 3️⃣  Pivot: Venue × SLA Counts
+    pivot = (
+        sla_ven.pivot_table(
+            index="Venue Name",
+            columns="SLA",
+            values="VR Number",
+            aggfunc="count",
+            fill_value=0
+        )
+        .assign(Total=lambda d: d.sum(axis=1))
+        .sort_values("Total", ascending=False)
     )
-    .assign(Total=lambda d: d.sum(axis=1))
-    .sort_values("Total", ascending=False)
-)
 
-# ── 💾 Table: All Venues ───────────────────────────────────────────
-with st.expander("📋 Full Venue SLA Table", expanded=False):
-    st.dataframe(pivot, use_container_width=True)
+    # ── 💾 Table: All Venues ───────────────────────────────────────────
+    with st.expander("📋 Full Venue SLA Table", expanded=False):
+        st.dataframe(pivot, use_container_width=True)
 
-# ── 📊 Charts: in tabs (NOT in an expander to avoid nesting) ───────
-tabs = st.tabs(["🏆 Top 20 by Total", "📊 Stacked SLA Mix", "🌡️ Heatmap"])
+    # ── 📊 Charts: in tabs (NOT in an expander to avoid nesting) ───────
+    tabs = st.tabs(["🏆 Top 20 by Total", "📊 Stacked SLA Mix", "🌡️ Heatmap"])
 
-# ── Chart A: Top 20 Horizontal Bar
-with tabs[0]:
-    top20 = pivot.head(20).reset_index().sort_values("Total")
-    fig_top = px.bar(
-        top20,
-        y="Venue Name", x="Total", orientation="h",
-        title="Top 20 Venues by SLA Visits", text="Total"
-    )
-    st.plotly_chart(fig_top, use_container_width=True)
+    # ── Chart A: Top 20 Horizontal Bar
+    with tabs[0]:
+        top20 = pivot.head(20).reset_index().sort_values("Total")
+        fig_top = px.bar(
+            top20,
+            y="Venue Name", x="Total", orientation="h",
+            title="Top 20 Venues by SLA Visits", text="Total"
+        )
+        st.plotly_chart(fig_top, use_container_width=True)
 
-# ── Chart B: Stacked SLA Distribution
-with tabs[1]:
-    stacked = (
-        pivot.head(20)
-             .drop(columns="Total")
-             .reset_index()
-             .melt(id_vars="Venue Name", var_name="SLA", value_name="Tickets")
-    )
-    fig_stack = px.bar(
-        stacked,
-        y="Venue Name", x="Tickets", color="SLA", orientation="h",
-        title="Top 20 SLA Mix by Venue"
-    )
-    st.plotly_chart(fig_stack, use_container_width=True)
+    # ── Chart B: Stacked SLA Distribution
+    with tabs[1]:
+        stacked = (
+            pivot.head(20)
+                .drop(columns="Total")
+                .reset_index()
+                .melt(id_vars="Venue Name", var_name="SLA", value_name="Tickets")
+        )
+        fig_stack = px.bar(
+            stacked,
+            y="Venue Name", x="Tickets", color="SLA", orientation="h",
+            title="Top 20 SLA Mix by Venue"
+        )
+        st.plotly_chart(fig_stack, use_container_width=True)
 
-# ── Chart C: Heatmap of All Venues × SLA Buckets
-with tabs[2]:
-    heat = px.imshow(
-        pivot.drop(columns="Total"),
-        color_continuous_scale="Blues",
-        aspect="auto",
-        title="SLA Heatmap – Venue × SLA Bucket"
-    )
-    st.plotly_chart(heat, use_container_width=True)
+    # ── Chart C: Heatmap of All Venues × SLA Buckets
+    with tabs[2]:
+        heat = px.imshow(
+            pivot.drop(columns="Total"),
+            color_continuous_scale="Blues",
+            aspect="auto",
+            title="SLA Heatmap – Venue × SLA Bucket"
+        )
+        st.plotly_chart(heat, use_container_width=True)
 
-
-    # ── VIP - SB Standby KPI Block (from 4 Oracle sources) ──────────────────────────────────────────────────────────
-    if st.session_state.get("kpi_dataset", (None,))[0] == "Sky Business Area":
-
+        # ── VIP - SB Standby KPI Block (from 4 Oracle sources) ──────────────
         with st.expander("🛡️ VIP - SB Standby Overview (from 4 Oracle sources)", expanded=False):
 
-            # ------------------------------------------------------------------
             # 1⃣  Load & combine Oracle files
-            # ------------------------------------------------------------------
             files = {
                 "VIP North":   "VIP North Oracle Data.xlsx",
                 "VIP South":   "VIP South Oracle Data.xlsx",
@@ -4936,18 +4853,14 @@ with tabs[2]:
             standby_df.columns = standby_df.columns.str.strip()
             standby_df.dropna(how="all", inplace=True)
 
-            # ------------------------------------------------------------------
             # 2⃣  Filter to VIP‑SB Standby rows only
-            # ------------------------------------------------------------------
             mask = standby_df["Visit Type"].astype(str).str.contains("VIP - SB Standby", case=False, na=False)
             sb_df_all = standby_df[mask].copy()
             if sb_df_all.empty:
                 st.info("No rows found for 'VIP - SB Standby' in the Oracle datasets.")
                 st.stop()
 
-            # ------------------------------------------------------------------
             # 3⃣  Basic cleaning & helpers
-            # ------------------------------------------------------------------
             sb_df_all["Date"] = pd.to_datetime(sb_df_all["Date"], errors="coerce")
             sb_df_all.dropna(subset=["Date"], inplace=True)
             sb_df_all["Month"] = sb_df_all["Date"].dt.to_period("M").astype(str)
@@ -4988,12 +4901,10 @@ with tabs[2]:
             chosen_dea_col  = DEACTIVATE_COLS[0] if DEACTIVATE_COLS else None
 
             for col in (chosen_act_col, chosen_dea_col):
-                if col:  # parse to Timedelta as Start/End do
+                if col:
                     sb_df_all[col] = sb_df_all[col].apply(_to_td)
 
-            # ------------------------------------------------------------------
             # 4⃣  Split dataframes for different metric purposes
-            # ------------------------------------------------------------------
             if "Activity Status" in sb_df_all.columns:
                 completed_mask = sb_df_all["Activity Status"].str.lower() == "completed"
                 comp_df = sb_df_all[completed_mask].copy()
@@ -5002,15 +4913,13 @@ with tabs[2]:
                 comp_df = sb_df_all.copy()
                 val_df  = sb_df_all.copy()
 
-            # ------------------------------------------------------------------
             # 5⃣  KPI Header
-            # ------------------------------------------------------------------
             st.markdown("### 📌 Summary KPIs")
             k1, k2, k3, k4 = st.columns(4)
             k1.metric("Total Visits (Completed)", f"{len(comp_df):,}")
             k2.metric("Total Value (£) (Comp + Susp)", f"£{val_df.get('Total Value', pd.Series(dtype=float)).sum():,.0f}")
 
-            # ---- New logic: take Start avg only IF *that row* also has a valid Activate ----
+            # New logic: take Start avg only IF *that row* also has a valid Activate
             def _avg_col_pair(df, primary_col, require_col):
                 if not primary_col or not require_col:
                     return "–"
@@ -5034,32 +4943,37 @@ with tabs[2]:
             )
             st.markdown("---")
 
-            # ------------------------------------------------------------------
             # 6⃣  Monthly Count (Completed)
-            # ------------------------------------------------------------------
             monthly_ct = comp_df.groupby("Month").size().reset_index(name="Visits")
             fig_bar = px.bar(monthly_ct, x="Month", y="Visits", title="Monthly Completed Count – VIP ‑ SB Standby")
             st.plotly_chart(fig_bar, use_container_width=True)
 
-            # ------------------------------------------------------------------
             # 7⃣  Activity Status Pie (all rows)
-            # ------------------------------------------------------------------
             if "Activity Status" in sb_df_all.columns:
                 pie_df = sb_df_all["Activity Status"].value_counts().reset_index()
                 pie_df.columns = ["Activity", "Count"]
                 fig_pie = px.pie(pie_df, names="Activity", values="Count", title="Activity Status Distribution")
                 st.plotly_chart(fig_pie, use_container_width=True)
 
-            # ------------------------------------------------------------------
             # 8⃣  Sunburst – Team ▸ Month ▸ Activity
-            # ------------------------------------------------------------------
             if "Activity Status" in sb_df_all.columns:
                 fig_sb = px.sunburst(sb_df_all, path=["Team", "Month", "Activity Status"], title="Team • Month • Activity Breakdown")
                 st.plotly_chart(fig_sb, use_container_width=True)
 
-            # ------------------------------------------------------------------
             # 9⃣  6‑Month Forecast (Completed counts)
-            # ------------------------------------------------------------------
+            def _simple_forecast(series, periods=6):
+                import numpy as np
+                y = np.array(series.values)
+                x = np.arange(len(y))
+                if len(x) < 2:
+                    return np.full(periods, 0)
+                coef = np.polyfit(x, y, 1)
+                trend = coef[0]
+                intercept = coef[1]
+                x_future = np.arange(len(y), len(y)+periods)
+                y_future = trend * x_future + intercept
+                return np.maximum(y_future, 0).round().astype(int)
+            
             series = comp_df.groupby("Month").size().sort_index()
             if len(series) >= 2:
                 fc_vals = _simple_forecast(series, periods=6)
@@ -5077,7 +4991,6 @@ with tabs[2]:
                 st.info("Not enough historical points to build a forecast (need ≥2 months).")
 
             st.caption("All averages use only rows meeting the dual‑time requirement (Start+Activate, End+Deactivate). Total value aggregates Completed + Suspended records across all four Oracle sheets.")
-
 
 
 
