@@ -1,72 +1,76 @@
-# --- NUMBER 1 ---
-# --- SECTION: IMPORTS & LOGO BASE64 ---
-
-
 import streamlit as st
-
-# Initialize session state defaults once
-if "screen" not in st.session_state:
-    st.session_state.screen = "area_selection"  # Set your starting page here
-
-if "user_df" not in st.session_state:
-    st.session_state.user_df = None
-
-if "user_file_name" not in st.session_state:
-    st.session_state.user_file_name = None
-
-if "selected_dataset" not in st.session_state:
-    st.session_state.selected_dataset = None
-
-
-import pandas as pd
-import os
-import streamlit as st
-
-
-import os
-import re
-import csv
-import time
-import base64
-import datetime
-import calendar
-
 import pandas as pd
 import numpy as np
-
+import base64
+import re
+import datetime
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
-
 import plotly.express as px
 import plotly.graph_objects as go
+import time
 
 from openai import OpenAI, OpenAIError
-
 from statsmodels.tsa.arima.model import ARIMA
-
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
 
-import uuid
-import pathlib
-import textwrap
-import streamlit as st
-from collections import OrderedDict
-st.write("Current screen:", st.session_state.get("screen"))
+# --- Session State Defaults ---
+if "screen" not in st.session_state:
+    st.session_state.screen = "area_selection"
+if "user_df" not in st.session_state:
+    st.session_state.user_df = None
+if "user_file_name" not in st.session_state:
+    st.session_state.user_file_name = None
+if "selected_dataset" not in st.session_state:
+    st.session_state.selected_dataset = None
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-# Function to load Excel file safely
-def load_file(path):
+# --- Cache: Load Excel file and add source ---
+@st.cache_data(show_spinner=False)
+def load_oracle_file(path, source_label):
+    df = pd.read_excel(path)
+    df["Source"] = source_label
+    return df
+
+# --- Cache: Load logo image ---
+@st.cache_data(show_spinner=False)
+def load_logo_base64(logo_path="sky_vip_logo.png"):
+    with open(logo_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+logo_base64 = load_logo_base64()
+
+# --- Files to load ---
+files = {
+    "VIP North": "VIP North Oracle Data.xlsx",
+    "VIP South": "VIP South Oracle Data.xlsx",
+    "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+    "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
+}
+
+# --- Load all data once ---
+all_frames = []
+for team, path in files.items():
     try:
-        return pd.read_excel(path)
+        df = load_oracle_file(path, team)
+        df['Team'] = team
+        all_frames.append(df)
     except Exception as e:
-        st.error(f"Failed to load data from {path}: {e}")
-        return pd.DataFrame()
+        st.warning(f"⚠️ Could not load {path}: {e}")
 
+if all_frames:
+    data = pd.concat(all_frames, ignore_index=True)
+    data.columns = data.columns.str.strip()
+else:
+    st.error("No data loaded from Oracle files.")
+    st.stop()
 
-# --- NUMBER 2 ---#
-# --- SECTION: CUSTOM CSS ---
+# --- Custom CSS ---
 st.markdown("""
     <style>
     .main-title {
@@ -97,17 +101,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- NUMBER 3 ---#
-# --- SECTION: LOAD LOGO BASE64 FUNCTION ---
-def get_logo_base64(logo_path="sky_vip_logo.png"):
-    with open(logo_path, "rb") as image_file:
-        encoded = base64.b64encode(image_file.read()).decode()
-    return encoded
-
-logo_base64 = get_logo_base64("sky_vip_logo.png")
-
-# --- NUMBER 4 ---#
-# --- SECTION: LOGIN FUNCTION ---
+# --- Login function ---
 def login():
     st.markdown(
         f"<div style='text-align: center; margin-bottom: 24px;'>"
@@ -116,42 +110,34 @@ def login():
     )
     st.title("🔐 Welcome to the Visit Insights Dashboard")
     st.write("Please enter your access code to continue.")
-
     password = st.text_input("Access Code", type="password")
-
     if password == "sky":
         st.session_state.authenticated = True
-        st.session_state.screen = "area_selection"  # ✅ Start on the first menu screen
+        st.session_state.screen = "area_selection"
         st.rerun()
     elif password != "":
         st.error("Invalid code. Please try again.")
 
-# --- NUMBER 5 ---#
-# --- SECTION: AUTH CHECK ---
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
+# --- Authentication check ---
 if not st.session_state.authenticated:
     login()
-    st.stop()  # Prevent further app execution until authenticated
+    st.stop()
 
-# --- SECTION: MAIN APP (After Login) ---
-import base64
-
-# --- LOGO SECTION ---
-with open("sky_vip_logo.png", "rb") as image_file:
-    encoded = base64.b64encode(image_file.read()).decode()
+# --- Show logo and welcome text ---
 st.markdown(
     f"<div style='text-align: center; margin-bottom: 20px;'>"
-    f"<img src='data:image/png;base64,{encoded}' width='550'></div>",
+    f"<img src='data:image/png;base64,{logo_base64}' width='550'></div>",
     unsafe_allow_html=True
 )
-
 st.markdown("""
 <div class='adv-summary'>
 Welcome to the advanced reporting hub. Use the sidebar to explore summaries, trends, and performance across the teams.
 </div>
 """, unsafe_allow_html=True)
+
+
+
+
 
 # --- NUMBER 6 ---#
 # --- SECTION: AREA SELECTION MAIN MENU ---
@@ -190,7 +176,1402 @@ if st.session_state.screen == "area_selection":
         if st.button("🗺️ Highlands & Islands", use_container_width=True):
             st.session_state.screen = "highlands_islands"
             st.rerun()
+        # Third row with 2 columns for new areas
+    row3_cols = st.columns(2)
 
+    with row3_cols[0]:
+        if st.button("🏬 Sky Retail", use_container_width=True):
+            st.session_state.screen = "sky_retail"
+            st.rerun()
+
+    with row3_cols[1]:
+        if st.button("🏢 Sky Business", use_container_width=True):
+            st.session_state.screen = "sky_business"
+            st.rerun()
+
+
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import re
+
+if st.session_state.screen == "sky_retail":
+    st.title("Sky Retail")
+
+    if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_sky_retail"):
+        st.session_state.screen = "area_selection"
+        st.rerun()
+
+    col_name = "Sky Retail Stakeholder"
+    if col_name not in data.columns:
+        st.error(f"Column '{col_name}' not found in Oracle datasets.")
+        st.stop()
+
+    # Helper functions
+    def time_to_minutes(val):
+        import datetime
+        if pd.isnull(val):
+            return 0
+        if isinstance(val, (int, float)):
+            return val
+        if isinstance(val, datetime.timedelta):
+            return val.total_seconds() / 60
+        if isinstance(val, datetime.time):
+            return val.hour * 60 + val.minute
+        if isinstance(val, str):
+            try:
+                t = pd.to_datetime(val).time()
+                return t.hour * 60 + t.minute
+            except Exception:
+                return 0
+        return 0
+
+    def minutes_to_hhmm(minutes):
+        hours = int(minutes // 60)
+        mins = int(minutes % 60)
+        return f"{hours}:{mins:02}"
+
+    def clean_stakeholder(val):
+        v = str(val).strip().lower()
+        if re.search(r"currys?|curry's", v):
+            return "Currys"
+        if "ee" in v:
+            return "EE"
+        if "sky" in v:
+            return "Sky Retail"
+        return "Other"
+
+    def better_forecast(series, months=6):
+        series = series.sort_index()
+        n = len(series)
+        if n == 0:
+            return [0] * months
+        if n < 3:
+            avg = int(series.mean())
+            return [avg] * months
+        x = np.arange(n) if n < 4 else np.arange(n-4, n)
+        y = series.values if n < 4 else series.values[-4:]
+        m, b = np.polyfit(x, y, 1)
+        fut_x = np.arange(n, n + months)
+        y_pred = (m * fut_x + b)
+        recent_avg = max(1, int(series.tail(2).mean()))
+        y_pred = np.where(y_pred < recent_avg, recent_avg, y_pred)
+        return y_pred.round().astype(int)
+
+    # Prepare cleaned stakeholder column
+    data["Sky Retail Stakeholder Clean"] = data[col_name].apply(clean_stakeholder)
+
+    # Define stakeholders and create tabs
+    stakeholders = ["Currys", "Sky Retail", "EE"]
+    tabs = st.tabs(stakeholders)
+
+    for i, stakeholder in enumerate(stakeholders):
+        with tabs[i]:
+            df = data[data["Sky Retail Stakeholder Clean"] == stakeholder].copy()
+            if df.empty:
+                st.info(f"No data for {stakeholder}.")
+                continue
+
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            df = df[df["Date"].notna()]
+            df["Month"] = df["Date"].dt.to_period("M").astype(str)
+
+            if "Total Time" in df.columns:
+                df["Total Time (min)"] = df["Total Time"].apply(time_to_minutes)
+            else:
+                df["Total Time (min)"] = 0
+
+            # KPIs in expander 
+            with st.expander(f"📊 {stakeholder} KPIs", expanded=True):
+                count_visits = len(df)
+                total_value = df["Total Value"].sum() if "Total Value" in df.columns else 0
+                avg_value = df["Total Value"].mean() if "Total Value" in df.columns else 0
+                total_time = df["Total Time (min)"].sum()
+                avg_time = df["Total Time (min)"].mean()
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric(f"Total {stakeholder} Visits", f"{count_visits:,}")
+
+                with col2:
+                    st.metric("Total Value (£)", f"£{total_value:,.0f}")
+
+                with col3:
+                    st.metric("Avg Value", f"£{avg_value:,.0f}")
+
+                # New row for Total Time and Average Time split into separate columns
+                col4, col5, col6 = st.columns(3)
+
+                with col4:
+                    st.metric("Total Time", f"{minutes_to_hhmm(total_time)}")
+
+                with col5:
+                    st.metric("Average Time", f"{minutes_to_hhmm(avg_time)}")
+
+                with col6:
+                    pass  # Empty column for spacing
+
+                # Monthly Visits table
+                monthly_visits = (
+                    df.groupby(df["Date"].dt.to_period("M").astype(str))
+                      .size()
+                      .reset_index(name="Visit Count")
+                      .rename(columns={"Date": "Month"})
+                )
+                st.markdown("**Monthly Visits (last 4 months shown)**")
+                st.dataframe(monthly_visits.tail(4), use_container_width=True)
+
+                # Monthly Total Value table with £ formatting
+                monthly_value = (
+                    df.groupby(df["Date"].dt.to_period("M").astype(str))["Total Value"]
+                      .sum()
+                      .reset_index(name="Total Value")
+                      .rename(columns={"Date": "Month"})
+                )
+                monthly_value["Total Value"] = monthly_value["Total Value"].map("£{0:,.0f}".format)
+                st.markdown("**Monthly Total Value (£) (last 4 months shown)**")
+                st.dataframe(monthly_value.tail(4), use_container_width=True)
+
+                # Visits by Day of Week table ordered Monday to Sunday
+                df["DayOfWeek"] = df["Date"].dt.day_name()
+                visits_by_day = (
+                    df.groupby("DayOfWeek")
+                      .size()
+                      .reset_index(name="Visit Count")
+                )
+                day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                visits_by_day["DayOfWeek"] = pd.Categorical(visits_by_day["DayOfWeek"], categories=day_order, ordered=True)
+                visits_by_day = visits_by_day.sort_values("DayOfWeek")
+                st.markdown("**Visits by Day of Week**")
+                st.dataframe(visits_by_day, use_container_width=True)
+
+                # Total Value by Day of Week with £ formatting
+                value_by_day = (
+                    df.groupby("DayOfWeek")["Total Value"]
+                      .sum()
+                      .reset_index(name="Total Value")
+                )
+                value_by_day["DayOfWeek"] = pd.Categorical(value_by_day["DayOfWeek"], categories=day_order, ordered=True)
+                value_by_day = value_by_day.sort_values("DayOfWeek")
+                value_by_day["Total Value"] = value_by_day["Total Value"].map("£{0:,.0f}".format)
+                st.markdown("**Total Value (£) by Day of Week**")
+                st.dataframe(value_by_day, use_container_width=True)
+
+
+
+
+
+            # Breakdown by Stakeholder expander
+            with st.expander(f"📋 Breakdown by {stakeholder} Stakeholder", expanded=False):
+                by_stake = df.groupby(col_name).agg(
+                    Visits=('Name', 'count'),
+                    Value=('Total Value', 'sum'),
+                    Time=('Total Time (min)', 'sum')
+                ).sort_values("Visits", ascending=False)
+                by_stake["Time (hh:mm)"] = by_stake["Time"].apply(minutes_to_hhmm)
+                by_stake["Value (£)"] = by_stake["Value"].apply(lambda x: f"£{x:,.0f}")
+                by_stake = by_stake.drop(columns=["Value", "Time"])
+                st.dataframe(by_stake, use_container_width=True)
+
+            # Monthly Visit Trends expander
+            with st.expander(f"📈 Monthly Visit Trends for {stakeholder}", expanded=False):
+                by_month = df.groupby(["Month", col_name]).size().reset_index(name="Visits")
+                fig_visits = px.bar(by_month, x="Month", y="Visits", color=col_name, barmode="group",
+                                   title=f"Visits per Month by Stakeholder for {stakeholder}")
+                st.plotly_chart(fig_visits, use_container_width=True)
+
+            # Monthly Value Trends expander
+            with st.expander(f"📈 Monthly Value Trends for {stakeholder}", expanded=False):
+                if "Total Value" in df.columns:
+                    by_value = df.groupby(["Month", col_name])["Total Value"].sum().reset_index()
+                    fig_value = px.line(by_value, x="Month", y="Total Value", color=col_name,
+                                       title=f"Value per Month by Stakeholder for {stakeholder}")
+                    st.plotly_chart(fig_value, use_container_width=True)
+
+            # Activity Status Pie Chart expander
+            with st.expander(f"📊 Visit Activity Status Split for {stakeholder}", expanded=False):
+                if "Activity Status" in df.columns:
+                    status_df = df["Activity Status"].value_counts().reset_index()
+                    status_df.columns = ["Activity Status", "Count"]
+                    fig_pie = px.pie(status_df, names="Activity Status", values="Count")
+                    st.plotly_chart(fig_pie, use_container_width=True)
+
+            # Team Breakdown expander
+            with st.expander("📋 Team Breakdown by Stakeholder", expanded=False):
+                team_pivot = pd.pivot_table(
+                    df,
+                    index="Team",
+                    columns="Sky Retail Stakeholder Clean",
+                    values="Name",
+                    aggfunc="count",
+                    fill_value=0
+                )
+                st.dataframe(team_pivot, use_container_width=True)
+
+            # Engineer Breakdown expander
+            eng_pivot = (
+                df.groupby(["Sky Retail Stakeholder Clean", "Name"])
+                .agg(Visits=("Name", "count"),
+                     Value=("Total Value", "sum"),
+                     Time=("Total Time (min)", "sum"))
+                .reset_index()
+            )
+            eng_pivot["Time (hh:mm)"] = eng_pivot["Time"].apply(minutes_to_hhmm)
+            eng_pivot["Value (£)"] = eng_pivot["Value"].apply(lambda x: f"£{x:,.0f}")
+
+            for eng_stakeholder in eng_pivot["Sky Retail Stakeholder Clean"].unique():
+                with st.expander(f"👤 Engineer Breakdown for {eng_stakeholder}", expanded=False):
+                    display = eng_pivot[
+                        eng_pivot["Sky Retail Stakeholder Clean"] == eng_stakeholder
+                    ][["Name", "Visits", "Value (£)", "Time (hh:mm)"]].sort_values("Visits", ascending=False)
+                    st.dataframe(display, use_container_width=True)
+
+            # Overall Forecasts expander
+            with st.expander(f"🔮 Overall {stakeholder} Forecasts", expanded=False):
+                # Visits Forecast
+                st.markdown("**Visits Forecast (based on historic monthly visits)**")
+                monthly_visits = df.groupby("Month").size().sort_index()
+                if len(monthly_visits) < 2:
+                    st.info("Not enough data for an overall visits forecast.")
+                else:
+                    fc_vals = better_forecast(monthly_visits, months=6)
+                    last_month = pd.Period(monthly_visits.index.max(), freq="M")
+                    fut_months = [str(last_month + i) for i in range(1, 7)]
+
+                    fc_df = pd.concat([
+                        pd.DataFrame({"Month": monthly_visits.index, "Visits": monthly_visits.values, "Type": "Actual"}),
+                        pd.DataFrame({"Month": fut_months, "Visits": fc_vals, "Type": "Forecast"})
+                    ], ignore_index=True)
+
+                    fig_visits_fc = px.line(
+                        fc_df, x="Month", y="Visits", color="Type", markers=True,
+                        title=f"{stakeholder} – Overall Visits Forecast"
+                    )
+                    st.plotly_chart(fig_visits_fc, use_container_width=True)
+
+                # Value Forecast
+                st.markdown("**Value Forecast (based on historic monthly value)**")
+                if "Total Value" in df.columns:
+                    monthly_value = df.groupby("Month")["Total Value"].sum().sort_index()
+                    if len(monthly_value) < 2:
+                        st.info("Not enough data for a value forecast.")
+                    else:
+                        fc_vals = better_forecast(monthly_value, months=6)
+                        last_month = pd.Period(monthly_value.index.max(), freq="M")
+                        fut_months = [str(last_month + i) for i in range(1, 7)]
+
+                        fc_df = pd.concat([
+                            pd.DataFrame({"Month": monthly_value.index, "Value": monthly_value.values, "Type": "Actual"}),
+                            pd.DataFrame({"Month": fut_months, "Value": fc_vals, "Type": "Forecast"})
+                        ], ignore_index=True)
+
+                        fig_value_fc = px.line(
+                            fc_df, x="Month", y="Value", color="Type", markers=True,
+                            title=f"{stakeholder} – Overall Value Forecast (£)"
+                        )
+                        st.plotly_chart(fig_value_fc, use_container_width=True)
+                else:
+                    st.warning("Total Value column not found.")
+            
+            # Per Team Forecasts expander (fixed to no nested expanders)
+            with st.expander(f"🔮 {stakeholder} Team Forecasts (Visits & Value)", expanded=False):
+                for team in sorted(df["Team"].unique()):
+                    team_df = df[df["Team"] == team]
+                    team_monthly = team_df.groupby("Month").size().sort_index()
+                    team_monthly_value = team_df.groupby("Month")["Total Value"].sum().sort_index() if "Total Value" in team_df.columns else None
+
+                    st.markdown(f"### 🔮 Forecast: {team} (Visits)")
+                    if len(team_monthly) >= 2:
+                        fc_team = better_forecast(team_monthly, months=6)
+                        last_month = pd.Period(team_monthly.index.max(), freq="M")
+                        fut_months = [str(last_month + i) for i in range(1, 7)]
+
+                        team_fc_df = pd.concat([
+                            pd.DataFrame({"Month": team_monthly.index, "Visits": team_monthly.values, "Type": "Actual"}),
+                            pd.DataFrame({"Month": fut_months, "Visits": fc_team, "Type": "Forecast"})
+                        ], ignore_index=True)
+
+                        fig_team_visits = px.line(
+                            team_fc_df, x="Month", y="Visits", color="Type", markers=True,
+                            title=f"{team} – Visits Forecast"
+                        )
+                        st.plotly_chart(fig_team_visits, use_container_width=True)
+
+                    st.markdown(f"### 🔮 Forecast: {team} (Value)")
+                    if team_monthly_value is not None and len(team_monthly_value) >= 2:
+                        fc_team_val = better_forecast(team_monthly_value, months=6)
+                        last_month = pd.Period(team_monthly_value.index.max(), freq="M")
+                        fut_months = [str(last_month + i) for i in range(1, 7)]
+
+                        team_fc_val_df = pd.concat([
+                            pd.DataFrame({"Month": team_monthly_value.index, "Value": team_monthly_value.values, "Type": "Actual"}),
+                            pd.DataFrame({"Month": fut_months, "Value": fc_team_val, "Type": "Forecast"})
+                        ], ignore_index=True)
+
+                        fig_team_value = px.line(
+                            team_fc_val_df, x="Month", y="Value", color="Type", markers=True,
+                            title=f"{team} – Value Forecast (£)"
+                        )
+                        st.plotly_chart(fig_team_value, use_container_width=True)
+
+            # Month-on-Month Change Tables
+            pivot_visits = (
+                df.groupby(["Month", "Sky Retail Stakeholder Clean"])
+                  .size()
+                  .unstack(fill_value=0)
+                  .reindex(columns=[stakeholder], fill_value=0)
+                  .sort_index()
+            )
+            pivot_value = (
+                df.groupby(["Month", "Sky Retail Stakeholder Clean"])["Total Value"]
+                  .sum()
+                  .unstack(fill_value=0)
+                  .reindex(columns=[stakeholder], fill_value=0)
+                  .sort_index()
+            )
+
+            def make_change_table(pivot):
+                df_ = pivot.copy()
+                for col in df_.columns:
+                    df_[f"{col} Δ"] = df_[col].diff().fillna(0).astype(int)
+                    max_val = df_[col].max()
+                    min_val = df_[col].min()
+                    df_[f"{col} ΔMax"] = df_[col] - max_val
+                    df_[f"{col} ΔMin"] = df_[col] - min_val
+                return df_
+
+            visits_tbl = make_change_table(pivot_visits)
+            value_tbl = make_change_table(pivot_value)
+
+            with st.expander("📊 Month-on-Month Change Table (Visits)", expanded=False):
+                st.markdown("**Visits Table**")
+                st.dataframe(
+                    visits_tbl.style
+                    .format({col: "{:,}" for col in visits_tbl.columns if "Δ" not in col})
+                    .format({col: "{:+,}" for col in visits_tbl.columns if "Δ" in col}),
+                    use_container_width=True
+                )
+
+            with st.expander("📊 Month-on-Month Change Table (Value)", expanded=False):
+                st.markdown("**Value Table**")
+                value_cols = [col for col in value_tbl.columns if "Δ" not in col]
+                delta_cols = [col for col in value_tbl.columns if "Δ" in col]
+
+                # Format delta columns with £ and signs:
+                for col in delta_cols:
+                    value_tbl[col] = value_tbl[col].apply(lambda x: f"£{x:+,}")
+
+                # Round and convert value columns to int
+                value_tbl[value_cols] = value_tbl[value_cols].round(0).astype(int)
+
+                # Convert values to strings with £ prefix for display
+                for col in value_cols:
+                    value_tbl[col] = "£" + value_tbl[col].map("{:,}".format)
+
+                style = value_tbl.style.format({col: "{:+,}" for col in delta_cols})
+
+                st.dataframe(value_tbl, use_container_width=True)
+
+            # Combined Charts (collapsible)
+            with st.expander("📊 Combined Monthly Trend Charts", expanded=False):
+                # Line chart for total Value per stakeholder
+                fig_value_trends = px.line(
+                    value_tbl.reset_index(),
+                    x='Month',
+                    y=[stakeholder],
+                    title=f'Monthly Total Value for {stakeholder} (£)',
+                    markers=True
+                )
+                st.plotly_chart(fig_value_trends, use_container_width=True)
+
+                # Line chart for total Visits per stakeholder
+                fig_visits_trends = px.line(
+                    visits_tbl.reset_index(),
+                    x='Month',
+                    y=[stakeholder],
+                    title=f'Monthly Total Visits for {stakeholder}',
+                    markers=True
+                )
+                st.plotly_chart(fig_visits_trends, use_container_width=True)
+
+                # Select Δ columns only for Value
+                value_change_cols = [col for col in value_tbl.columns if 'Δ' in col and 'Max' not in col and 'Min' not in col]
+                fig_value_changes = px.bar(
+                    value_tbl.reset_index(),
+                    x='Month',
+                    y=value_change_cols,
+                    title=f'Month-on-Month Change in Value for {stakeholder} (£)',
+                    barmode='group'
+                )
+                st.plotly_chart(fig_value_changes, use_container_width=True)
+
+                # Select Δ columns only for Visits
+                visits_change_cols = [col for col in visits_tbl.columns if 'Δ' in col and 'Max' not in col and 'Min' not in col]
+                fig_visits_changes = px.bar(
+                    visits_tbl.reset_index(),
+                    x='Month',
+                    y=visits_change_cols,
+                    title=f'Month-on-Month Change in Visits for {stakeholder}',
+                    barmode='group'
+                )
+                st.plotly_chart(fig_visits_changes, use_container_width=True)
+
+                # Heatmap for Value ΔMax
+                fig_heatmap_value_max = go.Figure(
+                    go.Heatmap(
+                        z=value_tbl[[col for col in value_tbl.columns if 'ΔMax' in col]].values.T,
+                        x=value_tbl.index,
+                        y=[col.replace(' ΔMax', '') for col in value_tbl.columns if 'ΔMax' in col],
+                        colorscale='RdBu',
+                        colorbar=dict(title='Difference vs Max'),
+                        zmid=0
+                    )
+                )
+                fig_heatmap_value_max.update_layout(title=f'Value Difference vs Max for {stakeholder}')
+                st.plotly_chart(fig_heatmap_value_max, use_container_width=True)
+
+                # Heatmap for Visits ΔMax
+                fig_heatmap_visits_max = go.Figure(
+                    go.Heatmap(
+                        z=visits_tbl[[col for col in visits_tbl.columns if 'ΔMax' in col]].values.T,
+                        x=visits_tbl.index,
+                        y=[col.replace(' ΔMax', '') for col in visits_tbl.columns if 'ΔMax' in col],
+                        colorscale='RdBu',
+                        colorbar=dict(title='Difference vs Max'),
+                        zmid=0
+                    )
+                )
+                fig_heatmap_visits_max.update_layout(title=f'Visits Difference vs Max for {stakeholder}')
+                st.plotly_chart(fig_heatmap_visits_max, use_container_width=True)
+
+
+            # Day of Week Visits Bar Chart
+            with st.expander("📅 Visits by Day of Week", expanded=False):
+                # Extract day names from the Date column
+                df["DayOfWeek"] = df["Date"].dt.day_name()
+
+                # Group by day of week and count visits
+                visits_by_day = df.groupby("DayOfWeek").size().reindex([
+                    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+                ], fill_value=0)
+
+                # Create bar chart with Plotly Express
+                fig_day = px.bar(
+                    visits_by_day.reset_index(name="Visits"),
+                    x="DayOfWeek",
+                    y="Visits",
+                    title=f"{stakeholder} Visits by Day of Week",
+                    labels={"DayOfWeek": "Day of Week", "Visits": "Number of Visits"},
+                    color="Visits",
+                    color_continuous_scale="Blues"
+                )
+                st.plotly_chart(fig_day, use_container_width=True)
+
+            # Raw Data expander
+            with st.expander(f"🔎 Show Raw Data for {stakeholder}", expanded=False):
+                st.dataframe(df.dropna(axis=1, how="all"), use_container_width=True)
+         
+
+
+# BLOCK 24: 📦 Sky Business Area – Combined Oracle Data Dashboard
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+
+if st.session_state.screen == "sky_business":
+    # BLOCK 24 stuff
+
+
+    # Back button to return to area selection menu
+    if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_sky_business"):
+        st.session_state.screen = "area_selection"
+        st.rerun()
+
+    st.title("Sky Business")
+
+    # You already have 'oracle_all' loaded at the top of your script!
+    df_all = data.copy()
+    df_all.columns = df_all.columns.str.strip()
+    df_all = df_all.dropna(how="all")
+
+    if "Visit Type" not in df_all.columns:
+        st.error("Column 'Visit Type' is missing.")
+    else:
+        df_sky = df_all[df_all["Visit Type"].astype(str).str.contains("Sky Business", case=False, na=False)]
+        if df_sky.empty:
+            st.info("No rows found for 'Sky Business' in Visit Type.")
+        else:
+            st.markdown("## 📊 Sky Business Area Dashboard")
+            st.caption("Filtered view of all Oracle datasets where `Visit Type` contains 'Sky Business'.")
+
+            # --- Summary KPIs ---
+            st.subheader("📌 Summary KPIs")
+            col1, col2, col3 = st.columns(3)
+
+            total_visits = len(df_sky)
+            total_value = df_sky["Total Value"].sum() if "Total Value" in df_sky.columns else 0
+
+            activity_counts = df_sky["Activity Status"].astype(str).str.lower().value_counts()
+            completed = activity_counts.get("completed", 0)
+            cancelled = activity_counts.get("cancelled", 0)
+            not_done = activity_counts.get("not done", 0)
+            failed = cancelled + not_done
+
+            col1.metric("📦 Total Sky Business Visits", total_visits)
+            col2.metric("💷 Total Value (£)", f"£{total_value:,.2f}")
+            if failed > 0:
+                ratio = completed / failed
+                col3.markdown(f"🔁 **{ratio:.1f}** visits completed for every **1** cancelled or not done visit")
+            else:
+                col3.markdown("🔁 No failed visits recorded")
+
+            # --- Activity Breakdown Chart ---
+            st.subheader("🧩 Activity Completion Breakdown")
+            st.bar_chart(activity_counts)
+
+            # --- Monthly Trends ---
+            if "Date" in df_sky.columns:
+                df_sky["Month"] = pd.to_datetime(df_sky["Date"], errors="coerce").dt.to_period("M").astype(str)
+                by_month = df_sky.groupby("Month").agg({
+                    "Visit Type": "count",
+                    "Total Value": "sum"
+                }).rename(columns={"Visit Type": "Visit Count"})
+
+                st.subheader("📈 Monthly Trends")
+                st.plotly_chart(px.line(by_month, y="Visit Count", title="Monthly Visit Count"), use_container_width=True)
+                st.plotly_chart(px.line(by_month, y="Total Value", title="Monthly Total Value (£)"), use_container_width=True)
+            else:
+                st.warning("⚠️ Column 'Date' missing — cannot generate monthly trends.")
+
+            # --- Sunburst: Visit Type → Activity Status ---
+            st.subheader("🌞 Visit Type Breakdown by Activity Status")
+            if "Activity Status" in df_sky.columns:
+                fig = px.sunburst(df_sky, path=["Visit Type", "Activity Status"], title="Sky Business Visit Breakdown")
+                st.plotly_chart(fig, use_container_width=True)
+
+            # --- Forecasting (based on 6 months) ---
+            st.subheader("🔮 Forecast (based on recent 6 months)")
+
+            if "Month" in df_sky.columns:
+                last_6 = by_month.tail(6)
+                forecast = round(last_6.mean())
+                st.markdown(f"""
+                **🗖️ 6-Month Forecast**
+                - Avg Monthly Visits: **{forecast['Visit Count']}**
+                - Avg Monthly Value: **£{forecast['Total Value']:,.2f}**
+                """)
+                st.line_chart(last_6)
+            else:
+                st.info("🗓️ No 'Month' column available for forecasting.")
+
+            st.caption("Data pulled from 4 Oracle sources, filtered to Sky Business only.")
+
+
+    # --- ADVANCED KPI TABS SECTION ---
+    st.markdown("## 📊 Advanced Sky Business KPI Centre")
+    st.caption("Everything below is filtered where **Visit Type** contains “Sky Business”.")
+
+    # You already have df_sky, so just use/copy it
+    df_all = df_sky.copy()
+
+    # Ensure correct types
+    df_all["Date"] = pd.to_datetime(df_all["Date"], errors="coerce")
+    df_all.dropna(subset=["Date"], inplace=True)
+    df_all["Month"] = df_all["Date"].dt.to_period("M").astype(str)
+
+    file_map = {
+        "VIP North":   "VIP North Oracle Data.xlsx",
+        "VIP South":   "VIP South Oracle Data.xlsx",
+        "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+        "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
+    }
+
+    # Assign team name to each row if missing
+    if "Team" not in df_all.columns:
+        df_all["Team"] = None
+    for label in file_map.keys():
+        mask = df_all["Source"].str.contains(label.replace(" ", ""), case=False, na=False)
+        df_all.loc[mask, "Team"] = label
+
+    # Tab labels
+    tab_labels = ["Overall"] + list(file_map.keys())
+    tabs       = st.tabs(tab_labels)
+
+    import numpy as np
+    import re
+
+    def _simple_forecast(series: pd.Series, periods: int = 6) -> list[int]:
+        series = series.sort_index()
+        n = len(series)
+
+        if n >= 3:
+            y = series.iloc[-4:]
+            x = np.arange(len(series) - len(y), len(series))
+        elif n == 2:
+            y = series
+            x = np.arange(n)
+        elif n == 1:
+            return [int(series.iloc[-1])] * periods
+        else:
+            return [0] * periods
+
+        m, b = np.polyfit(x, y.values, 1)
+        future_x = np.arange(len(series), len(series) + periods)
+        return [max(0, int(round(m * xi + b))) for xi in future_x]
+
+    for tab, label in zip(tabs, tab_labels):
+        with tab:
+            df = df_all if label == "Overall" else df_all[df_all["Team"] == label]
+            st.subheader("🌐 Overall" if label == "Overall" else f"📁 {label}")
+
+            if df.empty:
+                st.info("No data in this slice.")
+                continue
+
+            # Basic KPIs
+            with st.expander("🧮 Basic KPIs", expanded=True):
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Visits",      f"{len(df):,}")
+                c2.metric("Value (£)",   f"£{df.get('Total Value', pd.Series(dtype=float)).sum():,.0f}")
+                c3.metric("Visit Types", df["Visit Type"].nunique())
+
+            # Historical trends
+            with st.expander("📈 Monthly Trend by Visit Type", expanded=False):
+                monthly_counts = (
+                    df.groupby(["Month", "Visit Type"])
+                      .size().reset_index(name="Visits")
+                )
+                fig_hist = px.line(
+                    monthly_counts, x="Month", y="Visits",
+                    color="Visit Type", markers=True,
+                    title="Historical Visits per Type"
+                )
+                st.plotly_chart(fig_hist, use_container_width=True,
+                                key=f"hist_{re.sub(r'\\W+','_',label)}")
+
+            with st.expander("📊 Monthly Visit Count (Stacked)", expanded=False):
+                bar_df = (
+                    monthly_counts.pivot(index="Month",
+                                         columns="Visit Type",
+                                         values="Visits")
+                    .fillna(0)
+                    .sort_index()
+                )
+                st.bar_chart(bar_df)
+
+            if "Total Value" in df.columns:
+                with st.expander("💷 Monthly Value (£)", expanded=False):
+                    value_df = (
+                        df.groupby("Month")["Total Value"]
+                          .sum()
+                          .sort_index()
+                    )
+                    st.line_chart(value_df)
+
+
+
+
+# ── Detailed Monthly KPI Table by Visit Type & Status ────────────
+            with st.expander("📋 KPI Table – Monthly Visit Type x Status", expanded=False):
+                if "Activity Status" not in df.columns:
+                    st.warning("⚠️ 'Activity Status' column missing.")
+                else:
+                    kpi_table = (
+                        df.groupby(["Month", "Visit Type", "Activity Status"])
+                          .size()
+                          .reset_index(name="Count")
+                    )
+
+                    # Pivot to make Activity Statuses into columns
+                    pivot_table = kpi_table.pivot_table(
+                        index=["Month", "Visit Type"],
+                        columns="Activity Status",
+                        values="Count",
+                        fill_value=0
+                    ).reset_index()
+
+                    # Sort and display
+                    pivot_table = pivot_table.sort_values(by=["Month", "Visit Type"])
+                    st.dataframe(pivot_table, use_container_width=True)
+
+
+
+
+            # Forecasts -------------------------------------------------
+            with st.expander("🔮 Forecasts", expanded=False):
+
+                tab_id = re.sub(r"\W+", "_", label).strip("_")
+                key_counter: defaultdict[str, int] = defaultdict(int)
+
+                # 3-A  Overall forecast
+                overall_series = df.groupby("Month").size().sort_index()
+                fc_vals        = _simple_forecast(overall_series, periods=6)
+                last_p         = pd.Period(overall_series.index.max(), freq="M")
+                fut_mths       = [str(last_p + i) for i in range(1, 7)]
+
+                overall_df = pd.concat(
+                    [
+                        pd.DataFrame(
+                            {"Month": overall_series.index,
+                             "Visits": overall_series.values,
+                             "Kind":   "Actual"}
+                        ),
+                        pd.DataFrame(
+                            {"Month": fut_mths,
+                             "Visits": fc_vals,
+                             "Kind":   "Forecast"}
+                        )
+                    ],
+                    ignore_index=True
+                )
+
+                st.plotly_chart(
+                    px.line(overall_df, x="Month", y="Visits",
+                            line_dash="Kind", markers=True,
+                            title="Historical vs Forecast – ALL Visit Types"),
+                    use_container_width=True,
+                    key=f"fc_overall_{tab_id}"
+                )
+
+                # 3-B  Individual visit-type forecasts
+                visit_types = df["Visit Type"].dropna().unique()
+                for vt in sorted(visit_types):
+
+                    vt_series = (
+                        df[df["Visit Type"] == vt]
+                          .groupby("Month")
+                          .size()
+                          .sort_index()
+                    )
+                    if vt_series.empty:
+                        continue
+
+                    vt_fc    = _simple_forecast(vt_series, periods=6)
+                    last_p   = pd.Period(vt_series.index.max(), freq="M")
+                    fut_mths = [str(last_p + i) for i in range(1, 7)]
+
+                    chart_df = pd.concat(
+                        [
+                            pd.DataFrame(
+                                {"Month": vt_series.index,
+                                 "Visits": vt_series.values,
+                                 "Kind":   "Actual"}
+                            ),
+                            pd.DataFrame(
+                                {"Month": fut_mths,
+                                 "Visits": vt_fc,
+                                 "Kind":   "Forecast"}
+                            )
+                        ],
+                        ignore_index=True
+                    )
+
+                    clean_vt = re.sub(r"\W+", "_", vt).strip("_")
+                    key_counter[clean_vt] += 1
+                    safe_key = f"fc_{tab_id}_{clean_vt}_{key_counter[clean_vt]}"
+
+                    st.plotly_chart(
+                        px.line(chart_df, x="Month", y="Visits",
+                                line_dash="Kind", markers=True,
+                                title=f"{vt} – Historical vs Forecast"),
+                        use_container_width=True,
+                        key=safe_key
+                    )
+
+# ── Monthly change summary ───────────────────────────────────
+            with st.expander("📊 Month-on-Month Change (Visits)", expanded=False):
+                # ➊ Monthly totals for this tab
+                monthly_tot = (
+                    df.groupby("Month")
+                      .size()
+                      .sort_index()
+                )
+
+                if monthly_tot.empty:
+                    st.info("No monthly data available.")
+                else:
+                    # ➋ Month-over-month deltas
+                    delta_abs  = monthly_tot.diff().fillna(0).astype(int)
+                    delta_pct  = (monthly_tot.pct_change() * 100).round(1)
+
+                    # ➌ Compare to dataset-wide max / min
+                    max_vis = monthly_tot.max()
+                    min_vis = monthly_tot.min()
+
+                    summary_df = pd.DataFrame({
+                        "Month"        : monthly_tot.index.astype(str),
+                        "Visits"       : monthly_tot.values,
+                        "Δ vs Prev"    : delta_abs.values,
+                        "%Δ vs Prev"   : delta_pct.values,
+                        "Δ vs Max"     : (monthly_tot - max_vis).values,
+                        "Δ vs Min"     : (monthly_tot - min_vis).values,
+                    })
+
+                    # tidy column order
+                    summary_df = summary_df[
+                        ["Month", "Visits", "Δ vs Prev", "%Δ vs Prev",
+                         "Δ vs Max", "Δ vs Min"]
+                    ]
+
+                    st.dataframe(summary_df, use_container_width=True)
+
+            # ── Month-on-Month change per *Visit Type* ──────────────────────
+            with st.expander("📊 Month-on-Month Change • by Visit Type", expanded=False):
+                # ➊ Pivot: rows = Month, cols = Visit Type, values = counts
+                pv = (
+                    df.groupby(["Month", "Visit Type"])
+                      .size()
+                      .unstack(fill_value=0)
+                      .sort_index()              # chronological
+                )
+
+                if pv.empty:
+                    st.info("No data available for this slice.")
+                else:
+                    # ➋ Deltas
+                    delta_abs = pv.diff().fillna(0).astype(int)
+                    delta_pct = (pv.pct_change() * 100).round(1).fillna(0)
+
+                    # ➌ Build a pretty table
+                    tidy_frames = []
+                    for vt in pv.columns:
+                        tmp = pd.DataFrame({
+                            "Month"          : pv.index.astype(str),
+                            f"{vt} Visits"   : pv[vt].values,
+                            f"{vt} Δ"        : delta_abs[vt].values,
+                            f"{vt} %Δ"       : delta_pct[vt].values,
+                        })
+                        tidy_frames.append(tmp)
+
+                    # ➍ Merge on Month
+                    tidy_df = tidy_frames[0]
+                    for extra in tidy_frames[1:]:
+                        tidy_df = tidy_df.merge(extra, on="Month")
+
+                    # ➎ Show
+                    st.dataframe(tidy_df, use_container_width=True)
+
+            # ── KPI Heat-Map • Peaks, Troughs & Growth ──────────────────────
+            with st.expander("📊 KPI Dashboard (Peaks • Troughs • Growth)", expanded=False):
+
+                # 1️⃣  Baseline counts ─────────────────────────────────────
+                base = (
+                    df.groupby("Month")
+                      .size()                       # all Sky Business visits
+                      .rename("Visits")
+                      .sort_index()
+                )
+                if len(base) < 2:
+                    st.info("Need at least 2 months of data for deltas.")
+                else:
+                    # 2️⃣  Delta vs previous, vs Max, vs Min ─────────────
+                    delta_abs = base.diff().fillna(0).astype(int)
+                    delta_pct = (base.pct_change() * 100).round(1).fillna(0)
+
+                    max_val   = base.max()
+                    min_val   = base.min()
+
+                    kpi_df = pd.DataFrame({
+                        "Month"            : base.index.astype(str),
+                        "Visits"           : base.values,
+                        "Δ Prev Mo"        : delta_abs.values,
+                        "%Δ Prev Mo"       : delta_pct.values,
+                        "Δ vs Max Peak"    : (base - max_val).values,
+                        "Δ vs Min Trough"  : (base - min_val).values,
+                    })
+
+                    # 3️⃣  Styling helpers ───────────────────────────────
+                    def colour_delta(val):
+                        if val > 0:
+                            return "background-color:#075E00;color:white"   # green
+                        elif val < 0:
+                            return "background-color:#8B0000;color:white"   # red
+                        else:
+                            return "background-color:#444444;color:white"   # grey
+
+                    styled = (
+                        kpi_df.style
+                              .applymap(colour_delta, subset=["Δ Prev Mo", "%Δ Prev Mo"])
+                              .applymap(colour_delta, subset=["Δ vs Max Peak", "Δ vs Min Trough"])
+                              .format({"Visits":"{:,}",
+                                       "Δ Prev Mo":"{:+,}",
+                                       "%Δ Prev Mo":"{:+.1f}%",
+                                       "Δ vs Max Peak":"{:+,}",
+                                       "Δ vs Min Trough":"{:+,}"})
+                    )
+
+            # 📊 EXTRA GRAPH GALLERY  ─  Best-in-class visuals
+            with st.expander("📊 Graph Gallery – Visit Trends & Growth", expanded=False):
+                import plotly.graph_objects as go
+
+                # 1️⃣ Area Chart – Total Visits
+                fig_area = px.area(
+                    overall_series.reset_index(name="Visits"),
+                    x="Month", y="Visits",
+                    title="📈 Area Chart – Total Visits Over Time"
+                )
+                st.plotly_chart(fig_area, use_container_width=True, key=f"area_{tab_id}")
+
+                # 2️⃣ Line Chart – % Growth Month-over-Month
+                pct_change = overall_series.pct_change().fillna(0) * 100
+                fig_pct = px.line(
+                    pct_change.reset_index(name="% Growth"),
+                    x="Month", y="% Growth",
+                    title="📊 % Change in Visits (Month-over-Month)"
+                )
+                st.plotly_chart(fig_pct, use_container_width=True, key=f"pctmo_{tab_id}")
+
+                # 3️⃣ Heatmap – Monthly Visit Counts
+                hm_df = overall_series.reset_index(name="Visits")
+                hm_df["Month_Num"] = pd.to_datetime(hm_df["Month"]).dt.month
+                hm_df["Year"] = pd.to_datetime(hm_df["Month"]).dt.year
+
+                fig_hm = px.density_heatmap(
+                    hm_df, x="Month_Num", y="Year", z="Visits",
+                    color_continuous_scale="Viridis", nbinsx=12, nbinsy=len(hm_df["Year"].unique()),
+                    title="🔥 Monthly Visit Count Heatmap"
+                )
+                st.plotly_chart(fig_hm, use_container_width=True, key=f"hm_{tab_id}")
+
+                # 4️⃣ Waterfall Chart – Δ Visits from Previous Month
+                delta_vals = overall_series.diff().fillna(0).astype(int)
+                wf_df = pd.DataFrame({
+                    "Month" : overall_series.index.astype(str),
+                    "Change": delta_vals.values
+                })
+
+                fig_wf = go.Figure(go.Waterfall(
+                    x = wf_df["Month"],
+                    y = wf_df["Change"],
+                    measure = ["absolute"] + ["relative"] * (len(wf_df) - 1),
+                    increasing = {"marker": {"color": "green"}},
+                    decreasing = {"marker": {"color": "crimson"}},
+                    totals = {"marker": {"color": "gray"}},
+                    connector = {"line": {"color": "silver"}},
+                    textposition="outside"
+                ))
+
+                fig_wf.update_layout(
+                    title = "🌊 Waterfall – Δ Visits vs Previous Month",
+                    showlegend = False,
+                    height = 400
+                )
+
+                st.plotly_chart(fig_wf, use_container_width=True, key=f"wf_{tab_id}")
+
+    # ── SLA DASHBOARD ─────────────────────────────────────────────────────────
+    #  Columns needed in AI Test SB Visits.xlsx …
+    #    • "Visit type"    ⇒ SLA bucket (2h / 4h / 5 day / 8h)
+    #    • "Date of visit" ⇒ timestamp
+    #    • "Met SLA?"      ⇒ optional flag (Y/True/Yes)
+    # -------------------------------------------------------------------------
+    with st.expander("⏱️ SLA Dashboard – 2 h • 4 h • 5 day • 8 h", expanded=False):
+
+        # 0️⃣ LOAD + CLEAN ----------------------------------------------------
+        SLA_FILE   = "AI Test SB Visits.xlsx"
+        SLA_COL    = "Visit type"
+        DATE_COL   = "Date of visit"
+        RESULT_COL = "Met SLA?"          # not in file → created below
+
+        try:
+            sla_df = pd.read_excel(SLA_FILE)
+        except Exception as e:
+            st.error(f"Could not load “{SLA_FILE}”: {e}")
+            st.stop()
+
+        sla_df.columns = sla_df.columns.str.strip()
+
+        for col in (SLA_COL, DATE_COL):
+            if col not in sla_df.columns:
+                st.error(f"Column “{col}” missing – check the sheet header.")
+                st.stop()
+
+        sla_df = sla_df.dropna(subset=[SLA_COL, DATE_COL])
+        sla_df[DATE_COL] = pd.to_datetime(sla_df[DATE_COL], errors="coerce")
+        sla_df = sla_df.dropna(subset=[DATE_COL])
+
+        # 🔎 Filter to the four SLA targets ONLY
+        sla_mask = sla_df[SLA_COL].str.lower().str.contains(
+            r"\b(2h|2 h|2hr|4h|4 h|4hr|5 ?day|8h|8 h|8hr)\b", regex=True, na=False
+        )
+        sla_df = sla_df[sla_mask].copy()
+
+        if sla_df.empty:
+            st.warning("No rows match 2 h, 4 h, 5 day or 8 h targets.")
+            st.stop()
+
+        sla_df["Month"] = sla_df[DATE_COL].dt.to_period("M").astype(str)
+
+        # If “Met SLA?” not present, assume every ticket was met
+        if RESULT_COL not in sla_df.columns:
+            sla_df[RESULT_COL] = True
+
+        sla_df[RESULT_COL] = (
+            sla_df[RESULT_COL]
+            .astype(str).str.strip().str.lower()
+            .isin(["yes", "y", "true", "1"])
+        )
+
+        # 1️⃣ KPI HEADER ------------------------------------------------------
+        total_tickets = len(sla_df)
+        met_total     = sla_df[RESULT_COL].sum()
+        pct_met       = met_total / total_tickets * 100 if total_tickets else 0
+
+        k0, k1, k2, k3 = st.columns(4)
+        k0.metric("Total Tickets", f"{total_tickets:,}")
+        k1.metric("Met SLA",       f"{met_total:,}")
+        k2.metric("Missed SLA",    f"{total_tickets-met_total:,}")
+        k3.metric("% Met",         f"{pct_met:.1f}%")
+
+        st.markdown("---")
+
+        # 2️⃣ VOLUME PER SLA BUCKET ------------------------------------------
+        vol_df = (sla_df[SLA_COL]
+                  .value_counts()
+                  .reset_index()
+                  .rename(columns={SLA_COL: "SLA Target", "count": "Tickets"}))
+
+        st.plotly_chart(
+            px.bar(vol_df, x="SLA Target", y="Tickets", color="SLA Target",
+                   title="Ticket Volume by SLA Target"),
+            use_container_width=True,
+            key="sla_vol"
+        )
+
+        # 3️⃣ MONTHLY TREND PER TARGET ---------------------------------------
+        trend_df = (sla_df.groupby(["Month", SLA_COL])
+                            .size()
+                            .reset_index(name="Tickets")
+                            .sort_values("Month"))
+
+        st.plotly_chart(
+            px.line(trend_df, x="Month", y="Tickets", color=SLA_COL,
+                    markers=True, title="Monthly Ticket Trend by SLA Target"),
+            use_container_width=True,
+            key="sla_trend"
+        )
+
+
+        # 4️⃣ STACKED MET vs MISSED  (only if some misses exist) -------------
+        if not sla_df[RESULT_COL].all():
+            stack_df = (sla_df.groupby([SLA_COL, RESULT_COL])
+                                .size().reset_index(name="Count"))
+            stack_df["Status"] = np.where(stack_df[RESULT_COL], "Met", "Missed")
+
+            st.plotly_chart(
+                px.bar(stack_df, x=SLA_COL, y="Count", color="Status",
+                       title="Met vs Missed SLA (stacked)"),
+                use_container_width=True,
+                key="sla_stack"
+            )
+
+        # 5️⃣ FORECASTS (NEXT 6 MONTHS) --------------------------------------
+        st.markdown("### 🔮 Forecasts (next 6 months)")
+
+        def _simple_forecast(series: pd.Series, periods: int = 6) -> list[int]:
+            series = series.sort_index()
+            n = len(series)
+            if n == 0:
+                return [0] * periods
+            if n == 1:
+                return [int(series.iloc[0])] * periods
+            if n == 2:
+                x = np.arange(2)
+                y = series.values
+            else:
+                x = np.arange(n-4, n)
+                y = series.iloc[-4:].values
+            m, b = np.polyfit(x, y, 1)
+            return [max(0, int(round(m * xi + b)))
+                    for xi in range(n, n + periods)]
+
+        for sla_tag in sorted(sla_df[SLA_COL].unique()):
+            serie = (sla_df[sla_df[SLA_COL] == sla_tag]
+                     .groupby("Month")
+                     .size()
+                     .sort_index())
+
+            if len(serie) < 2:
+                st.info(f"*{sla_tag}* – not enough data for a forecast.")
+                continue
+
+            fc_vals  = _simple_forecast(serie)
+            last_m   = pd.Period(serie.index.max(), freq="M")
+            fut_mths = [str(last_m + i) for i in range(1, 7)]
+
+            plot_df = pd.concat(
+                [pd.DataFrame({"Month": serie.index,
+                               "Tickets": serie.values,
+                               "Kind": "Actual"}),
+                 pd.DataFrame({"Month": fut_mths,
+                               "Tickets": fc_vals,
+                               "Kind": "Forecast"})],
+                ignore_index=True
+            )
+
+            clean_key = re.sub(r"\W+", "_", sla_tag).strip("_")
+            st.plotly_chart(
+                px.line(plot_df, x="Month", y="Tickets", line_dash="Kind",
+                        markers=True, title=f"{sla_tag} – Actual vs Forecast"),
+                use_container_width=True,
+                key=f"sla_fc_{clean_key}"
+            )
+
+if st.session_state.get("kpi_dataset", (None,))[0] == "Sky Business Area":
+    # ── SLA VENUE MATRIX ──────────────────────────────────────────────── 
+    st.markdown("## 🏢 Venue SLA Matrix – SLA Counts per Site")
+
+    # 0️⃣  Use previously loaded `sla_df` or load fresh
+    if "sla_df" not in locals():
+        try:
+            sla_df = pd.read_excel("AI Test SB Visits.xlsx")
+        except Exception as e:
+            st.error(f"Could not reload SLA file: {e}")
+            st.stop()
+
+        sla_df.columns = sla_df.columns.str.strip()
+        sla_df = sla_df.dropna(subset=["Visit type", "Date of visit"])
+        sla_df["Date of visit"] = pd.to_datetime(sla_df["Date of visit"], errors="coerce")
+        sla_df = sla_df.dropna(subset=["Date of visit"])
+        sla_df["Visit type"] = sla_df["Visit type"].astype(str).str.strip().str.lower()
+
+    # 1️⃣  Filter SLA buckets
+    SLA_BUCKETS = ["2hr", "4hr", "5 day", "8h", "8 hr", "8hr"]
+    sla_ven = sla_df[
+        sla_df["Visit type"].str.lower().isin(SLA_BUCKETS)
+    ].copy()
+
+    # 2️⃣  Standardise SLA labels
+    sla_ven["SLA"] = sla_ven["Visit type"].str.lower().replace({"8 hr": "8h"})
+
+    # 3️⃣  Pivot: Venue × SLA Counts
+    if "Venue Name" in sla_ven.columns and "VR Number" in sla_ven.columns:
+        pivot = (
+            sla_ven.pivot_table(
+                index="Venue Name",
+                columns="SLA",
+                values="VR Number",
+                aggfunc="count",
+                fill_value=0
+            )
+            .assign(Total=lambda d: d.sum(axis=1))
+            .sort_values("Total", ascending=False)
+        )
+        st.dataframe(pivot, use_container_width=True)
+    else:
+        st.warning("Columns 'Venue Name' or 'VR Number' not found in SLA file.")
+
+
+
+
+
+    # ── 💾 Table: All Venues ───────────────────────────────────────────
+    with st.expander("📋 Full Venue SLA Table", expanded=False):
+        st.dataframe(pivot, use_container_width=True)
+
+    # ── 📊 Charts: in tabs (NOT in an expander to avoid nesting) ───────
+    tabs = st.tabs(["🏆 Top 20 by Total", "📊 Stacked SLA Mix", "🌡️ Heatmap"])
+
+    # ── Chart A: Top 20 Horizontal Bar
+    with tabs[0]:
+        top20 = pivot.head(20).reset_index().sort_values("Total")
+        fig_top = px.bar(
+            top20,
+            y="Venue Name", x="Total", orientation="h",
+            title="Top 20 Venues by SLA Visits", text="Total"
+        )
+        st.plotly_chart(fig_top, use_container_width=True)
+
+    # ── Chart B: Stacked SLA Distribution
+    with tabs[1]:
+        stacked = (
+            pivot.head(20)
+                .drop(columns="Total")
+                .reset_index()
+                .melt(id_vars="Venue Name", var_name="SLA", value_name="Tickets")
+        )
+        fig_stack = px.bar(
+            stacked,
+            y="Venue Name", x="Tickets", color="SLA", orientation="h",
+            title="Top 20 SLA Mix by Venue"
+        )
+        st.plotly_chart(fig_stack, use_container_width=True)
+
+    # ── Chart C: Heatmap of All Venues × SLA Buckets
+    with tabs[2]:
+        heat = px.imshow(
+            pivot.drop(columns="Total"),
+            color_continuous_scale="Blues",
+            aspect="auto",
+            title="SLA Heatmap – Venue × SLA Bucket"
+        )
+        st.plotly_chart(heat, use_container_width=True)
+
+    # ── VIP - SB Standby KPI Block (from 4 Oracle sources) ──────────────
+    with st.expander("🛡️ VIP - SB Standby Overview (from 4 Oracle sources)", expanded=False):
+        # 1⃣  Load & combine Oracle files
+        files = {
+            "VIP North":   "VIP North Oracle Data.xlsx",
+            "VIP South":   "VIP South Oracle Data.xlsx",
+            "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+            "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
+        }
+
+        standby_frames = []
+        for team, path in files.items():
+            try:
+                tmp = pd.read_excel(path)
+                tmp["Team"] = team
+                standby_frames.append(tmp)
+            except Exception as e:
+                st.warning(f"⚠️ {path} could not be loaded – {e}")
+
+        if not standby_frames:
+            st.error("❌ None of the Oracle files could be opened – aborting block.")
+            st.stop()
+
+        standby_df = pd.concat(standby_frames, ignore_index=True)
+        standby_df.columns = standby_df.columns.str.strip()
+        standby_df.dropna(how="all", inplace=True)
+
+        # 2⃣  Filter to VIP‑SB Standby rows only
+        mask = standby_df["Visit Type"].astype(str).str.contains("VIP - SB Standby", case=False, na=False)
+        sb_df_all = standby_df[mask].copy()
+        if sb_df_all.empty:
+            st.info("No rows found for 'VIP - SB Standby' in the Oracle datasets.")
+            st.stop()
+
+        # 3⃣  Basic cleaning & helpers
+        sb_df_all["Date"] = pd.to_datetime(sb_df_all["Date"], errors="coerce")
+        sb_df_all.dropna(subset=["Date"], inplace=True)
+        sb_df_all["Month"] = sb_df_all["Date"].dt.to_period("M").astype(str)
+
+        from datetime import time, timedelta
+        def _to_td(val):
+            if pd.isna(val):
+                return pd.NaT
+            if isinstance(val, timedelta):
+                return val if val.total_seconds() > 0 else pd.NaT
+            if isinstance(val, time):
+                return timedelta(hours=val.hour, minutes=val.minute, seconds=val.second) if val != time(0, 0) else pd.NaT
+            try:
+                h, m, *s = str(val).split(":")
+                h, m = int(h), int(m)
+                s = int(s[0]) if s else 0
+                return pd.NaT if (h == m == s == 0) else timedelta(hours=h, minutes=m, seconds=s)
+            except Exception:
+                return pd.NaT
+
+        TIME_START_COLS = [c for c in sb_df_all.columns if c.lower() in {"start", "activate", "activate time"}]
+        TIME_END_COLS   = [c for c in sb_df_all.columns if c.lower() in {"end", "deactivate", "deactivate time"}]
+
+        chosen_start_col = TIME_START_COLS[0] if TIME_START_COLS else None
+        chosen_end_col   = TIME_END_COLS[0]   if TIME_END_COLS   else None
+
+        if chosen_start_col:
+            sb_df_all[chosen_start_col] = sb_df_all[chosen_start_col].apply(_to_td)
+        if chosen_end_col:
+            sb_df_all[chosen_end_col]   = sb_df_all[chosen_end_col].apply(_to_td)
+
+        ACTIVATE_COLS   = [c for c in sb_df_all.columns if "activate"   in c.lower()][:1]
+        DEACTIVATE_COLS = [c for c in sb_df_all.columns if "deactivate" in c.lower() and c not in ACTIVATE_COLS][:1]
+        chosen_act_col  = ACTIVATE_COLS[0]   if ACTIVATE_COLS   else None
+        chosen_dea_col  = DEACTIVATE_COLS[0] if DEACTIVATE_COLS else None
+
+        for col in (chosen_act_col, chosen_dea_col):
+            if col:
+                sb_df_all[col] = sb_df_all[col].apply(_to_td)
+
+        # 4⃣  Split dataframes for different metric purposes
+        if "Activity Status" in sb_df_all.columns:
+            completed_mask = sb_df_all["Activity Status"].str.lower() == "completed"
+            comp_df = sb_df_all[completed_mask].copy()
+            val_df  = sb_df_all[sb_df_all["Activity Status"].str.lower().isin(["completed", "suspended"])]
+        else:
+            comp_df = sb_df_all.copy()
+            val_df  = sb_df_all.copy()
+
+        # 5⃣  KPI Header
+        st.markdown("### 📌 Summary KPIs")
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Total Visits (Completed)", f"{len(comp_df):,}")
+        k2.metric("Total Value (£) (Comp + Susp)", f"£{val_df.get('Total Value', pd.Series(dtype=float)).sum():,.0f}")
+
+        def _avg_col_pair(df, primary_col, require_col):
+            if not primary_col or not require_col:
+                return "–"
+            subset = df[df[require_col].notna() & df[primary_col].notna()][primary_col]
+            if subset.empty:
+                return "–"
+            secs = subset.dt.total_seconds().mean()
+            return f"{int(secs//3600):02}:{int((secs%3600)//60):02}"
+
+        avg_start = _avg_col_pair(comp_df, chosen_start_col, chosen_act_col if chosen_act_col else chosen_start_col)
+        avg_end   = _avg_col_pair(comp_df, chosen_end_col,   chosen_dea_col if chosen_dea_col else chosen_end_col)
+
+        k3.metric("Avg Start (if Activate present)", avg_start)
+        k4.metric("Avg End (if Deactivate present)", avg_end)
+
+        st.markdown(
+            """
+            >⚠️ *Visit count & time metrics only use **Completed** rows **where both primary and corresponding Activate/Deactivate times are present**.*  
+            >💰 *Total Value* still aggregates **Completed + Suspended** rows.
+            """
+        )
+        st.markdown("---")
+
+        # 6⃣  Monthly Count (Completed)
+        monthly_ct = comp_df.groupby("Month").size().reset_index(name="Visits")
+        fig_bar = px.bar(monthly_ct, x="Month", y="Visits", title="Monthly Completed Count – VIP ‑ SB Standby")
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # 7⃣  Activity Status Pie (all rows)
+        if "Activity Status" in sb_df_all.columns:
+            pie_df = sb_df_all["Activity Status"].value_counts().reset_index()
+            pie_df.columns = ["Activity", "Count"]
+            fig_pie = px.pie(pie_df, names="Activity", values="Count", title="Activity Status Distribution")
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+        # 8⃣  Sunburst – Team ▸ Month ▸ Activity
+        if "Activity Status" in sb_df_all.columns:
+            fig_sb = px.sunburst(sb_df_all, path=["Team", "Month", "Activity Status"], title="Team • Month • Activity Breakdown")
+            st.plotly_chart(fig_sb, use_container_width=True)
+
+        # 9⃣  6‑Month Forecast (Completed counts)
+        def _simple_forecast(series, periods=6):
+            import numpy as np
+            y = np.array(series.values)
+            x = np.arange(len(y))
+            if len(x) < 2:
+                return np.full(periods, 0)
+            coef = np.polyfit(x, y, 1)
+            trend = coef[0]
+            intercept = coef[1]
+            x_future = np.arange(len(y), len(y)+periods)
+            y_future = trend * x_future + intercept
+            return np.maximum(y_future, 0).round().astype(int)
+        
+        series = comp_df.groupby("Month").size().sort_index()
+        if len(series) >= 2:
+            fc_vals = _simple_forecast(series, periods=6)
+            last_p  = pd.Period(series.index.max(), freq="M")
+            fut_mths = [str(last_p + i) for i in range(1, 7)]
+
+            fc_df = pd.concat([
+                pd.DataFrame({"Month": series.index, "Visits": series.values, "Kind": "Actual"}),
+                pd.DataFrame({"Month": fut_mths, "Visits": fc_vals, "Kind": "Forecast"})
+            ], ignore_index=True)
+
+            fig_fc = px.line(fc_df, x="Month", y="Visits", line_dash="Kind", markers=True, title="VIP ‑ SB Standby – Actual vs Forecast (Completed)")
+            st.plotly_chart(fig_fc, use_container_width=True)
+        else:
+            st.info("Not enough historical points to build a forecast (need ≥2 months).")
+
+        st.caption("All averages use only rows meeting the dual‑time requirement (Start+Activate, End+Deactivate). Total value aggregates Completed + Suspended records across all four Oracle sheets.")
 
 
 
@@ -1252,6 +2633,9 @@ def fix_time_col(series):
     )
 
 if st.session_state.get("screen") == "operational_area":
+    if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_operational_area"):
+        st.session_state.screen = "area_selection"
+        st.rerun()
     # -- Horizontal section buttons --
     col1, col2, col3 = st.columns(3)
     if col1.button("Engineer"):
@@ -1451,179 +2835,187 @@ if st.session_state.get("screen") == "operational_area":
                 st.dataframe(pivot)
 
     # (You can add a 'time analysis' section next, just like above.)
+    elif section == "time":
+        import datetime
 
-import datetime
+        def fmt_td(x):
+            if pd.isnull(x):
+                return ""
+            total_seconds = int(x.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            return f"{hours:02}:{minutes:02}:{seconds:02}"
 
-def fmt_td(x):
-    if pd.isnull(x):
-        return ""
-    total_seconds = int(x.total_seconds())
-    hours = total_seconds // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    return f"{hours:02}:{minutes:02}:{seconds:02}"
+        def clean_times(df, time_cols):
+            df = df.copy()
+            for col in time_cols:
+                if col in df.columns:
+                    # Convert any datetime.time to string
+                    df[col] = df[col].apply(
+                        lambda x: x.strftime("%H:%M:%S") if isinstance(x, datetime.time) else x
+                    )
+                    # Convert to timedelta
+                    df[col] = pd.to_timedelta(df[col], errors="coerce")
+                    # Remove zeros, blanks, NaT
+                    df = df[~df[col].isna()]
+                    df = df[df[col] != pd.Timedelta(0)]
+            return df
 
-def clean_times(df, time_cols):
-    df = df.copy()
-    for col in time_cols:
-        if col in df.columns:
-            # Convert any datetime.time to string
-            df[col] = df[col].apply(
-                lambda x: x.strftime("%H:%M:%S") if isinstance(x, datetime.time) else x
-            )
-            # Convert to timedelta
-            df[col] = pd.to_timedelta(df[col], errors="coerce")
-            # Remove zeros, blanks, NaT
-            df = df[~df[col].isna()]
-            df = df[df[col] != pd.Timedelta(0)]
-    return df
+        # All possible time columns
+        time_cols = ["Total Time", "Activate", "Deactivate", "Travel Time", "Total Time (Inc Travel)", "Total Working Time"]
 
-# All possible time columns
-time_cols = ["Total Time", "Activate", "Deactivate", "Travel Time", "Total Time (Inc Travel)", "Total Working Time"]
 
-# 1. Summary Table: Mean/Min/Max by Time Column
-st.subheader("⏳ Summary Table: Time Columns Stats")
-summary_rows = []
-for col in time_cols:
-    if col in df_all.columns:
-        cleaned = clean_times(df_all[[col]], [col])
-        if not cleaned.empty:
-            summary_rows.append({
-                "Column": col,
-                "Mean": cleaned[col].mean(),
-                "Min": cleaned[col].min(),
-                "Max": cleaned[col].max(),
-                "Count": cleaned[col].count()
-            })
-if summary_rows:
-    stats_df = pd.DataFrame(summary_rows)
-    stats_df["Mean"] = stats_df["Mean"].apply(fmt_td)
-    stats_df["Min"] = stats_df["Min"].apply(fmt_td)
-    stats_df["Max"] = stats_df["Max"].apply(fmt_td)
-    st.dataframe(stats_df)
-else:
-    st.info("No time columns found.")
+        # 1. Summary Table: Mean/Min/Max by Time Column
+        st.subheader("⏳ Summary Table: Time Columns Stats")
+        summary_rows = []
+        for col in time_cols:
+            if col in df_all.columns:
+                cleaned = clean_times(df_all[[col]], [col])
+                if not cleaned.empty:
+                    summary_rows.append({
+                        "Column": col,
+                        "Mean": cleaned[col].mean(),
+                        "Min": cleaned[col].min(),
+                        "Max": cleaned[col].max(),
+                        "Count": cleaned[col].count()
+                    })
+        if summary_rows:
+            stats_df = pd.DataFrame(summary_rows)
+            stats_df["Mean"] = stats_df["Mean"].apply(fmt_td)
+            stats_df["Min"] = stats_df["Min"].apply(fmt_td)
+            stats_df["Max"] = stats_df["Max"].apply(fmt_td)
+            st.dataframe(stats_df)
+        else:
+            st.info("No time columns found.")
 
-# 2. Average Total Time per Visit Type
-if "Total Time" in df_all.columns and "Visit Type" in df_all.columns:
-    with st.expander("⏱️ Average Total Time per Visit Type"):
-        cleaned = clean_times(df_all[["Total Time", "Visit Type"]], ["Total Time"])
-        avg_time = cleaned.groupby("Visit Type")["Total Time"].mean().sort_values()
-        avg_time = avg_time.apply(fmt_td)
-        st.bar_chart(avg_time)
-        st.dataframe(avg_time)
+        # 2. Average Total Time per Visit Type
+        if "Total Time" in df_all.columns and "Visit Type" in df_all.columns:
+            with st.expander("⏱️ Average Total Time per Visit Type"):
+                cleaned = clean_times(df_all[["Total Time", "Visit Type"]], ["Total Time"])
+                avg_time = cleaned.groupby("Visit Type")["Total Time"].mean().sort_values()
+                avg_time = avg_time.apply(fmt_td)
+                st.bar_chart(avg_time)
+                st.dataframe(avg_time)
 
-# 3. Activate & Deactivate Time Analysis
-for col in ["Activate", "Deactivate"]:
-    if col in df_all.columns:
-        with st.expander(f"⚡ {col} Time Analysis"):
-            cleaned = clean_times(df_all[[col, "Visit Type"]], [col])
-            if not cleaned.empty:
-                avg = cleaned.groupby("Visit Type")[col].mean().sort_values()
+        # 3. Activate & Deactivate Time Analysis
+        for col in ["Activate", "Deactivate"]:
+            if col in df_all.columns:
+                with st.expander(f"⚡ {col} Time Analysis"):
+                    cleaned = clean_times(df_all[[col, "Visit Type"]], [col])
+                    if not cleaned.empty:
+                        avg = cleaned.groupby("Visit Type")[col].mean().sort_values()
+                        avg = avg.apply(fmt_td)
+                        st.bar_chart(avg)
+                        st.dataframe(avg)
+                        st.markdown(f"**Min:** {fmt_td(cleaned[col].min())} &nbsp;&nbsp; **Max:** {fmt_td(cleaned[col].max())}")
+                    else:
+                        st.info(f"No data for {col} column.")
+
+
+        # 4. Total Working Time Analysis
+        if "Total Working Time" in df_all.columns:
+            with st.expander("🛠️ Total Working Time Analysis"):
+                cleaned = clean_times(df_all[["Total Working Time", "Visit Type"]], ["Total Working Time"])
+                avg = cleaned.groupby("Visit Type")["Total Working Time"].mean().sort_values()
                 avg = avg.apply(fmt_td)
                 st.bar_chart(avg)
                 st.dataframe(avg)
-                st.markdown(f"**Min:** {fmt_td(cleaned[col].min())} &nbsp;&nbsp; **Max:** {fmt_td(cleaned[col].max())}")
-            else:
-                st.info(f"No data for {col} column.")
+                st.markdown(f"**Min:** {fmt_td(cleaned['Total Working Time'].min())} &nbsp;&nbsp; **Max:** {fmt_td(cleaned['Total Working Time'].max())}")
 
-# 4. Total Working Time Analysis
-if "Total Working Time" in df_all.columns:
-    with st.expander("🛠️ Total Working Time Analysis"):
-        cleaned = clean_times(df_all[["Total Working Time", "Visit Type"]], ["Total Working Time"])
-        avg = cleaned.groupby("Visit Type")["Total Working Time"].mean().sort_values()
-        avg = avg.apply(fmt_td)
-        st.bar_chart(avg)
-        st.dataframe(avg)
-        st.markdown(f"**Min:** {fmt_td(cleaned['Total Working Time'].min())} &nbsp;&nbsp; **Max:** {fmt_td(cleaned['Total Working Time'].max())}")
+        # 5. Boxplot of Total Time per Team
+        if "Total Time" in df_all.columns and "Team" in df_all.columns:
+            with st.expander("📦 Boxplot: Total Time by Team"):
+                cleaned = clean_times(df_all[["Total Time", "Team"]], ["Total Time"])
+                import plotly.express as px
+                fig = px.box(cleaned, x="Team", y="Total Time", title="Total Time Distribution by Team")
+                st.plotly_chart(fig, use_container_width=True)
 
-# 5. Boxplot of Total Time per Team
-if "Total Time" in df_all.columns and "Team" in df_all.columns:
-    with st.expander("📦 Boxplot: Total Time by Team"):
-        cleaned = clean_times(df_all[["Total Time", "Team"]], ["Total Time"])
-        import plotly.express as px
-        fig = px.box(cleaned, x="Team", y="Total Time", title="Total Time Distribution by Team")
-        st.plotly_chart(fig, use_container_width=True)
+        # 6. Timeline: Mean Total Time Per Month
+        if "Total Time" in df_all.columns and "Date" in df_all.columns:
+            with st.expander("📈 Avg Total Time Per Month (Line Chart)"):
+                cleaned = clean_times(df_all[["Total Time", "Date"]], ["Total Time"])
+                cleaned["Month"] = pd.to_datetime(cleaned["Date"], errors="coerce").dt.to_period("M").dt.to_timestamp()
+                monthly = cleaned.groupby("Month")["Total Time"].mean().dropna()
+                monthly_fmt = monthly.apply(fmt_td)
+                st.line_chart(monthly_fmt)
 
-# 6. Timeline: Mean Total Time Per Month
-if "Total Time" in df_all.columns and "Date" in df_all.columns:
-    with st.expander("📈 Avg Total Time Per Month (Line Chart)"):
-        cleaned = clean_times(df_all[["Total Time", "Date"]], ["Total Time"])
-        cleaned["Month"] = pd.to_datetime(cleaned["Date"], errors="coerce").dt.to_period("M").dt.to_timestamp()
-        monthly = cleaned.groupby("Month")["Total Time"].mean().dropna()
-        monthly_fmt = monthly.apply(fmt_td)
-        st.line_chart(monthly_fmt)
 
-# 7. Table: All Time Columns (first 100 rows, cleaned)
-with st.expander("📋 All Time Columns (Sample)"):
-    cols_present = [col for col in time_cols if col in df_all.columns]
-    sample = clean_times(df_all[cols_present], cols_present)
-    # Format columns
-    for c in cols_present:
-        sample[c] = sample[c].apply(fmt_td)
-    st.dataframe(sample.head(100), use_container_width=True)
+        # 7. Table: All Time Columns (first 100 rows, cleaned)
+        with st.expander("📋 All Time Columns (Sample)"):
+            cols_present = [col for col in time_cols if col in df_all.columns]
+            sample = clean_times(df_all[cols_present], cols_present)
+            # Format columns
+            for c in cols_present:
+                sample[c] = sample[c].apply(fmt_td)
+            st.dataframe(sample.head(100), use_container_width=True)
 
-# 8. 🔥 Heatmap: Average Total Time by Team & Visit Type
-if all(col in df_all.columns for col in ["Total Time", "Team", "Visit Type"]):
-    with st.expander("🔥 Heatmap: Avg Total Time by Team & Visit Type"):
-        cleaned = clean_times(df_all[["Total Time", "Team", "Visit Type"]], ["Total Time"])
-        pivot = cleaned.pivot_table(index="Team", columns="Visit Type", values="Total Time", aggfunc="mean")
-        # Format for display (HH:MM:SS)
-        pivot_fmt = pivot.applymap(fmt_td)
-        st.dataframe(pivot_fmt)
+        # 8. 🔥 Heatmap: Average Total Time by Team & Visit Type
+        if all(col in df_all.columns for col in ["Total Time", "Team", "Visit Type"]):
+            with st.expander("🔥 Heatmap: Avg Total Time by Team & Visit Type"):
+                cleaned = clean_times(df_all[["Total Time", "Team", "Visit Type"]], ["Total Time"])
+                pivot = cleaned.pivot_table(index="Team", columns="Visit Type", values="Total Time", aggfunc="mean")
+                # Format for display (HH:MM:SS)
+                pivot_fmt = pivot.applymap(fmt_td)
+                st.dataframe(pivot_fmt)
 
-# 9. ⏲️ Distribution of Total Time (Histogram)
-if "Total Time" in df_all.columns:
-    with st.expander("⏲️ Distribution of Total Time (Histogram)"):
-        cleaned = clean_times(df_all[["Total Time"]], ["Total Time"])
-        if not cleaned.empty:
-            import matplotlib.pyplot as plt
-            import numpy as np
-            times = cleaned["Total Time"].dt.total_seconds() / 60  # Minutes
-            fig, ax = plt.subplots()
-            ax.hist(times, bins=30, color='skyblue', edgecolor='black')
-            ax.set_title("Distribution of Total Time (Minutes)")
-            ax.set_xlabel("Minutes")
-            ax.set_ylabel("Frequency")
-            st.pyplot(fig)
+        # 9. ⏲️ Distribution of Total Time (Histogram)
+        if "Total Time" in df_all.columns:
+            with st.expander("⏲️ Distribution of Total Time (Histogram)"):
+                cleaned = clean_times(df_all[["Total Time"]], ["Total Time"])
+                if not cleaned.empty:
+                    import matplotlib.pyplot as plt
+                    import numpy as np
+                    times = cleaned["Total Time"].dt.total_seconds() / 60  # Minutes
+                    fig, ax = plt.subplots()
+                    ax.hist(times, bins=30, color='skyblue', edgecolor='black')
+                    ax.set_title("Distribution of Total Time (Minutes)")
+                    ax.set_xlabel("Minutes")
+                    ax.set_ylabel("Frequency")
+                    st.pyplot(fig)
 
-# 10. 🕒 Median Time by Visit Type and Team
-if all(col in df_all.columns for col in ["Total Time", "Team", "Visit Type"]):
-    with st.expander("🕒 Median Total Time by Visit Type and Team (Table)"):
-        cleaned = clean_times(df_all[["Total Time", "Team", "Visit Type"]], ["Total Time"])
-        pivot = cleaned.pivot_table(index="Team", columns="Visit Type", values="Total Time", aggfunc="median")
-        pivot_fmt = pivot.applymap(fmt_td)
-        st.dataframe(pivot_fmt)
 
-# 11. 📊 Pie Chart: Proportion of Visits with >1 Hour Total Time
-if "Total Time" in df_all.columns:
-    with st.expander("📊 Visits > 1 Hour vs <= 1 Hour (Pie Chart)"):
-        cleaned = clean_times(df_all[["Total Time"]], ["Total Time"])
-        gt1h = (cleaned["Total Time"] > pd.Timedelta(hours=1)).sum()
-        le1h = (cleaned["Total Time"] <= pd.Timedelta(hours=1)).sum()
-        pie_df = pd.DataFrame({
-            "Category": ["> 1 Hour", "<= 1 Hour"],
-            "Count": [gt1h, le1h]
-        })
-        fig = px.pie(pie_df, names="Category", values="Count", title="Proportion of Visits > 1 Hour Total Time")
-        st.plotly_chart(fig, use_container_width=True)
 
-# 12. 🏆 Longest & Shortest Total Times (Per Team)
-if "Total Time" in df_all.columns and "Team" in df_all.columns:
-    with st.expander("🏆 Longest & Shortest Total Times per Team"):
-        cleaned = clean_times(df_all[["Total Time", "Team", "Name", "Visit Type"]], ["Total Time"])
-        idxmax = cleaned.groupby("Team")["Total Time"].idxmax()
-        idxmin = cleaned.groupby("Team")["Total Time"].idxmin()
-        longest = cleaned.loc[idxmax]
-        shortest = cleaned.loc[idxmin]
-        longest = longest[["Team", "Name", "Visit Type", "Total Time"]]
-        shortest = shortest[["Team", "Name", "Visit Type", "Total Time"]]
-        longest["Total Time"] = longest["Total Time"].apply(fmt_td)
-        shortest["Total Time"] = shortest["Total Time"].apply(fmt_td)
-        st.markdown("#### Longest Total Time per Team")
-        st.dataframe(longest)
-        st.markdown("#### Shortest Total Time per Team")
-        st.dataframe(shortest)
+        # 10. 🕒 Median Time by Visit Type and Team
+        if all(col in df_all.columns for col in ["Total Time", "Team", "Visit Type"]):
+            with st.expander("🕒 Median Total Time by Visit Type and Team (Table)"):
+                cleaned = clean_times(df_all[["Total Time", "Team", "Visit Type"]], ["Total Time"])
+                pivot = cleaned.pivot_table(index="Team", columns="Visit Type", values="Total Time", aggfunc="median")
+                pivot_fmt = pivot.applymap(fmt_td)
+                st.dataframe(pivot_fmt)
+
+        # 11. 📊 Pie Chart: Proportion of Visits with >1 Hour Total Time
+        if "Total Time" in df_all.columns:
+            with st.expander("📊 Visits > 1 Hour vs <= 1 Hour (Pie Chart)"):
+                cleaned = clean_times(df_all[["Total Time"]], ["Total Time"])
+                gt1h = (cleaned["Total Time"] > pd.Timedelta(hours=1)).sum()
+                le1h = (cleaned["Total Time"] <= pd.Timedelta(hours=1)).sum()
+                pie_df = pd.DataFrame({
+                    "Category": ["> 1 Hour", "<= 1 Hour"],
+                    "Count": [gt1h, le1h]
+                })
+                fig = px.pie(pie_df, names="Category", values="Count", title="Proportion of Visits > 1 Hour Total Time")
+                st.plotly_chart(fig, use_container_width=True)
+
+        # 12. 🏆 Longest & Shortest Total Times (Per Team)
+        if "Total Time" in df_all.columns and "Team" in df_all.columns:
+            with st.expander("🏆 Longest & Shortest Total Times per Team"):
+                cleaned = clean_times(df_all[["Total Time", "Team", "Name", "Visit Type"]], ["Total Time"])
+                idxmax = cleaned.groupby("Team")["Total Time"].idxmax()
+                idxmin = cleaned.groupby("Team")["Total Time"].idxmin()
+                longest = cleaned.loc[idxmax]
+                shortest = cleaned.loc[idxmin]
+                longest = longest[["Team", "Name", "Visit Type", "Total Time"]]
+                shortest = shortest[["Team", "Name", "Visit Type", "Total Time"]]
+                longest["Total Time"] = longest["Total Time"].apply(fmt_td)
+                shortest["Total Time"] = shortest["Total Time"].apply(fmt_td)
+                st.markdown("#### Longest Total Time per Team")
+                st.dataframe(longest)
+                st.markdown("#### Shortest Total Time per Team")
+                st.dataframe(shortest)
+
+
+
 
 
 
@@ -4039,958 +5431,8 @@ if st.session_state.get("screen") == "ai":
 
 
 
-# ── BLOCK 24 ─────────────────────────────────────────────────────────────
-# 📦 Sky Business Area – Combined Oracle Data Dashboard
-import pandas as pd
-import streamlit as st
-import plotly.express as px
 
-def run_sky_business_kpi_dashboard():
-    st.markdown("## 📊 Sky Business Area Dashboard")
-    st.caption("Filtered view of all Oracle datasets where `Visit Type` contains 'Sky Business'.")
 
-    # 🔄 Load all four Oracle datasets
-    files = [
-        "VIP North Oracle Data.xlsx",
-        "VIP South Oracle Data.xlsx",
-        "Tier 2 North Oracle Data.xlsx",
-        "Tier 2 South Oracle Data.xlsx"
-    ]
-
-    dfs = []
-    for file in files:
-        try:
-            df = pd.read_excel(file)
-            df["Source"] = file  # Add where it came from
-            dfs.append(df)
-        except Exception as e:
-            st.warning(f"Couldn't load {file}: {e}")
-
-    if not dfs:
-        st.error("❌ No Oracle data could be loaded.")
-        return
-
-    # 🧪 Combine and filter to Sky Business rows only
-    df_all = pd.concat(dfs, ignore_index=True)
-    df_all.columns = df_all.columns.str.strip()
-    df_all = df_all.dropna(how="all")
-
-    if "Visit Type" not in df_all.columns:
-        st.error("Column 'Visit Type' is missing.")
-        return
-
-    df_sky = df_all[df_all["Visit Type"].astype(str).str.contains("Sky Business", case=False, na=False)]
-    if df_sky.empty:
-        st.info("No rows found for 'Sky Business' in Visit Type.")
-        return
-
-    # ── Summary KPIs ───────────────────────────────────────────
-    st.subheader("📌 Summary KPIs")
-    col1, col2, col3 = st.columns(3)
-
-    total_visits = len(df_sky)
-    total_value = df_sky["Total Value"].sum() if "Total Value" in df_sky.columns else 0
-
-    activity_counts = df_sky["Activity Status"].astype(str).str.lower().value_counts()
-    completed = activity_counts.get("completed", 0)
-    cancelled = activity_counts.get("cancelled", 0)
-    not_done = activity_counts.get("not done", 0)
-    failed = cancelled + not_done
-
-    col1.metric("📦 Total Sky Business Visits", total_visits)
-    col2.metric("💷 Total Value (£)", f"£{total_value:,.2f}")
-    if failed > 0:
-        ratio = completed / failed
-        col3.markdown(f"🔁 **{ratio:.1f}** visits completed for every **1** cancelled or not done visit")
-    else:
-        col3.markdown("🔁 No failed visits recorded")
-
-    # ── Activity Breakdown Chart ─────────────────────
-    st.subheader("🧩 Activity Completion Breakdown")
-    st.bar_chart(activity_counts)
-
-    # ── Monthly Trends ────────────────────────────
-    if "Date" in df_sky.columns:
-        df_sky["Month"] = pd.to_datetime(df_sky["Date"], errors="coerce").dt.to_period("M").astype(str)
-        by_month = df_sky.groupby("Month").agg({
-            "Visit Type": "count",
-            "Total Value": "sum"
-        }).rename(columns={"Visit Type": "Visit Count"})
-
-        st.subheader("📈 Monthly Trends")
-        st.plotly_chart(px.line(by_month, y="Visit Count", title="Monthly Visit Count"), use_container_width=True)
-        st.plotly_chart(px.line(by_month, y="Total Value", title="Monthly Total Value (£)"), use_container_width=True)
-    else:
-        st.warning("⚠️ Column 'Date' missing — cannot generate monthly trends.")
-
-    # ── Sunburst: Visit Type → Activity Status ───────────────────
-    st.subheader("🌞 Visit Type Breakdown by Activity Status")
-    if "Activity Status" in df_sky.columns:
-        fig = px.sunburst(df_sky, path=["Visit Type", "Activity Status"], title="Sky Business Visit Breakdown")
-        st.plotly_chart(fig, use_container_width=True)
-
-    # ── Forecasting (based on 6 months) ─────────────────────
-    st.subheader("🔮 Forecast (based on recent 6 months)")
-
-    if "Month" in df_sky.columns:
-        last_6 = by_month.tail(6)
-        forecast = round(last_6.mean())
-        st.markdown(f"""
-        **🗖️ 6-Month Forecast**
-        - Avg Monthly Visits: **{forecast['Visit Count']}**
-        - Avg Monthly Value: **£{forecast['Total Value']:,.2f}**
-        """)
-        st.line_chart(last_6)
-    else:
-        st.info("🗓️ No 'Month' column available for forecasting.")
-
-    st.caption("Data pulled from 4 Oracle sources, filtered to Sky Business only.")
-
-
-
-# ── KPI: Sky Business Area ──────────────────────────────────────────
-# ── KPI: Sky Business Area ──────────────────────────────────────────
-if st.session_state.get("kpi_dataset", (None,))[0] == "Sky Business Area":
-
-    # ── BLOCK 24 ──────────────────────────────────────────────────────────
-    import pandas as pd
-    import numpy as np
-    import streamlit as st
-    import plotly.express as px
-    import re
-    from collections import defaultdict
-
-    st.markdown("## 📊 Sky Business KPI Centre")
-    st.caption("Everything below is filtered where **Visit Type** contains “Sky Business”.")
-
-    # 0️⃣ Load & merge ───────────────────────────────────────────────────
-    file_map = {
-        "VIP North":   "VIP North Oracle Data.xlsx",
-        "VIP South":   "VIP South Oracle Data.xlsx",
-        "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
-        "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
-    }
-
-    frames = []
-    for label, path in file_map.items():
-        try:
-            tmp = pd.read_excel(path)
-            tmp["Team"] = label
-            frames.append(tmp)
-        except Exception as e:
-            st.warning(f"⚠️ {path} not loaded – {e}")
-
-    if not frames:
-        st.error("No Oracle files could be loaded – aborting.")
-        st.stop()
-
-    df_all = pd.concat(frames, ignore_index=True)
-    df_all.columns = df_all.columns.str.strip()
-
-    if "Visit Type" not in df_all:
-        st.error("Column ‘Visit Type’ missing in Oracle sheets.")
-        st.stop()
-
-    df_all = (
-        df_all[df_all["Visit Type"]
-               .astype(str)
-               .str.contains("sky business", case=False, na=False)]
-        .copy()
-    )
-    if df_all.empty:
-        st.info("No rows where Visit Type contains “Sky Business”.")
-        st.stop()
-
-    df_all["Date"] = pd.to_datetime(df_all["Date"], errors="coerce")
-    df_all.dropna(subset=["Date"], inplace=True)
-    df_all["Month"] = df_all["Date"].dt.to_period("M").astype(str)
-
-    # 1️⃣ Global KPIs ────────────────────────────────────────────────────
-    with st.expander("📌 Global Summary KPIs", expanded=True):
-        total_vis  = len(df_all)
-        total_val  = df_all.get("Total Value", pd.Series(dtype=float)).sum()
-        uniq_types = df_all["Visit Type"].nunique()
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total Visits",        f"{total_vis:,}")
-        c2.metric("Total Value (£)",     f"£{total_val:,.0f}")
-        c3.metric("Unique Visit Types",  uniq_types)
-
-    # 2️⃣ Tabs – Overall + individual Oracle files ──────────────────────
-    tab_labels = ["Overall"] + list(file_map.keys())
-    tabs       = st.tabs(tab_labels)
-
-    # ── Small helper: straight-line forecast ───────────────────────────
-    def _simple_forecast(series: pd.Series, periods: int = 6) -> list[int]:
-        series = series.sort_index()
-        n = len(series)
-
-        if n >= 3:
-            y = series.iloc[-4:]
-            x = np.arange(len(series) - len(y), len(series))
-        elif n == 2:
-            y = series
-            x = np.arange(n)
-        elif n == 1:
-            return [int(series.iloc[-1])] * periods
-        else:
-            return [0] * periods
-
-        m, b = np.polyfit(x, y.values, 1)
-        future_x = np.arange(len(series), len(series) + periods)
-        return [max(0, int(round(m * xi + b))) for xi in future_x]
-
-    # 3️⃣ Build each tab ────────────────────────────────────────────────
-    for tab, label in zip(tabs, tab_labels):
-        with tab:
-
-            # Slice data
-            df = df_all if label == "Overall" else df_all[df_all["Team"] == label]
-            st.subheader("🌐 Overall" if label == "Overall" else f"📁 {label}")
-
-            if df.empty:
-                st.info("No data in this slice.")
-                continue
-
-            # Basic KPIs
-            with st.expander("🧮 Basic KPIs", expanded=True):
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Visits",      f"{len(df):,}")
-                c2.metric("Value (£)",   f"£{df.get('Total Value', pd.Series(dtype=float)).sum():,.0f}")
-                c3.metric("Visit Types", df["Visit Type"].nunique())
-
-            # Historical trends
-            with st.expander("📈 Monthly Trend by Visit Type", expanded=False):
-                monthly_counts = (
-                    df.groupby(["Month", "Visit Type"])
-                      .size().reset_index(name="Visits")
-                )
-                fig_hist = px.line(
-                    monthly_counts, x="Month", y="Visits",
-                    color="Visit Type", markers=True,
-                    title="Historical Visits per Type"
-                )
-                st.plotly_chart(fig_hist, use_container_width=True,
-                                key=f"hist_{re.sub(r'\\W+','_',label)}")
-
-            with st.expander("📊 Monthly Visit Count (Stacked)", expanded=False):
-                bar_df = (
-                    monthly_counts.pivot(index="Month",
-                                         columns="Visit Type",
-                                         values="Visits")
-                    .fillna(0)
-                    .sort_index()
-                )
-                st.bar_chart(bar_df)
-
-            if "Total Value" in df.columns:
-                with st.expander("💷 Monthly Value (£)", expanded=False):
-                    value_df = (
-                        df.groupby("Month")["Total Value"]
-                          .sum()
-                          .sort_index()
-                    )
-                    st.line_chart(value_df)
-
-
-
-            # ── Detailed Monthly KPI Table by Visit Type & Status ────────────
-            with st.expander("📋 KPI Table – Monthly Visit Type x Status", expanded=False):
-                if "Activity Status" not in df.columns:
-                    st.warning("⚠️ 'Activity Status' column missing.")
-                else:
-                    kpi_table = (
-                        df.groupby(["Month", "Visit Type", "Activity Status"])
-                          .size()
-                          .reset_index(name="Count")
-                    )
-
-                    # Pivot to make Activity Statuses into columns
-                    pivot_table = kpi_table.pivot_table(
-                        index=["Month", "Visit Type"],
-                        columns="Activity Status",
-                        values="Count",
-                        fill_value=0
-                    ).reset_index()
-
-                    # Sort and display
-                    pivot_table = pivot_table.sort_values(by=["Month", "Visit Type"])
-                    st.dataframe(pivot_table, use_container_width=True)
-
-
-
-
-            # Forecasts -------------------------------------------------
-            with st.expander("🔮 Forecasts", expanded=False):
-
-                tab_id = re.sub(r"\W+", "_", label).strip("_")
-                key_counter: defaultdict[str, int] = defaultdict(int)
-
-                # 3-A  Overall forecast
-                overall_series = df.groupby("Month").size().sort_index()
-                fc_vals        = _simple_forecast(overall_series, periods=6)
-                last_p         = pd.Period(overall_series.index.max(), freq="M")
-                fut_mths       = [str(last_p + i) for i in range(1, 7)]
-
-                overall_df = pd.concat(
-                    [
-                        pd.DataFrame(
-                            {"Month": overall_series.index,
-                             "Visits": overall_series.values,
-                             "Kind":   "Actual"}
-                        ),
-                        pd.DataFrame(
-                            {"Month": fut_mths,
-                             "Visits": fc_vals,
-                             "Kind":   "Forecast"}
-                        )
-                    ],
-                    ignore_index=True
-                )
-
-                st.plotly_chart(
-                    px.line(overall_df, x="Month", y="Visits",
-                            line_dash="Kind", markers=True,
-                            title="Historical vs Forecast – ALL Visit Types"),
-                    use_container_width=True,
-                    key=f"fc_overall_{tab_id}"
-                )
-
-                # 3-B  Individual visit-type forecasts
-                visit_types = df["Visit Type"].dropna().unique()
-                for vt in sorted(visit_types):
-
-                    vt_series = (
-                        df[df["Visit Type"] == vt]
-                          .groupby("Month")
-                          .size()
-                          .sort_index()
-                    )
-                    if vt_series.empty:
-                        continue
-
-                    vt_fc    = _simple_forecast(vt_series, periods=6)
-                    last_p   = pd.Period(vt_series.index.max(), freq="M")
-                    fut_mths = [str(last_p + i) for i in range(1, 7)]
-
-                    chart_df = pd.concat(
-                        [
-                            pd.DataFrame(
-                                {"Month": vt_series.index,
-                                 "Visits": vt_series.values,
-                                 "Kind":   "Actual"}
-                            ),
-                            pd.DataFrame(
-                                {"Month": fut_mths,
-                                 "Visits": vt_fc,
-                                 "Kind":   "Forecast"}
-                            )
-                        ],
-                        ignore_index=True
-                    )
-
-                    clean_vt = re.sub(r"\W+", "_", vt).strip("_")
-                    key_counter[clean_vt] += 1
-                    safe_key = f"fc_{tab_id}_{clean_vt}_{key_counter[clean_vt]}"
-
-                    st.plotly_chart(
-                        px.line(chart_df, x="Month", y="Visits",
-                                line_dash="Kind", markers=True,
-                                title=f"{vt} – Historical vs Forecast"),
-                        use_container_width=True,
-                        key=safe_key
-                    )
-
-            # ── Monthly change summary ───────────────────────────────────
-            with st.expander("📊 Month-on-Month Change (Visits)", expanded=False):
-                # ➊ Monthly totals for this tab
-                monthly_tot = (
-                    df.groupby("Month")
-                      .size()
-                      .sort_index()
-                )
-
-                if monthly_tot.empty:
-                    st.info("No monthly data available.")
-                else:
-                    # ➋ Month-over-month deltas
-                    delta_abs  = monthly_tot.diff().fillna(0).astype(int)
-                    delta_pct  = (monthly_tot.pct_change() * 100).round(1)
-
-                    # ➌ Compare to dataset-wide max / min
-                    max_vis = monthly_tot.max()
-                    min_vis = monthly_tot.min()
-
-                    summary_df = pd.DataFrame({
-                        "Month"        : monthly_tot.index.astype(str),
-                        "Visits"       : monthly_tot.values,
-                        "Δ vs Prev"    : delta_abs.values,
-                        "%Δ vs Prev"   : delta_pct.values,
-                        "Δ vs Max"     : (monthly_tot - max_vis).values,
-                        "Δ vs Min"     : (monthly_tot - min_vis).values,
-                    })
-
-                    # tidy column order
-                    summary_df = summary_df[
-                        ["Month", "Visits", "Δ vs Prev", "%Δ vs Prev",
-                         "Δ vs Max", "Δ vs Min"]
-                    ]
-
-                    st.dataframe(summary_df, use_container_width=True)
-
-            # ── Month-on-Month change per *Visit Type* ──────────────────────
-            with st.expander("📊 Month-on-Month Change • by Visit Type", expanded=False):
-                # ➊ Pivot: rows = Month, cols = Visit Type, values = counts
-                pv = (
-                    df.groupby(["Month", "Visit Type"])
-                      .size()
-                      .unstack(fill_value=0)
-                      .sort_index()              # chronological
-                )
-
-                if pv.empty:
-                    st.info("No data available for this slice.")
-                else:
-                    # ➋ Deltas
-                    delta_abs = pv.diff().fillna(0).astype(int)
-                    delta_pct = (pv.pct_change() * 100).round(1).fillna(0)
-
-                    # ➌ Build a pretty table
-                    tidy_frames = []
-                    for vt in pv.columns:
-                        tmp = pd.DataFrame({
-                            "Month"          : pv.index.astype(str),
-                            f"{vt} Visits"   : pv[vt].values,
-                            f"{vt} Δ"        : delta_abs[vt].values,
-                            f"{vt} %Δ"       : delta_pct[vt].values,
-                        })
-                        tidy_frames.append(tmp)
-
-                    # ➍ Merge on Month
-                    tidy_df = tidy_frames[0]
-                    for extra in tidy_frames[1:]:
-                        tidy_df = tidy_df.merge(extra, on="Month")
-
-                    # ➎ Show
-                    st.dataframe(tidy_df, use_container_width=True)
-
-            # ── KPI Heat-Map • Peaks, Troughs & Growth ──────────────────────
-            with st.expander("📊 KPI Dashboard (Peaks • Troughs • Growth)", expanded=False):
-
-                # 1️⃣  Baseline counts ─────────────────────────────────────
-                base = (
-                    df.groupby("Month")
-                      .size()                       # all Sky Business visits
-                      .rename("Visits")
-                      .sort_index()
-                )
-                if len(base) < 2:
-                    st.info("Need at least 2 months of data for deltas.")
-                else:
-                    # 2️⃣  Delta vs previous, vs Max, vs Min ─────────────
-                    delta_abs = base.diff().fillna(0).astype(int)
-                    delta_pct = (base.pct_change() * 100).round(1).fillna(0)
-
-                    max_val   = base.max()
-                    min_val   = base.min()
-
-                    kpi_df = pd.DataFrame({
-                        "Month"            : base.index.astype(str),
-                        "Visits"           : base.values,
-                        "Δ Prev Mo"        : delta_abs.values,
-                        "%Δ Prev Mo"       : delta_pct.values,
-                        "Δ vs Max Peak"    : (base - max_val).values,
-                        "Δ vs Min Trough"  : (base - min_val).values,
-                    })
-
-                    # 3️⃣  Styling helpers ───────────────────────────────
-                    def colour_delta(val):
-                        if val > 0:
-                            return "background-color:#075E00;color:white"   # green
-                        elif val < 0:
-                            return "background-color:#8B0000;color:white"   # red
-                        else:
-                            return "background-color:#444444;color:white"   # grey
-
-                    styled = (
-                        kpi_df.style
-                              .applymap(colour_delta, subset=["Δ Prev Mo", "%Δ Prev Mo"])
-                              .applymap(colour_delta, subset=["Δ vs Max Peak", "Δ vs Min Trough"])
-                              .format({"Visits":"{:,}",
-                                       "Δ Prev Mo":"{:+,}",
-                                       "%Δ Prev Mo":"{:+.1f}%",
-                                       "Δ vs Max Peak":"{:+,}",
-                                       "Δ vs Min Trough":"{:+,}"})
-                    )
-
-                    # 4️⃣  Show
-                    st.dataframe(styled, use_container_width=True)
-            # ────────────────────────────────────────────────────────────────
-            # 📊 EXTRA GRAPH GALLERY  ─  Best-in-class visuals
-            # ────────────────────────────────────────────────────────────────
-            with st.expander("📊 Graph Gallery – Visit Trends & Growth", expanded=False):
-                import plotly.graph_objects as go
-
-                # 1️⃣ Area Chart – Total Visits
-                fig_area = px.area(
-                    overall_series.reset_index(name="Visits"),
-                    x="Month", y="Visits",
-                    title="📈 Area Chart – Total Visits Over Time"
-                )
-                st.plotly_chart(fig_area, use_container_width=True, key=f"area_{tab_id}")
-
-                # 2️⃣ Line Chart – % Growth Month-over-Month
-                pct_change = overall_series.pct_change().fillna(0) * 100
-                fig_pct = px.line(
-                    pct_change.reset_index(name="% Growth"),
-                    x="Month", y="% Growth",
-                    title="📊 % Change in Visits (Month-over-Month)"
-                )
-                st.plotly_chart(fig_pct, use_container_width=True, key=f"pctmo_{tab_id}")
-
-                # 3️⃣ Heatmap – Monthly Visit Counts
-                hm_df = overall_series.reset_index(name="Visits")
-                hm_df["Month_Num"] = pd.to_datetime(hm_df["Month"]).dt.month
-                hm_df["Year"] = pd.to_datetime(hm_df["Month"]).dt.year
-
-                fig_hm = px.density_heatmap(
-                    hm_df, x="Month_Num", y="Year", z="Visits",
-                    color_continuous_scale="Viridis", nbinsx=12, nbinsy=len(hm_df["Year"].unique()),
-                    title="🔥 Monthly Visit Count Heatmap"
-                )
-                st.plotly_chart(fig_hm, use_container_width=True, key=f"hm_{tab_id}")
-
-                # 4️⃣ Waterfall Chart – Δ Visits from Previous Month
-                delta_vals = overall_series.diff().fillna(0).astype(int)
-                wf_df = pd.DataFrame({
-                    "Month" : overall_series.index.astype(str),
-                    "Change": delta_vals.values
-                })
-
-                fig_wf = go.Figure(go.Waterfall(
-                    x = wf_df["Month"],
-                    y = wf_df["Change"],
-                    measure = ["absolute"] + ["relative"] * (len(wf_df) - 1),
-                    increasing = {"marker": {"color": "green"}},
-                    decreasing = {"marker": {"color": "crimson"}},
-                    totals = {"marker": {"color": "gray"}},
-                    connector = {"line": {"color": "silver"}},
-                    textposition="outside"
-                ))
-
-                fig_wf.update_layout(
-                    title = "🌊 Waterfall – Δ Visits vs Previous Month",
-                    showlegend = False,
-                    height = 400
-                )
-
-                st.plotly_chart(fig_wf, use_container_width=True, key=f"wf_{tab_id}")
-
-    # ── SLA DASHBOARD ─────────────────────────────────────────────────────────
-    #  Columns needed in AI Test SB Visits.xlsx …
-    #    • "Visit type"    ⇒ SLA bucket (2h / 4h / 5 day / 8h)
-    #    • "Date of visit" ⇒ timestamp
-    #    • "Met SLA?"      ⇒ optional flag (Y/True/Yes)
-    # -------------------------------------------------------------------------
-    with st.expander("⏱️ SLA Dashboard – 2 h • 4 h • 5 day • 8 h", expanded=False):
-
-        # 0️⃣ LOAD + CLEAN ----------------------------------------------------
-        SLA_FILE   = "AI Test SB Visits.xlsx"
-        SLA_COL    = "Visit type"
-        DATE_COL   = "Date of visit"
-        RESULT_COL = "Met SLA?"          # not in file → created below
-
-        try:
-            sla_df = pd.read_excel(SLA_FILE)
-        except Exception as e:
-            st.error(f"Could not load “{SLA_FILE}”: {e}")
-            st.stop()
-
-        sla_df.columns = sla_df.columns.str.strip()
-
-        for col in (SLA_COL, DATE_COL):
-            if col not in sla_df.columns:
-                st.error(f"Column “{col}” missing – check the sheet header.")
-                st.stop()
-
-        sla_df = sla_df.dropna(subset=[SLA_COL, DATE_COL])
-        sla_df[DATE_COL] = pd.to_datetime(sla_df[DATE_COL], errors="coerce")
-        sla_df = sla_df.dropna(subset=[DATE_COL])
-
-        # 🔎 Filter to the four SLA targets ONLY
-        sla_mask = sla_df[SLA_COL].str.lower().str.contains(
-            r"\b(2h|2 h|2hr|4h|4 h|4hr|5 ?day|8h|8 h|8hr)\b", regex=True, na=False
-        )
-        sla_df = sla_df[sla_mask].copy()
-
-        if sla_df.empty:
-            st.warning("No rows match 2 h, 4 h, 5 day or 8 h targets.")
-            st.stop()
-
-        sla_df["Month"] = sla_df[DATE_COL].dt.to_period("M").astype(str)
-
-        # If “Met SLA?” not present, assume every ticket was met
-        if RESULT_COL not in sla_df.columns:
-            sla_df[RESULT_COL] = True
-
-        sla_df[RESULT_COL] = (
-            sla_df[RESULT_COL]
-            .astype(str).str.strip().str.lower()
-            .isin(["yes", "y", "true", "1"])
-        )
-
-        # 1️⃣ KPI HEADER ------------------------------------------------------
-        total_tickets = len(sla_df)
-        met_total     = sla_df[RESULT_COL].sum()
-        pct_met       = met_total / total_tickets * 100 if total_tickets else 0
-
-        k0, k1, k2, k3 = st.columns(4)
-        k0.metric("Total Tickets", f"{total_tickets:,}")
-        k1.metric("Met SLA",       f"{met_total:,}")
-        k2.metric("Missed SLA",    f"{total_tickets-met_total:,}")
-        k3.metric("% Met",         f"{pct_met:.1f}%")
-
-        st.markdown("---")
-
-        # 2️⃣ VOLUME PER SLA BUCKET ------------------------------------------
-        vol_df = (sla_df[SLA_COL]
-                  .value_counts()
-                  .reset_index()
-                  .rename(columns={SLA_COL: "SLA Target", "count": "Tickets"}))
-
-        st.plotly_chart(
-            px.bar(vol_df, x="SLA Target", y="Tickets", color="SLA Target",
-                   title="Ticket Volume by SLA Target"),
-            use_container_width=True,
-            key="sla_vol"
-        )
-
-        # 3️⃣ MONTHLY TREND PER TARGET ---------------------------------------
-        trend_df = (sla_df.groupby(["Month", SLA_COL])
-                            .size()
-                            .reset_index(name="Tickets")
-                            .sort_values("Month"))
-
-        st.plotly_chart(
-            px.line(trend_df, x="Month", y="Tickets", color=SLA_COL,
-                    markers=True, title="Monthly Ticket Trend by SLA Target"),
-            use_container_width=True,
-            key="sla_trend"
-        )
-
-        # 4️⃣ STACKED MET vs MISSED  (only if some misses exist) -------------
-        if not sla_df[RESULT_COL].all():
-            stack_df = (sla_df.groupby([SLA_COL, RESULT_COL])
-                                .size().reset_index(name="Count"))
-            stack_df["Status"] = np.where(stack_df[RESULT_COL], "Met", "Missed")
-
-            st.plotly_chart(
-                px.bar(stack_df, x=SLA_COL, y="Count", color="Status",
-                       title="Met vs Missed SLA (stacked)"),
-                use_container_width=True,
-                key="sla_stack"
-            )
-
-        # 5️⃣ FORECASTS (NEXT 6 MONTHS) --------------------------------------
-        st.markdown("### 🔮 Forecasts (next 6 months)")
-
-        def _simple_forecast(series: pd.Series, periods: int = 6) -> list[int]:
-            series = series.sort_index()
-            n = len(series)
-            if n == 0:
-                return [0] * periods
-            if n == 1:
-                return [int(series.iloc[0])] * periods
-            if n == 2:
-                x = np.arange(2)
-                y = series.values
-            else:
-                x = np.arange(n-4, n)
-                y = series.iloc[-4:].values
-            m, b = np.polyfit(x, y, 1)
-            return [max(0, int(round(m * xi + b)))
-                    for xi in range(n, n + periods)]
-
-        for sla_tag in sorted(sla_df[SLA_COL].unique()):
-            serie = (sla_df[sla_df[SLA_COL] == sla_tag]
-                     .groupby("Month")
-                     .size()
-                     .sort_index())
-
-            if len(serie) < 2:
-                st.info(f"*{sla_tag}* – not enough data for a forecast.")
-                continue
-
-            fc_vals  = _simple_forecast(serie)
-            last_m   = pd.Period(serie.index.max(), freq="M")
-            fut_mths = [str(last_m + i) for i in range(1, 7)]
-
-            plot_df = pd.concat(
-                [pd.DataFrame({"Month": serie.index,
-                               "Tickets": serie.values,
-                               "Kind": "Actual"}),
-                 pd.DataFrame({"Month": fut_mths,
-                               "Tickets": fc_vals,
-                               "Kind": "Forecast"})],
-                ignore_index=True
-            )
-
-            clean_key = re.sub(r"\W+", "_", sla_tag).strip("_")
-            st.plotly_chart(
-                px.line(plot_df, x="Month", y="Tickets", line_dash="Kind",
-                        markers=True, title=f"{sla_tag} – Actual vs Forecast"),
-                use_container_width=True,
-                key=f"sla_fc_{clean_key}"
-            )
-
-if st.session_state.get("kpi_dataset", (None,))[0] == "Sky Business Area":
-    # ── SLA VENUE MATRIX ──────────────────────────────────────────────── 
-    st.markdown("## 🏢 Venue SLA Matrix – SLA Counts per Site")
-
-    # 0️⃣  Use previously loaded `sla_df` or load fresh
-    if "sla_df" not in locals():
-        try:
-            sla_df = pd.read_excel("AI Test SB Visits.xlsx")
-        except Exception as e:
-            st.error(f"Could not reload SLA file: {e}")
-            st.stop()
-
-        sla_df.columns = sla_df.columns.str.strip()
-        sla_df = sla_df.dropna(subset=["Visit type", "Date of visit"])
-        sla_df["Date of visit"] = pd.to_datetime(sla_df["Date of visit"], errors="coerce")
-        sla_df = sla_df.dropna(subset=["Date of visit"])
-        sla_df["Visit type"] = sla_df["Visit type"].astype(str).str.strip().str.lower()
-
-    # 1️⃣  Filter SLA buckets
-    SLA_BUCKETS = ["2hr", "4hr", "5 day", "8h", "8 hr", "8hr"]
-    sla_ven = sla_df[
-        sla_df["Visit type"].str.lower().isin(SLA_BUCKETS)
-    ].copy()
-
-    # 2️⃣  Standardise SLA labels
-    sla_ven["SLA"] = sla_ven["Visit type"].str.lower().replace({"8 hr": "8h"})
-
-    # 3️⃣  Pivot: Venue × SLA Counts
-    pivot = (
-        sla_ven.pivot_table(
-            index="Venue Name",
-            columns="SLA",
-            values="VR Number",
-            aggfunc="count",
-            fill_value=0
-        )
-        .assign(Total=lambda d: d.sum(axis=1))
-        .sort_values("Total", ascending=False)
-    )
-
-    # ── 💾 Table: All Venues ───────────────────────────────────────────
-    with st.expander("📋 Full Venue SLA Table", expanded=False):
-        st.dataframe(pivot, use_container_width=True)
-
-    # ── 📊 Charts: in tabs (NOT in an expander to avoid nesting) ───────
-    tabs = st.tabs(["🏆 Top 20 by Total", "📊 Stacked SLA Mix", "🌡️ Heatmap"])
-
-    # ── Chart A: Top 20 Horizontal Bar
-    with tabs[0]:
-        top20 = pivot.head(20).reset_index().sort_values("Total")
-        fig_top = px.bar(
-            top20,
-            y="Venue Name", x="Total", orientation="h",
-            title="Top 20 Venues by SLA Visits", text="Total"
-        )
-        st.plotly_chart(fig_top, use_container_width=True)
-
-    # ── Chart B: Stacked SLA Distribution
-    with tabs[1]:
-        stacked = (
-            pivot.head(20)
-                .drop(columns="Total")
-                .reset_index()
-                .melt(id_vars="Venue Name", var_name="SLA", value_name="Tickets")
-        )
-        fig_stack = px.bar(
-            stacked,
-            y="Venue Name", x="Tickets", color="SLA", orientation="h",
-            title="Top 20 SLA Mix by Venue"
-        )
-        st.plotly_chart(fig_stack, use_container_width=True)
-
-    # ── Chart C: Heatmap of All Venues × SLA Buckets
-    with tabs[2]:
-        heat = px.imshow(
-            pivot.drop(columns="Total"),
-            color_continuous_scale="Blues",
-            aspect="auto",
-            title="SLA Heatmap – Venue × SLA Bucket"
-        )
-        st.plotly_chart(heat, use_container_width=True)
-
-        # ── VIP - SB Standby KPI Block (from 4 Oracle sources) ──────────────
-        with st.expander("🛡️ VIP - SB Standby Overview (from 4 Oracle sources)", expanded=False):
-
-            # 1⃣  Load & combine Oracle files
-            files = {
-                "VIP North":   "VIP North Oracle Data.xlsx",
-                "VIP South":   "VIP South Oracle Data.xlsx",
-                "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
-                "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
-            }
-
-            standby_frames = []
-            for team, path in files.items():
-                try:
-                    tmp = pd.read_excel(path)
-                    tmp["Team"] = team
-                    standby_frames.append(tmp)
-                except Exception as e:
-                    st.warning(f"⚠️ {path} could not be loaded – {e}")
-
-            if not standby_frames:
-                st.error("❌ None of the Oracle files could be opened – aborting block.")
-                st.stop()
-
-            standby_df = pd.concat(standby_frames, ignore_index=True)
-            standby_df.columns = standby_df.columns.str.strip()
-            standby_df.dropna(how="all", inplace=True)
-
-            # 2⃣  Filter to VIP‑SB Standby rows only
-            mask = standby_df["Visit Type"].astype(str).str.contains("VIP - SB Standby", case=False, na=False)
-            sb_df_all = standby_df[mask].copy()
-            if sb_df_all.empty:
-                st.info("No rows found for 'VIP - SB Standby' in the Oracle datasets.")
-                st.stop()
-
-            # 3⃣  Basic cleaning & helpers
-            sb_df_all["Date"] = pd.to_datetime(sb_df_all["Date"], errors="coerce")
-            sb_df_all.dropna(subset=["Date"], inplace=True)
-            sb_df_all["Month"] = sb_df_all["Date"].dt.to_period("M").astype(str)
-
-            # Helper → convert various time formats → Timedelta, ignoring blanks/zeros
-            from datetime import time, timedelta
-            def _to_td(val):
-                if pd.isna(val):
-                    return pd.NaT
-                if isinstance(val, timedelta):
-                    return val if val.total_seconds() > 0 else pd.NaT
-                if isinstance(val, time):
-                    return timedelta(hours=val.hour, minutes=val.minute, seconds=val.second) if val != time(0, 0) else pd.NaT
-                try:
-                    h, m, *s = str(val).split(":")
-                    h, m = int(h), int(m)
-                    s = int(s[0]) if s else 0
-                    return pd.NaT if (h == m == s == 0) else timedelta(hours=h, minutes=m, seconds=s)
-                except Exception:
-                    return pd.NaT
-
-            # ---- Identify relevant time columns ----
-            TIME_START_COLS = [c for c in sb_df_all.columns if c.lower() in {"start", "activate", "activate time"}]
-            TIME_END_COLS   = [c for c in sb_df_all.columns if c.lower() in {"end", "deactivate", "deactivate time"}]
-
-            chosen_start_col = TIME_START_COLS[0] if TIME_START_COLS else None
-            chosen_end_col   = TIME_END_COLS[0]   if TIME_END_COLS   else None
-
-            if chosen_start_col:
-                sb_df_all[chosen_start_col] = sb_df_all[chosen_start_col].apply(_to_td)
-            if chosen_end_col:
-                sb_df_all[chosen_end_col]   = sb_df_all[chosen_end_col].apply(_to_td)
-
-            # Also parse Activate / Deactivate cols (if different)
-            ACTIVATE_COLS   = [c for c in sb_df_all.columns if "activate"   in c.lower()][:1]
-            DEACTIVATE_COLS = [c for c in sb_df_all.columns if "deactivate" in c.lower() and c not in ACTIVATE_COLS][:1]
-            chosen_act_col  = ACTIVATE_COLS[0]   if ACTIVATE_COLS   else None
-            chosen_dea_col  = DEACTIVATE_COLS[0] if DEACTIVATE_COLS else None
-
-            for col in (chosen_act_col, chosen_dea_col):
-                if col:
-                    sb_df_all[col] = sb_df_all[col].apply(_to_td)
-
-            # 4⃣  Split dataframes for different metric purposes
-            if "Activity Status" in sb_df_all.columns:
-                completed_mask = sb_df_all["Activity Status"].str.lower() == "completed"
-                comp_df = sb_df_all[completed_mask].copy()
-                val_df  = sb_df_all[sb_df_all["Activity Status"].str.lower().isin(["completed", "suspended"])]
-            else:
-                comp_df = sb_df_all.copy()
-                val_df  = sb_df_all.copy()
-
-            # 5⃣  KPI Header
-            st.markdown("### 📌 Summary KPIs")
-            k1, k2, k3, k4 = st.columns(4)
-            k1.metric("Total Visits (Completed)", f"{len(comp_df):,}")
-            k2.metric("Total Value (£) (Comp + Susp)", f"£{val_df.get('Total Value', pd.Series(dtype=float)).sum():,.0f}")
-
-            # New logic: take Start avg only IF *that row* also has a valid Activate
-            def _avg_col_pair(df, primary_col, require_col):
-                if not primary_col or not require_col:
-                    return "–"
-                subset = df[df[require_col].notna() & df[primary_col].notna()][primary_col]
-                if subset.empty:
-                    return "–"
-                secs = subset.dt.total_seconds().mean()
-                return f"{int(secs//3600):02}:{int((secs%3600)//60):02}"
-
-            avg_start = _avg_col_pair(comp_df, chosen_start_col, chosen_act_col if chosen_act_col else chosen_start_col)
-            avg_end   = _avg_col_pair(comp_df, chosen_end_col,   chosen_dea_col if chosen_dea_col else chosen_end_col)
-
-            k3.metric("Avg Start (if Activate present)", avg_start)
-            k4.metric("Avg End (if Deactivate present)", avg_end)
-
-            st.markdown(
-                """
-                >⚠️ *Visit count & time metrics only use **Completed** rows **where both primary and corresponding Activate/Deactivate times are present**.*  
-                >💰 *Total Value* still aggregates **Completed + Suspended** rows.
-                """
-            )
-            st.markdown("---")
-
-            # 6⃣  Monthly Count (Completed)
-            monthly_ct = comp_df.groupby("Month").size().reset_index(name="Visits")
-            fig_bar = px.bar(monthly_ct, x="Month", y="Visits", title="Monthly Completed Count – VIP ‑ SB Standby")
-            st.plotly_chart(fig_bar, use_container_width=True)
-
-            # 7⃣  Activity Status Pie (all rows)
-            if "Activity Status" in sb_df_all.columns:
-                pie_df = sb_df_all["Activity Status"].value_counts().reset_index()
-                pie_df.columns = ["Activity", "Count"]
-                fig_pie = px.pie(pie_df, names="Activity", values="Count", title="Activity Status Distribution")
-                st.plotly_chart(fig_pie, use_container_width=True)
-
-            # 8⃣  Sunburst – Team ▸ Month ▸ Activity
-            if "Activity Status" in sb_df_all.columns:
-                fig_sb = px.sunburst(sb_df_all, path=["Team", "Month", "Activity Status"], title="Team • Month • Activity Breakdown")
-                st.plotly_chart(fig_sb, use_container_width=True)
-
-            # 9⃣  6‑Month Forecast (Completed counts)
-            def _simple_forecast(series, periods=6):
-                import numpy as np
-                y = np.array(series.values)
-                x = np.arange(len(y))
-                if len(x) < 2:
-                    return np.full(periods, 0)
-                coef = np.polyfit(x, y, 1)
-                trend = coef[0]
-                intercept = coef[1]
-                x_future = np.arange(len(y), len(y)+periods)
-                y_future = trend * x_future + intercept
-                return np.maximum(y_future, 0).round().astype(int)
-            
-            series = comp_df.groupby("Month").size().sort_index()
-            if len(series) >= 2:
-                fc_vals = _simple_forecast(series, periods=6)
-                last_p  = pd.Period(series.index.max(), freq="M")
-                fut_mths = [str(last_p + i) for i in range(1, 7)]
-
-                fc_df = pd.concat([
-                    pd.DataFrame({"Month": series.index, "Visits": series.values, "Kind": "Actual"}),
-                    pd.DataFrame({"Month": fut_mths, "Visits": fc_vals, "Kind": "Forecast"})
-                ], ignore_index=True)
-
-                fig_fc = px.line(fc_df, x="Month", y="Visits", line_dash="Kind", markers=True, title="VIP ‑ SB Standby – Actual vs Forecast (Completed)")
-                st.plotly_chart(fig_fc, use_container_width=True)
-            else:
-                st.info("Not enough historical points to build a forecast (need ≥2 months).")
-
-            st.caption("All averages use only rows meeting the dual‑time requirement (Start+Activate, End+Deactivate). Total value aggregates Completed + Suspended records across all four Oracle sheets.")
 
 
 
