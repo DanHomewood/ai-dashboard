@@ -17,6 +17,8 @@ from statsmodels.tsa.arima.model import ARIMA
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
+if "ai_chat" not in st.session_state:
+    st.session_state.ai_chat = []
 
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
