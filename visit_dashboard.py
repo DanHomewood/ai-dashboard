@@ -11,6 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import plotly.express as px
 import plotly.graph_objects as go
 import time
+import pandas_profiling
 
 
 
