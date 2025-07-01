@@ -12,9 +12,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import time
 
-
-
-
 from openai import OpenAI, OpenAIError
 from statsmodels.tsa.arima.model import ARIMA
 from langchain_experimental.agents import create_pandas_dataframe_agent
