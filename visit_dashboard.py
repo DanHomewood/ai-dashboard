@@ -11,14 +11,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import plotly.express as px
 import plotly.graph_objects as go
 import time
+import PyPDF2
 
 from openai import OpenAI, OpenAIError
 from statsmodels.tsa.arima.model import ARIMA
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
-if "ai_chat" not in st.session_state:
-    st.session_state.ai_chat = []
+from langchain.schema import HumanMessage, SystemMessage
 
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
@@ -4508,8 +4508,6 @@ if (
 
 
 
-
-
 # --- NUMBER 16 ------------------------------------------------------------
 # --- SECTION: Operational AI Chat Assistant -------------------------------
 # Appears when the user clicks **🤖 Operational AI Area** on the main menu
@@ -5422,6 +5420,14 @@ if st.session_state.get("screen") == "ai":
 
     # Always run forecast helper
     render_value_forecast(user_q, df_for_ai)
+
+
+
+
+
+
+
+
 
 
 
