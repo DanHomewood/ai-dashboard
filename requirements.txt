@@ -14,5 +14,3 @@ langchain-experimental
 tiktoken
 langchain-openai
 tabulate
-ydata-profiling==4.2.0
-
