@@ -17,4 +17,4 @@ langchain-experimental
 tiktoken
 langchain-openai
 tabulate
-import PyPDF2
+
