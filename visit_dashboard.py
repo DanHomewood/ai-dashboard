@@ -181,24 +181,24 @@ if not st.session_state.authenticated:
 # --- Main App Content ---
 st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
 
-# Add the animated CSS style with dark/light theme support
 st.markdown("""
 <style>
 @media (prefers-color-scheme: dark) {
   .adv-summary {
     color: white;
+    border-right: 2px solid rgba(255,255,255,0.75);
   }
 }
 @media (prefers-color-scheme: light) {
   .adv-summary {
     color: black;
+    border-right: 2px solid rgba(0,0,0,0.75);
   }
 }
 
 .adv-summary {
     font-size: 20px;
     font-weight: 400;
-    border-right: 2px solid rgba(255,255,255,0.75);
     white-space: nowrap;
     overflow: hidden;
     width: fit-content;
@@ -213,10 +213,11 @@ st.markdown("""
 }
 @keyframes blink {
     from, to { border-color: transparent }
-    50% { border-color: rgba(255,255,255,0.75); }
+    50% { border-color: currentColor; }
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
