@@ -22,6 +22,19 @@ from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
 from langchain.schema import HumanMessage, SystemMessage
 
+st.markdown("""
+<style>
+body, .stApp {
+    background-color: #0e1117 !important;
+    color: white !important;
+}
+html, body, [class*="css"]  {
+    background-color: #0e1117 !important;
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
     st.session_state.screen = "area_selection"
