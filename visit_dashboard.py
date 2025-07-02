@@ -11,7 +11,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import plotly.express as px
 import plotly.graph_objects as go
 import time
-
+import PyPDF2
+import requests
+from streamlit_lottie import st_lottie
+from datetime import datetime as dt
 from openai import OpenAI, OpenAIError
 from statsmodels.tsa.arima.model import ARIMA
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -30,19 +33,36 @@ if "selected_dataset" not in st.session_state:
     st.session_state.selected_dataset = None
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+if "ai_chat" not in st.session_state:
+    st.session_state.ai_chat = []
+
+
+# --- Load Lottie Animation ---
+def load_lottie_url(url):
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
+        return None
 
 # --- Cache: Load Excel file and add source ---
 @st.cache_data(show_spinner=False)
 def load_oracle_file(path, source_label):
     df = pd.read_excel(path)
     df["Source"] = source_label
+    df["Team"] = source_label
     return df
 
 # --- Cache: Load logo image ---
 @st.cache_data(show_spinner=False)
 def load_logo_base64(logo_path="sky_vip_logo.png"):
-    with open(logo_path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
+    try:
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except:
+        return None
 
 logo_base64 = load_logo_base64()
 
@@ -59,7 +79,6 @@ all_frames = []
 for team, path in files.items():
     try:
         df = load_oracle_file(path, team)
-        df['Team'] = team
         all_frames.append(df)
     except Exception as e:
         st.warning(f"⚠️ Could not load {path}: {e}")
@@ -77,64 +96,130 @@ st.markdown("""
     .main-title {
         font-size: 2.5em !important;
         font-weight: 800 !important;
-        color: #fff;
         text-align: center;
-        margin-bottom: 0.6em;
-        margin-top: 0.1em;
+        margin: 0.6em;
     }
-    .adv-summary {
-        font-size: 1.23em !important;
-        line-height: 1.85;
-        padding: 1.2em 1.5em 1.2em 1.5em;
-        background: #202127;
-        color: #f1f1f1;
-        border-radius: 14px;
-        border: 1.5px solid #3c4452;
-        margin-bottom: 1.4em;
+    .login-sub {
+        font-size: 16px;
+        text-align: center;
+        margin-bottom: 20px;
+        color: white;
     }
-    .section-header {
-        font-size: 1.65em !important;
-        font-weight: 700;
-        color: #faf8f2;
-        margin: 0.6em 0 0.2em 0;
+    .login-header {
+        font-size: 28px;
+        text-align: center;
+        font-weight: bold;
+        color: white;
+        border-right: 2px solid rgba(255,255,255,0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        max-width: 100%;
+        margin: 0 auto 12px;
+        animation: typing 4s steps(40, end) infinite, blink 0.75s step-end infinite;
     }
-    .css-1v3fvcr { font-size: 1.1em; }
+    .logo {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    @keyframes typing {
+        0% { width: 0; }
+        40%, 60% { width: 100%; }
+        100% { width: 0; }
+    }
+    @keyframes blink {
+        from, to { border-color: transparent }
+        50% { border-color: rgba(255,255,255,0.75); }
+    }
+    .lottie-box {
+        margin-top: 40px;
+        text-align: center;
+    }
+    .footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 13px;
+        color: grey;
+    }
+    .block-container .css-1lcbmhc.e1fqkh3o9 {
+        padding-top: 2rem;
+    }
+    header, .stSidebar {
+        display: none;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Login function ---
-def login():
-    st.markdown(
-        f"<div style='text-align: center; margin-bottom: 24px;'>"
-        f"<img src='data:image/png;base64,{logo_base64}' width='700'></div>",
-        unsafe_allow_html=True,
-    )
-    st.title("🔐 Welcome to the Visit Insights Dashboard")
-    st.write("Please enter your access code to continue.")
+# --- Login screen with animation ---
+def login_screen_with_animation(logo_base64):
+    lottie = load_lottie_url("https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json")
+    st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
+    st.markdown("<div class='login-header'>🔐 Login to Visit Insights Dashboard</div>", unsafe_allow_html=True)
+    st.markdown("<div class='login-sub'>Please enter your access code to continue.</div>", unsafe_allow_html=True)
+
     password = st.text_input("Access Code", type="password")
     if password == "sky":
         st.session_state.authenticated = True
-        st.session_state.screen = "area_selection"
         st.rerun()
     elif password != "":
-        st.error("Invalid code. Please try again.")
+        st.error("Invalid code. Try again.")
 
-# --- Authentication check ---
+    if lottie:
+        st.markdown("<div class='lottie-box'>", unsafe_allow_html=True)
+        st_lottie(lottie, height=280, key="login_anim")
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("🌀 Animation failed to load — but login still works.")
+
+    current_time = dt.now().strftime("%A, %d %B %Y | %H:%M:%S")
+    st.markdown(f"<div class='footer'>{current_time} | v1.0.0</div>", unsafe_allow_html=True)
+
+# --- Auth Check ---
 if not st.session_state.authenticated:
-    login()
+    login_screen_with_animation(logo_base64 or "")
     st.stop()
 
-# --- Show logo and welcome text ---
-st.markdown(
-    f"<div style='text-align: center; margin-bottom: 20px;'>"
-    f"<img src='data:image/png;base64,{logo_base64}' width='550'></div>",
-    unsafe_allow_html=True
-)
+# --- Main App Content ---
+st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
+
+# Add the animated CSS style first (outside the content)
+st.markdown("""
+<style>
+.adv-summary {
+    font-size: 20px;
+    color: white;
+    font-weight: 400;
+    border-right: 2px solid rgba(255,255,255,0.75);
+    white-space: nowrap;
+    overflow: hidden;
+    width: fit-content;
+    margin: 0 auto 30px;
+    animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
+}
+@keyframes typing {
+    0% { width: 0; }
+    40%, 60% { width: 100%; }
+    100% { width: 0; }
+}
+@keyframes blink {
+    from, to { border-color: transparent }
+    50% { border-color: rgba(255,255,255,0.75); }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Then add the animated text content using the class
 st.markdown("""
 <div class='adv-summary'>
-Welcome to the advanced reporting hub. Use the sidebar to explore summaries, trends, and performance across the teams.
+Welcome to the advanced reporting hub use the options below to explore all areas
 </div>
 """, unsafe_allow_html=True)
+
+
+
+
+
+
+
 
 
 
