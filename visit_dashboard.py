@@ -181,12 +181,22 @@ if not st.session_state.authenticated:
 # --- Main App Content ---
 st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
 
-# Add the animated CSS style first (outside the content)
+# Add the animated CSS style with dark/light theme support
 st.markdown("""
 <style>
+@media (prefers-color-scheme: dark) {
+  .adv-summary {
+    color: white;
+  }
+}
+@media (prefers-color-scheme: light) {
+  .adv-summary {
+    color: black;
+  }
+}
+
 .adv-summary {
     font-size: 20px;
-    color: white;
     font-weight: 400;
     border-right: 2px solid rgba(255,255,255,0.75);
     white-space: nowrap;
@@ -195,6 +205,7 @@ st.markdown("""
     margin: 0 auto 30px;
     animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
 }
+
 @keyframes typing {
     0% { width: 0; }
     40%, 60% { width: 100%; }
@@ -207,12 +218,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Then add the animated text content using the class
-st.markdown("""
-<div class='adv-summary'>
-Welcome to the advanced reporting hub use the options below to explore all areas
-</div>
-""", unsafe_allow_html=True)
 
 
 
