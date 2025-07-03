@@ -17,3 +17,4 @@ langchain-openai
 tiktoken
 tabulate
 requests
+Prophet
