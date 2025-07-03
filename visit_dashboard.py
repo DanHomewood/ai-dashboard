@@ -94,7 +94,20 @@ else:
 
 st.markdown("""
     <style>
-    /* ---------- GLOBAL DARK BLUE TEXT ---------- */
+    /* ---------- FORCE LIGHT THEME ---------- */
+    html, body, .main {
+        background-color: white !important;
+        color: #004080 !important;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        html, body, .main {
+            background-color: white !important;
+            color: #004080 !important;
+        }
+    }
+
+    /* ---------- GLOBAL TEXT COLORS ---------- */
     body, .css-1d391kg, .stText, .stMarkdown, .css-1cpxqw2, .css-ffhzg2 {
         color: #004080 !important;
     }
@@ -189,6 +202,7 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
 
 # --- Login screen with animation ---
 def login_screen_with_animation(logo_base64):
