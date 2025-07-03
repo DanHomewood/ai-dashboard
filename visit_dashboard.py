@@ -92,16 +92,57 @@ else:
     st.error("No data loaded from Oracle files.")
     st.stop()
 
-# --- Custom CSS ---
-
 st.markdown("""
     <style>
-    /* Set default text to dark blue */
+    /* ---------- GLOBAL DARK BLUE TEXT ---------- */
     body, .css-1d391kg, .stText, .stMarkdown, .css-1cpxqw2, .css-ffhzg2 {
-        color: #004080 !important;  /* Dark Blue */
+        color: #004080 !important;
     }
 
-    /* Make the animated welcome line dark blue */
+    h1, h2, h3, h4, h5, h6 {
+        color: #004080 !important;
+    }
+
+    button[kind="secondary"] > div > p,
+    button[kind="primary"] > div > p {
+        color: #004080 !important;
+        font-weight: bold;
+    }
+
+    /* ---------- LOGO + LOGIN PAGE ---------- */
+    .logo {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .login-header {
+        font-size: 28px;
+        text-align: center;
+        font-weight: bold;
+        color: #004080 !important;
+        border-right: 2px solid rgba(0,64,128,0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        max-width: 100%;
+        margin: 0 auto 12px;
+        animation: typing 4s steps(40, end) infinite, blink 0.75s step-end infinite;
+    }
+
+    .login-sub {
+        font-size: 16px;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #004080 !important;
+    }
+
+    .lock-icon {
+        font-size: 36px;
+        text-align: center;
+        display: block;
+        color: #004080 !important;
+    }
+
+    /* ---------- WELCOME LINE ---------- */
     .adv-summary {
         color: #004080 !important;
         font-size: 20px;
@@ -114,72 +155,35 @@ st.markdown("""
         animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
     }
 
-    /* Button text fix */
-    button[kind="secondary"] > div > p,
-    button[kind="primary"] > div > p {
-        color: #004080 !important;
-        font-weight: bold;
-    }
-
-    /* Header fix */
-    h1, h2, h3, h4, h5, h6 {
-        color: #004080 !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-    <style>
-    .main-title {
-        font-size: 2.5em !important;
-        font-weight: 800 !important;
-        text-align: center;
-        margin: 0.6em;
-    }
-    .login-sub {
-        font-size: 16px;
-        text-align: center;
-        margin-bottom: 20px;
-        color: white;
-    }
-    .login-header {
-        font-size: 28px;
-        text-align: center;
-        font-weight: bold;
-        color: white;
-        border-right: 2px solid rgba(255,255,255,0.75);
-        white-space: nowrap;
-        overflow: hidden;
-        max-width: 100%;
-        margin: 0 auto 12px;
-        animation: typing 4s steps(40, end) infinite, blink 0.75s step-end infinite;
-    }
-    .logo {
-        text-align: center;
-        margin-bottom: 20px;
-    }
+    /* ---------- ANIMATIONS ---------- */
     @keyframes typing {
         0% { width: 0; }
         40%, 60% { width: 100%; }
         100% { width: 0; }
     }
+
     @keyframes blink {
         from, to { border-color: transparent }
-        50% { border-color: rgba(255,255,255,0.75); }
+        50% { border-color: rgba(0,64,128,0.75); }
     }
+
+    /* ---------- LOTTIE + FOOTER ---------- */
     .lottie-box {
         margin-top: 40px;
         text-align: center;
     }
+
     .footer {
         text-align: center;
         margin-top: 30px;
         font-size: 13px;
         color: grey;
     }
+
     .block-container .css-1lcbmhc.e1fqkh3o9 {
         padding-top: 2rem;
     }
+
     header, .stSidebar {
         display: none;
     }
