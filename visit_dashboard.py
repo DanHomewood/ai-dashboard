@@ -21,19 +21,8 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
 from langchain.schema import HumanMessage, SystemMessage
+from collections import defaultdict
 
-st.markdown("""
-<style>
-body, .stApp {
-    background-color: #0e1117 !important;
-    color: white !important;
-}
-html, body, [class*="css"]  {
-    background-color: #0e1117 !important;
-    color: white !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
@@ -104,6 +93,41 @@ else:
     st.stop()
 
 # --- Custom CSS ---
+
+st.markdown("""
+    <style>
+    /* Set default text to dark blue */
+    body, .css-1d391kg, .stText, .stMarkdown, .css-1cpxqw2, .css-ffhzg2 {
+        color: #004080 !important;  /* Dark Blue */
+    }
+
+    /* Make the animated welcome line dark blue */
+    .adv-summary {
+        color: #004080 !important;
+        font-size: 20px;
+        font-weight: 400;
+        border-right: 2px solid rgba(0,64,128,0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        width: fit-content;
+        margin: 0 auto 30px;
+        animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
+    }
+
+    /* Button text fix */
+    button[kind="secondary"] > div > p,
+    button[kind="primary"] > div > p {
+        color: #004080 !important;
+        font-weight: bold;
+    }
+
+    /* Header fix */
+    h1, h2, h3, h4, h5, h6 {
+        color: #004080 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.markdown("""
     <style>
     .main-title {
@@ -3124,6 +3148,357 @@ if st.session_state.get("screen") == "operational_area":
                 st.dataframe(longest)
                 st.markdown("#### Shortest Total Time per Team")
                 st.dataframe(shortest)
+
+        # 13. ⏱️ Total Working Time > 10:25 (Detailed Summary)
+    if section == "time":    
+        if "Total Working Time" in df_all.columns:
+            with st.expander("⏱️ Total Working Time Over 10:25 Summary", expanded=False):
+
+                def convert_mixed_time(val):
+                    import datetime
+                    if pd.isnull(val): return 0
+                    if isinstance(val, datetime.timedelta): return val.total_seconds() / 60
+                    if isinstance(val, datetime.time): return val.hour * 60 + val.minute + val.second / 60
+                    try: return pd.to_timedelta(val).total_seconds() / 60
+                    except:
+                        try:
+                            if isinstance(val, str) and ":" in val:
+                                return pd.to_timedelta("0 days " + val).total_seconds() / 60
+                            if isinstance(val, (int, float)):
+                                return float(val) * 24 * 60
+                        except: return 0
+                    return 0
+
+                def mins_to_hhmm(m):
+                    h = int(m // 60)
+                    mins = int(m % 60)
+                    return f"{h}:{mins:02}"
+
+                valid_df = df_all[df_all["Total Working Time"].notna()].copy()
+                valid_df["Total Working Time (min)"] = valid_df["Total Working Time"].apply(convert_mixed_time)
+                valid_df["Over Minutes"] = valid_df["Total Working Time (min)"] - 625
+                valid_df["Over Minutes"] = valid_df["Over Minutes"].apply(lambda x: x if x > 0 else 0)
+
+                total_minutes = valid_df["Total Working Time (min)"].sum()
+                total_over_minutes = valid_df["Over Minutes"].sum()
+                total_over_cost = (valid_df["Over Minutes"] / 15).apply(lambda x: round(x)).sum() * 5.50
+
+                overall_summary = {
+                    "Total Working Time": mins_to_hhmm(total_minutes),
+                    "Total Time Over 10:25": mins_to_hhmm(total_over_minutes),
+                    "Total Over Time Cost (£)": f"£{total_over_cost:,.2f}"
+                }
+
+                st.markdown("#### 🔢 Overall Summary")
+                st.dataframe(pd.DataFrame([overall_summary]), use_container_width=True)
+
+                st.markdown("#### 🧑‍🤝‍🧑 Breakdown by Team")
+                team_summary = valid_df.groupby("Team").agg(
+                    Total_Working_Minutes=("Total Working Time (min)", "sum"),
+                    Over_Minutes=("Over Minutes", "sum"),
+                    Over_Cost=("Over Minutes", lambda x: (x / 15).round().sum() * 5.50)
+                ).reset_index()
+                team_summary["Total Working Time"] = team_summary["Total_Working_Minutes"].apply(mins_to_hhmm)
+                team_summary["Time Over 10:25"] = team_summary["Over_Minutes"].apply(mins_to_hhmm)
+                team_summary["Over Cost (£)"] = team_summary["Over_Cost"].map("£{:,.2f}".format)
+                st.dataframe(team_summary[["Team", "Total Working Time", "Time Over 10:25", "Over Cost (£)"]], use_container_width=True)
+
+                st.markdown("#### 👷 Breakdown by Engineer")
+                engineer_summary = valid_df.groupby("Name").agg(
+                    Total_Working_Minutes=("Total Working Time (min)", "sum"),
+                    Over_Minutes=("Over Minutes", "sum"),
+                    Over_Cost=("Over Minutes", lambda x: (x / 15).round().sum() * 5.50)
+                ).reset_index()
+                engineer_summary["Total Working Time"] = engineer_summary["Total_Working_Minutes"].apply(mins_to_hhmm)
+                engineer_summary["Time Over 10:25"] = engineer_summary["Over_Minutes"].apply(mins_to_hhmm)
+                engineer_summary["Over Cost (£)"] = engineer_summary["Over_Cost"].map("£{:,.2f}".format)
+                st.dataframe(engineer_summary[["Name", "Total Working Time", "Time Over 10:25", "Over Cost (£)"]], use_container_width=True)
+
+       
+
+        # 15. 🗓️ Time Over 10:25: Monthly & Quarterly Breakdown
+        with st.expander("📅 Time Over 10:25: Monthly & Quarterly Breakdown"):
+
+            df_time = valid_df.copy()
+            df_time["Month"] = pd.to_datetime(df_time["Date"], errors="coerce").dt.to_period("M").dt.to_timestamp()
+            df_time["Quarter"] = pd.to_datetime(df_time["Date"], errors="coerce").dt.to_period("Q").astype(str)
+
+            monthly = df_time.groupby("Month").agg(
+                Total_Minutes=("Total Working Time (min)", "sum"),
+                Over_Minutes=("Over Minutes", "sum")
+            ).reset_index()
+            monthly["% Time Over 10:25"] = (monthly["Over_Minutes"] / monthly["Total_Minutes"] * 100).round(2)
+            monthly["Month"] = pd.to_datetime(monthly["Month"]).dt.strftime("%B %Y")
+            monthly["Total Working Time (hh:mm)"] = monthly["Total_Minutes"].apply(mins_to_hhmm)
+            monthly["Time Over 10:25 (hh:mm)"] = monthly["Over_Minutes"].apply(mins_to_hhmm)
+            st.markdown("## 🗓️ Monthly Breakdown")
+            st.dataframe(monthly[["Month", "Total Working Time (hh:mm)", "Time Over 10:25 (hh:mm)", "% Time Over 10:25"]], use_container_width=True)
+
+            quarterly = df_time.groupby("Quarter").agg(
+                Total_Minutes=("Total Working Time (min)", "sum"),
+                Over_Minutes=("Over Minutes", "sum")
+            ).reset_index()
+            quarterly["% Time Over 10:25"] = (quarterly["Over_Minutes"] / quarterly["Total_Minutes"] * 100).round(2)
+            quarterly["Total Working Time (hh:mm)"] = quarterly["Total_Minutes"].apply(mins_to_hhmm)
+            quarterly["Time Over 10:25 (hh:mm)"] = quarterly["Over_Minutes"].apply(mins_to_hhmm)
+            st.markdown("## 🗓️ Quarterly Breakdown")
+            st.dataframe(quarterly[["Quarter", "Total Working Time (hh:mm)", "Time Over 10:25 (hh:mm)", "% Time Over 10:25"]], use_container_width=True)
+
+            st.markdown("### 📈 % Time Over 10:25 by Team")
+            team_monthly = df_time.groupby(["Team", "Month"]).agg(
+                Total_Minutes=("Total Working Time (min)", "sum"),
+                Over_Minutes=("Over Minutes", "sum")
+            ).reset_index()
+            team_monthly["% Time Over 10:25"] = (team_monthly["Over_Minutes"] / team_monthly["Total_Minutes"] * 100).round(2)
+            team_monthly["Month"] = pd.to_datetime(team_monthly["Month"]).dt.strftime("%b %Y")
+            fig_team = px.line(team_monthly, x="Month", y="% Time Over 10:25", color="Team", markers=True)
+            fig_team.update_layout(xaxis_tickangle=45)
+            st.plotly_chart(fig_team, use_container_width=True)
+
+            st.markdown("### 📊 % Time Over 10:25 by Engineer")
+            eng_monthly = df_time.groupby(["Name", "Month"]).agg(
+                Total_Minutes=("Total Working Time (min)", "sum"),
+                Over_Minutes=("Over Minutes", "sum")
+            ).reset_index()
+            eng_monthly["% Time Over 10:25"] = (eng_monthly["Over_Minutes"] / eng_monthly["Total_Minutes"] * 100).round(2)
+            eng_monthly["Month"] = pd.to_datetime(eng_monthly["Month"]).dt.strftime("%b %Y")
+            fig_eng = px.bar(eng_monthly, x="Month", y="% Time Over 10:25", color="Name", barmode="group")
+            fig_eng.update_layout(xaxis_tickangle=45)
+            st.plotly_chart(fig_eng, use_container_width=True)
+
+
+        # 16. 📊 Deep Dive: % Time Over 10:25 by Month and Week
+        with st.expander("📊 Time Over 10:25: Monthly & Weekly Insight", expanded=False):
+
+            def mins_to_hhmm(m):
+                h = int(m // 60)
+                mins = int(m % 60)
+                return f"{h}:{mins:02}"
+
+            df_over = df_all[df_all["Total Working Time"].notna()].copy()
+            df_over["Total Working Time (min)"] = df_over["Total Working Time"].apply(convert_mixed_time)
+            df_over["Over Minutes"] = df_over["Total Working Time (min)"] - 625
+            df_over["Over Minutes"] = df_over["Over Minutes"].apply(lambda x: x if x > 0 else 0)
+
+            df_over["Month"] = pd.to_datetime(df_over["Date"], errors="coerce").dt.to_period("M").dt.to_timestamp()
+            df_over["week"] = df_over["week"].astype(str)
+
+            # Monthly Summary
+            monthly_summary = df_over.groupby("Month").agg(
+                Total_Working_Minutes=("Total Working Time (min)", "sum"),
+                Over_Minutes=("Over Minutes", "sum")
+            ).reset_index()
+            monthly_summary["% Time Over 10:25"] = (monthly_summary["Over_Minutes"] / monthly_summary["Total_Working_Minutes"] * 100).round(2)
+            monthly_summary["Total Working Time"] = monthly_summary["Total_Working_Minutes"].apply(mins_to_hhmm)
+            monthly_summary["Time Over 10:25"] = monthly_summary["Over_Minutes"].apply(mins_to_hhmm)
+
+            st.markdown("### 📅 Monthly Breakdown")
+            st.dataframe(monthly_summary[["Month", "Total Working Time", "Time Over 10:25", "% Time Over 10:25"]], use_container_width=True)
+
+            # Max/Min Monthly Delta
+            max_row = monthly_summary.loc[monthly_summary["% Time Over 10:25"].idxmax()]
+            min_row = monthly_summary.loc[monthly_summary["% Time Over 10:25"].idxmin()]
+            delta = round(max_row["% Time Over 10:25"] - min_row["% Time Over 10:25"], 2)
+            delta_table = pd.DataFrame([
+                {"Metric": "Max Month", "Month": max_row["Month"].strftime("%B %Y"), "% Over": max_row["% Time Over 10:25"]},
+                {"Metric": "Min Month", "Month": min_row["Month"].strftime("%B %Y"), "% Over": min_row["% Time Over 10:25"]},
+                {"Metric": "Delta", "Month": f"{max_row['Month'].strftime('%B')} vs {min_row['Month'].strftime('%B')}", "% Over": delta}
+            ])
+
+            st.markdown("### 🔺 Max vs Min Monthly Comparison")
+            st.dataframe(delta_table, use_container_width=True)
+
+            # Weekly Summary
+            weekly_summary = df_over.groupby("week").agg(
+                Total_Working_Minutes=("Total Working Time (min)", "sum"),
+                Over_Minutes=("Over Minutes", "sum")
+            ).reset_index()
+            weekly_summary["% Time Over 10:25"] = (weekly_summary["Over_Minutes"] / weekly_summary["Total_Working_Minutes"] * 100).round(2)
+            weekly_summary["Total Working Time"] = weekly_summary["Total_Working_Minutes"].apply(mins_to_hhmm)
+            weekly_summary["Time Over 10:25"] = weekly_summary["Over_Minutes"].apply(mins_to_hhmm)
+
+            st.markdown("### 📆 Weekly Breakdown")
+            st.dataframe(weekly_summary[["week", "Total Working Time", "Time Over 10:25", "% Time Over 10:25"]], use_container_width=True)
+
+        with st.expander("📊 Combined Charts: Time Over 10:25 (Weekly & Monthly)", expanded=False):
+            from plotly.subplots import make_subplots
+            import plotly.graph_objects as go
+
+            # Convert hh:mm to minutes for line chart
+            def hhmm_to_minutes(hhmm_str):
+                if isinstance(hhmm_str, str) and ":" in hhmm_str:
+                    h, m = hhmm_str.split(":")
+                    return int(h) * 60 + int(m)
+                return 0
+
+            # Sort week as int for correct order
+            weekly_summary["Week_Num"] = weekly_summary["week"].astype(int)
+            weekly_summary = weekly_summary.sort_values("Week_Num")
+            weekly_summary["Time Over Minutes"] = weekly_summary["Time Over 10:25"].apply(hhmm_to_minutes)
+
+            fig_week = make_subplots(specs=[[{"secondary_y": True}]])
+
+            fig_week.add_trace(
+                go.Bar(x=weekly_summary["Week_Num"], y=weekly_summary["% Time Over 10:25"], name="% Time Over 10:25"),
+                secondary_y=False
+            )
+
+            fig_week.add_trace(
+                go.Scatter(x=weekly_summary["Week_Num"], y=weekly_summary["Time Over Minutes"], name="Time Over 10:25 (min)", mode="lines+markers"),
+                secondary_y=True
+            )
+
+            fig_week.update_layout(
+                title="📊 Weekly Time Over 10:25",
+                xaxis_title="Week",
+                yaxis_title="% Time Over",
+                legend_title="Metrics",
+                bargap=0.3,
+                xaxis=dict(type="category")
+            )
+
+            fig_week.update_yaxes(title_text="% Time Over 10:25", secondary_y=False)
+            fig_week.update_yaxes(title_text="Time Over (Minutes)", secondary_y=True)
+
+            st.plotly_chart(fig_week, use_container_width=True)
+
+            # Monthly version
+            monthly_summary["Month_Str"] = monthly_summary["Month"].dt.strftime("%b %Y")
+            monthly_summary = monthly_summary.sort_values("Month")
+            monthly_summary["Time Over Minutes"] = monthly_summary["Time Over 10:25"].apply(hhmm_to_minutes)
+
+            fig_month = make_subplots(specs=[[{"secondary_y": True}]])
+
+            fig_month.add_trace(
+                go.Bar(x=monthly_summary["Month_Str"], y=monthly_summary["% Time Over 10:25"], name="% Time Over 10:25"),
+                secondary_y=False
+            )
+
+            fig_month.add_trace(
+                go.Scatter(x=monthly_summary["Month_Str"], y=monthly_summary["Time Over Minutes"], name="Time Over 10:25 (min)", mode="lines+markers"),
+                secondary_y=True
+            )
+
+            fig_month.update_layout(
+                title="📅 Monthly Time Over 10:25",
+                xaxis_title="Month",
+                yaxis_title="% Time Over",
+                legend_title="Metrics",
+                bargap=0.3,
+                xaxis_tickangle=45
+            )
+
+            fig_month.update_yaxes(title_text="% Time Over 10:25", secondary_y=False)
+            fig_month.update_yaxes(title_text="Time Over (Minutes)", secondary_y=True)
+
+            st.plotly_chart(fig_month, use_container_width=True)
+
+
+        # 17. 🧠 Last Visit Type When Total Over 10:25
+        with st.expander("🧠 Last Visit Type When Total Working Time is Over 10:25", expanded=False):
+
+                st.markdown("This shows the final visit types on days where total working time exceeds 10:25 (625 mins).")
+
+                def to_minutes(t):
+                        try:
+                                if isinstance(t, str) and ":" in t:
+                                        h, m, s = map(int, t.split(":"))
+                                        return h * 60 + m + s / 60
+                                elif hasattr(t, 'hour'):
+                                        return t.hour * 60 + t.minute + t.second / 60
+                                return float(t) * 24 * 60  # Excel float
+                        except:
+                                return 0
+
+                df_check = df_all.copy()
+                df_check["Date"] = pd.to_datetime(df_check["Date"], errors="coerce")
+                df_check = df_check[df_check["Activity Status"].str.lower() == "completed"]
+                df_check = df_check[df_check["Total Working Time"].notna()]
+                df_check = df_check[~df_check["Total Working Time"].isin(["00:00", "0:00", "0", 0])]
+
+                df_check["Total Working Time (min)"] = df_check["Total Working Time"].apply(to_minutes)
+
+                # Step 1: Total time per engineer per day
+                total_day = df_check.groupby(["Name", "Date"])["Total Working Time (min)"].sum().reset_index()
+                total_day = total_day[total_day["Total Working Time (min)"] > 625]
+                total_day = total_day.rename(columns={"Total Working Time (min)": "Total Day Working Time (min)"})
+
+                # Step 2: Merge valid days
+                df_valid = pd.merge(df_check, total_day, on=["Name", "Date"], how="inner")
+
+                # Step 3: Create minutes from End time for sorting
+                df_valid["End_minutes"] = df_valid["End"].apply(to_minutes)
+
+                # Step 4: Sort by End_minutes to get the last visit
+                df_valid.sort_values(by=["Name", "Date", "End_minutes"], inplace=True)
+                last_visits = df_valid.groupby(["Name", "Date"]).tail(1)
+
+                display_cols = ["Name", "Date", "Visit Type", "Start", "End", "Total Working Time", "Total Day Working Time (min)"]
+
+                if not last_visits.empty and all(col in last_visits.columns for col in display_cols):
+                        st.dataframe(last_visits[display_cols], use_container_width=True)
+                else:
+                        st.warning("⚠️ Required columns for displaying the table are missing or no data matched the criteria.")
+
+
+
+
+
+
+
+
+
+
+
+        # 18. 📦 Breakdown of Last Visit Types by Month and Week (Total > 10:25)
+        with st.expander("📦 Breakdown of Last Visit Types by Month and Week (Total Working Time > 10:25)", expanded=False):
+
+                st.markdown("This shows a breakdown of the last visit types by **month** and **week number** for days where total working time exceeded 10:25 (625 mins).")
+
+                if not last_visits.empty:
+
+                        last_visits["Date"] = pd.to_datetime(last_visits["Date"], errors="coerce")
+                        last_visits["Month"] = last_visits["Date"].dt.strftime("%B")
+                        last_visits["Week"] = last_visits["Date"].dt.isocalendar().week
+
+                        # Define proper calendar order
+                        month_order = ["January", "February", "March", "April", "May", "June", 
+                                       "July", "August", "September", "October", "November", "December"]
+
+                        # Monthly breakdown
+                        monthly = last_visits.groupby(["Month", "Visit Type"]).size().reset_index(name="Count")
+                        monthly["Month"] = pd.Categorical(monthly["Month"], categories=month_order, ordered=True)
+                        monthly = monthly.sort_values(by=["Month", "Count"], ascending=[True, False])
+                        months = monthly["Month"].dropna().unique().tolist()
+
+                        st.markdown("### 📅 Monthly Breakdown (Select a Month Tab)")
+
+                        month_tabs = st.tabs(months)
+                        for i, month in enumerate(months):
+                                with month_tabs[i]:
+                                        st.dataframe(monthly[monthly["Month"] == month].reset_index(drop=True), use_container_width=True)
+
+                        # Weekly breakdown
+                        st.markdown("### 📆 Weekly Breakdown")
+                        weekly = last_visits.groupby(["Week", "Visit Type"]).size().reset_index(name="Count")
+                        weekly = weekly.sort_values(by=["Week", "Count"], ascending=[True, False])
+                        st.dataframe(weekly, use_container_width=True)
+
+                else:
+                        st.warning("No data found for last visits over 10:25. Please check upstream filters.")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
