@@ -3506,120 +3506,120 @@ if st.session_state.get("screen") == "operational_area":
                         st.warning("No data found for last visits over 10:25. Please check upstream filters.")
 
 
- --- NUMBER 7 ----------------------------------------------------------
-# --- SECTION: ACTIVITY STATUS BREAKDOWN --------------------------------
-from prophet import Prophet
-import plotly.express as px
-import plotly.graph_objects as go
-
-if section == "activity_status":
-    st.markdown("## 📊 Activity Status Breakdown")
-
-    # Prep all 4 datasets as (name, df) pairs
-    team_datasets = {
-        "VIP North": df_vip_north,
-        "VIP South": df_vip_south,
-        "Tier 2 North": df_t2_north,
-        "Tier 2 South": df_t2_south,
-    }
-
-    for team_name, df in team_datasets.items():
-        # Main expander for each team
-        with st.expander(f"🔵 {team_name} — Activity Overview", expanded=False):
-
-            # Check for Activity Status column
-            if "Activity Status" not in df.columns:
-                st.warning(f"No 'Activity Status' in {team_name}")
-                continue
-
-            # Use tabs inside the expander instead of nested expanders
-            tabs = st.tabs([
-                "📅 Monthly Breakdown",
-                "📆 Weekly Breakdown",
-                "📈 Forecast Next 6 Months",
-                "🌞 Sunburst View",
-                "📅 Gantt Chart",
-                "🔎 Drilldown"
-            ])
-
-            # Monthly Breakdown Tab
-            with tabs[0]:
-                if "Month" in df.columns:
-                    monthly_counts = df.groupby(["Month", "Activity Status"]).size().unstack(fill_value=0)
-                    st.bar_chart(monthly_counts)
-                else:
-                    st.warning("Missing 'Month' column")
-
-            # Weekly Breakdown Tab
-            with tabs[1]:
-                if "week" in df.columns:
-                    weekly_counts = df.groupby(["week", "Activity Status"]).size().unstack(fill_value=0)
-                    st.line_chart(weekly_counts)
-                else:
-                    st.warning("Missing 'week' column")
-
-            # Forecast Tab
-            with tabs[2]:
-                try:
-                    forecast_data = df[df["Activity Status"].notna()]
-                    forecast_df = forecast_data.groupby("Date").size().reset_index(name="y")
-                    forecast_df.columns = ["ds", "y"]
-
-                    m = Prophet()
-                    m.fit(forecast_df)
-                    future = m.make_future_dataframe(periods=180)
-                    forecast = m.predict(future)
-
-                    fig = px.line(forecast, x="ds", y="yhat", title="6-Month Forecast")
-                    st.plotly_chart(fig, use_container_width=True)
-                except Exception as e:
-                    st.warning(f"Forecasting failed: {e}")
-
-            # Sunburst View Tab
-            with tabs[3]:
-                try:
-                    df['Month'] = df['Month'].astype(str)
-                    fig = px.sunburst(df, path=["Month", "Activity Status"], title="Status Distribution by Month")
-                    st.plotly_chart(fig, use_container_width=True)
-                except Exception as e:
-                    st.warning(f"Sunburst error: {e}")
-
-            # Gantt Chart Tab
-            with tabs[4]:
-                try:
-                    if "Date" in df.columns and "Start" in df.columns and "End" in df.columns and "Activity Status" in df.columns:
-                        df_gantt = df.copy()
-
-                        # Combine Date with Start/End time into full datetime
-                        df_gantt["Start"] = pd.to_datetime(df_gantt["Date"].astype(str) + " " + df_gantt["Start"].astype(str), errors="coerce")
-                        df_gantt["End"] = pd.to_datetime(df_gantt["Date"].astype(str) + " " + df_gantt["End"].astype(str), errors="coerce")
-
-                        # Remove rows with missing or invalid times or statuses
-                        df_gantt.dropna(subset=["Start", "End", "Activity Status"], inplace=True)
-
-                        fig = px.timeline(
-                            df_gantt,
-                            x_start="Start",
-                            x_end="End",
-                            y="Activity Status",
-                            color="Activity Status",
-                            title=f"Activity Gantt Timeline – {team_name}",
-                            height=400
-                        )
-                        fig.update_yaxes(autorange="reversed")
-                        st.plotly_chart(fig)
-                except Exception as e:
-                    st.error(f"Gantt chart error: {e}")
-
-            # Drilldown Tab
-            with tabs[5]:
-                selected_status = st.selectbox(
-                    f"Filter {team_name} by Activity Status",
-                    options=sorted(df["Activity Status"].dropna().unique()),
-                    key=f"drilldown_{team_name.replace(' ', '_')}"
-                )
-                drill = df[df["Activity Status"] == selected_status]
-                st.dataframe(drill, use_container_width=True)
+	 --- NUMBER 7 ----------------------------------------------------------
+	# --- SECTION: ACTIVITY STATUS BREAKDOWN --------------------------------
+	from prophet import Prophet
+	import plotly.express as px
+	import plotly.graph_objects as go
+	
+	if section == "activity_status":
+	    st.markdown("## 📊 Activity Status Breakdown")
+	
+	    # Prep all 4 datasets as (name, df) pairs
+	    team_datasets = {
+	        "VIP North": df_vip_north,
+	        "VIP South": df_vip_south,
+	        "Tier 2 North": df_t2_north,
+	        "Tier 2 South": df_t2_south,
+	    }
+	
+	    for team_name, df in team_datasets.items():
+	        # Main expander for each team
+	        with st.expander(f"🔵 {team_name} — Activity Overview", expanded=False):
+	
+	            # Check for Activity Status column
+	            if "Activity Status" not in df.columns:
+	                st.warning(f"No 'Activity Status' in {team_name}")
+	                continue
+	
+	            # Use tabs inside the expander instead of nested expanders
+	            tabs = st.tabs([
+	                "📅 Monthly Breakdown",
+	                "📆 Weekly Breakdown",
+	                "📈 Forecast Next 6 Months",
+	                "🌞 Sunburst View",
+	                "📅 Gantt Chart",
+	                "🔎 Drilldown"
+	            ])
+	
+	            # Monthly Breakdown Tab
+	            with tabs[0]:
+	                if "Month" in df.columns:
+	                    monthly_counts = df.groupby(["Month", "Activity Status"]).size().unstack(fill_value=0)
+	                    st.bar_chart(monthly_counts)
+	                else:
+	                    st.warning("Missing 'Month' column")
+	
+	            # Weekly Breakdown Tab
+	            with tabs[1]:
+	                if "week" in df.columns:
+	                    weekly_counts = df.groupby(["week", "Activity Status"]).size().unstack(fill_value=0)
+	                    st.line_chart(weekly_counts)
+	                else:
+	                    st.warning("Missing 'week' column")
+	
+	            # Forecast Tab
+	            with tabs[2]:
+	                try:
+	                    forecast_data = df[df["Activity Status"].notna()]
+	                    forecast_df = forecast_data.groupby("Date").size().reset_index(name="y")
+	                    forecast_df.columns = ["ds", "y"]
+	
+	                    m = Prophet()
+	                    m.fit(forecast_df)
+	                    future = m.make_future_dataframe(periods=180)
+	                    forecast = m.predict(future)
+	
+	                    fig = px.line(forecast, x="ds", y="yhat", title="6-Month Forecast")
+	                    st.plotly_chart(fig, use_container_width=True)
+	                except Exception as e:
+	                    st.warning(f"Forecasting failed: {e}")
+	
+	            # Sunburst View Tab
+	            with tabs[3]:
+	                try:
+	                    df['Month'] = df['Month'].astype(str)
+	                    fig = px.sunburst(df, path=["Month", "Activity Status"], title="Status Distribution by Month")
+	                    st.plotly_chart(fig, use_container_width=True)
+	                except Exception as e:
+	                    st.warning(f"Sunburst error: {e}")
+	
+	            # Gantt Chart Tab
+	            with tabs[4]:
+	                try:
+	                    if "Date" in df.columns and "Start" in df.columns and "End" in df.columns and "Activity Status" in df.columns:
+	                        df_gantt = df.copy()
+	
+	                        # Combine Date with Start/End time into full datetime
+	                        df_gantt["Start"] = pd.to_datetime(df_gantt["Date"].astype(str) + " " + df_gantt["Start"].astype(str), errors="coerce")
+	                        df_gantt["End"] = pd.to_datetime(df_gantt["Date"].astype(str) + " " + df_gantt["End"].astype(str), errors="coerce")
+	
+	                        # Remove rows with missing or invalid times or statuses
+	                        df_gantt.dropna(subset=["Start", "End", "Activity Status"], inplace=True)
+	
+	                        fig = px.timeline(
+	                            df_gantt,
+	                            x_start="Start",
+	                            x_end="End",
+	                            y="Activity Status",
+	                            color="Activity Status",
+	                            title=f"Activity Gantt Timeline – {team_name}",
+	                            height=400
+	                        )
+	                        fig.update_yaxes(autorange="reversed")
+	                        st.plotly_chart(fig)
+	                except Exception as e:
+	                    st.error(f"Gantt chart error: {e}")
+	
+	            # Drilldown Tab
+	            with tabs[5]:
+	                selected_status = st.selectbox(
+	                    f"Filter {team_name} by Activity Status",
+	                    options=sorted(df["Activity Status"].dropna().unique()),
+	                    key=f"drilldown_{team_name.replace(' ', '_')}"
+	                )
+	                drill = df[df["Activity Status"] == selected_status]
+	                st.dataframe(drill, use_container_width=True)
 
 
 
