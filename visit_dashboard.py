@@ -4712,21 +4712,54 @@ if (
         st.stop()
 
     # -------------- Helper functions --------------
-    def to_seconds(t):
-        """Convert HH:MM:SS or datetime.time to seconds; return None if invalid/zero."""
-        if pd.isnull(t):
-            return None
-        if isinstance(t, datetime.time):
-            if t.hour == t.minute == t.second == 0:
-                return None
-            return t.hour * 3600 + t.minute * 60 + t.second
-        try:
-            h, m, s = map(int, str(t).split(":")[:3])
-            if h == m == s == 0:
-                return None
-            return h * 3600 + m * 60 + s
-        except Exception:
-            return None
+    def to_timedelta_str(x):
+        if pd.isnull(x) or x in ["", "-", "NaT", None, " "]:
+            return pd.NaT
+        if isinstance(x, (pd.Timedelta, datetime.timedelta)):
+            return x
+        if isinstance(x, datetime.time):
+            return datetime.timedelta(hours=x.hour, minutes=x.minute, seconds=x.second)
+        if isinstance(x, (float, int)):
+            try:
+                return datetime.timedelta(seconds=int(float(x) * 86400))
+            except Exception:
+                return pd.NaT
+        if isinstance(x, pd.Timestamp):
+            t = x.time()
+            return datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+        if isinstance(x, str):
+            s = x.strip()
+            if s in ["", "-", "NaT", " "]:
+                return pd.NaT
+            try:
+                h, m, s = map(int, s.split(":")[:3])
+                return datetime.timedelta(hours=h, minutes=m, seconds=s)
+            except Exception:
+                pass
+            try:
+                return pd.to_timedelta(s)
+            except Exception:
+                return pd.NaT
+        return pd.NaT
+
+    # --- Replace old avg logic ---
+    df["Activate"] = df["Activate"].apply(to_timedelta_str)
+    df["Deactivate"] = df["Deactivate"].apply(to_timedelta_str)
+
+    valid_times = df[
+        df["Activate"].notna() &
+        df["Deactivate"].notna() &
+        (df["Activate"] > datetime.timedelta(0)) &
+        (df["Deactivate"] > datetime.timedelta(0))
+    ]
+
+    avg_activate_time = avg_deactivate_time = "N/A"
+    if not valid_times.empty:
+        avg_act = valid_times["Activate"].mean()
+        avg_deact = valid_times["Deactivate"].mean()
+        avg_activate_time = f"{int(avg_act.total_seconds()//3600):02}:{int((avg_act.total_seconds()%3600)//60):02}"
+        avg_deactivate_time = f"{int(avg_deact.total_seconds()//3600):02}:{int((avg_deact.total_seconds()%3600)//60):02}"
+
 
     def td_to_str(td):
         if isinstance(td, (pd.Timedelta, datetime.timedelta)):
@@ -4748,16 +4781,6 @@ if (
         latest = df["Date"].max().strftime("%d %b %Y")
     else:
         earliest = latest = "N/A"
-
-    # -------------- Activate / Deactivate ---------
-    avg_activate_time = avg_deactivate_time = "N/A"
-    if {"Activate", "Deactivate"}.issubset(df.columns):
-        act_secs = df["Activate"].apply(to_seconds).dropna()
-        deact_secs = df["Deactivate"].apply(to_seconds).dropna()
-        if not act_secs.empty:
-            avg_activate_time = td_to_str(datetime.timedelta(seconds=int(act_secs.mean())))
-        if not deact_secs.empty:
-            avg_deactivate_time = td_to_str(datetime.timedelta(seconds=int(deact_secs.mean())))
 
     # -------------- Lunch duration ----------------
     lunch_col = next((c for c in df.columns if c.lower().startswith("total time")), None)
