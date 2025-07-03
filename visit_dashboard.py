@@ -4782,6 +4782,8 @@ if (
     else:
         earliest = latest = "N/A"
 
+
+
     # -------------- Lunch duration ----------------
     lunch_col = next((c for c in df.columns if c.lower().startswith("total time")), None)
     avg_lunch_str = "N/A"
@@ -5028,6 +5030,7 @@ if (
     # --- Table View ---
     with st.expander("📋 Full Oracle Visit Table", expanded=False):
         st.dataframe(df_oracle, use_container_width=True)
+
 
 
 
