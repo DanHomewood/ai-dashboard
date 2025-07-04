@@ -95,60 +95,48 @@ else:
     st.error("No data loaded from Oracle files.")
     st.stop()
 
-st.markdown("""
-    <style>
-    /* ---------- FORCE LIGHT THEME ---------- */
-    html, body, .main {
+st.markdown(f"""
+<style>
+/* ---------- FORCE LIGHT THEME ---------- */
+html, body, .main {{
+    background-color: white !important;
+    color: #004080 !important;
+}}
+
+@media (prefers-color-scheme: dark) {{
+    html, body, .main {{
         background-color: white !important;
         color: #004080 !important;
-    }
+    }}
+}}
 
-    @media (prefers-color-scheme: dark) {
-        html, body, .main {
-            background-color: white !important;
-            color: #004080 !important;
-        }
-    }
+/* ---------- GLOBAL TEXT COLORS ---------- */
+body, .css-1d391kg, .stText, .stMarkdown, .css-1cpxqw2, .css-ffhzg2 {{
+    color: #004080 !important;
+}}
 
-    /* ---------- GLOBAL TEXT COLORS ---------- */
-    body, .css-1d391kg, .stText, .stMarkdown, .css-1cpxqw2, .css-ffhzg2 {
-        color: #004080 !important;
-    }
+h1, h2, h3, h4, h5, h6 {{
+    color: #004080 !important;
+}}
 
-    h1, h2, h3, h4, h5, h6 {
-        color: #004080 !important;
-    }
+button[kind="secondary"] > div > p,
+button[kind="primary"] > div > p {{
+    color: #004080 !important;
+    font-weight: bold;
+}}
 
-    button[kind="secondary"] > div > p,
-    button[kind="primary"] > div > p {
-        color: #004080 !important;
-        font-weight: bold;
-    }
+/* ---------- LOGO ---------- */
+.logo {{
+    text-align: center;
+    margin-bottom: 2rem;
+}}
 
-st.markdown(f"""
-<div class="logo">
-    <img src='data:image/png;base64,{logo_base64}' />
-</div>
-""", unsafe_allow_html=True)
-
-# --- TYPING INTRO TEXT ---
-st.markdown("""
-<style>
-.adv-summary {
-    font-size: 20px;
-    font-weight: 400;
-    border-right: 2px solid rgba(255,255,255,0.75);
-    white-space: nowrap;
-    overflow: hidden;
-    width: fit-content;
-    margin: 0 auto 30px;
-    animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
-}
-</style>
-<div class='adv-summary'>
-Welcome to the advanced reporting hub use the options below to explore all areas
-</div>
-""", unsafe_allow_html=True)
+.logo img {{
+    width: 750px;  /* Adjust size here */
+    height: auto;
+    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
+    display: inline-block;
+}}
 
 /* ---------- LOGIN HEADER ---------- */
 .login-header {{
@@ -229,6 +217,7 @@ header, .stSidebar {{
     <img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
