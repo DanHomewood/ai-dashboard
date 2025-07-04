@@ -22,7 +22,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
 from langchain.schema import HumanMessage, SystemMessage
 from collections import defaultdict
-
+import pdfplumber
 
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
@@ -294,53 +294,220 @@ Welcome to the advanced reporting hub use the options below to explore all areas
 
 # --- NUMBER 6 ---#
 # --- SECTION: AREA SELECTION MAIN MENU ---
+def menu_button_with_tooltip(label, tooltip_text, screen_name, key=None): 
+    col1, col2 = st.columns([10,1], gap="small")  # wider button, narrow icon
+    with col1:
+        if st.button(label, use_container_width=True, key=key):
+            st.session_state.screen = screen_name
+            st.rerun()
+    with col2:
+        st.markdown(
+            f"""
+            <div style="position: relative; display: inline-block;">
+              <span style="
+                cursor: help; 
+                font-weight: bold; 
+                color: #007bff; 
+                font-size: 18px;"
+                title="{tooltip_text}">
+                ⓘ
+              </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
 if st.session_state.screen == "area_selection":
     st.markdown("## Choose an area", unsafe_allow_html=True)
 
-    # First row with 3 columns
     row1_cols = st.columns(3)
     with row1_cols[0]:
-        if st.button("🏢 Operational Area", use_container_width=True):
-            st.session_state.screen = "operational_area"
-            st.rerun()
+        menu_button_with_tooltip("🏢 Operational Area", "Manage field operations and schedules", "operational_area", key="btn1")
     with row1_cols[1]:
-        if st.button("📊 Dashboard Area", use_container_width=True):
-            st.session_state.screen = "dashboard"
-            st.rerun()
+        menu_button_with_tooltip("📊 Dashboard Area", "View KPIs and trends", "dashboard", key="btn2")
     with row1_cols[2]:
-        if st.button("🤖 Sky Orbit", use_container_width=True):
-            st.session_state.screen = "ai"
-            st.rerun()
+        menu_button_with_tooltip("🤖 Sky Orbit", "Ask questions and get AI-powered insights", "ai", key="btn3")
 
-    # Add vertical spacing between rows if needed
-    st.write("")  # blank line
+    st.write("")
 
-    # Second row with 3 columns
     row2_cols = st.columns(3)
     with row2_cols[0]:
-        if st.button("💡 Suggestion Box", use_container_width=True):
-            st.session_state.screen = "suggestions"
-            st.rerun()
+        menu_button_with_tooltip("💡 Suggestion Box", "Submit and view suggestions", "suggestions", key="btn4")
     with row2_cols[1]:
-        if st.button("📈 Forecasts", use_container_width=True):
-            st.session_state.screen = "Forecasts"
-            st.rerun()
+        menu_button_with_tooltip("📈 Forecasts", "View forecasted visits and values", "Forecasts", key="btn5")
     with row2_cols[2]:
-        if st.button("🗺️ Highlands & Islands", use_container_width=True):
-            st.session_state.screen = "highlands_islands"
-            st.rerun()
-        # Third row with 2 columns for new areas
-    row3_cols = st.columns(2)
+        menu_button_with_tooltip("🗺️ Highlands & Islands", "Explore Highlands & Islands area", "highlands_islands", key="btn6")
 
+    row3_cols = st.columns(3)
     with row3_cols[0]:
-        if st.button("🏬 Sky Retail", use_container_width=True):
-            st.session_state.screen = "sky_retail"
-            st.rerun()
-
+        menu_button_with_tooltip("🏬 Sky Retail", "Analyze Sky Retail visit data and KPIs", "sky_retail", key="btn7")
     with row3_cols[1]:
-        if st.button("🏢 Sky Business", use_container_width=True):
-            st.session_state.screen = "sky_business"
-            st.rerun()
+        menu_button_with_tooltip("🏢 Sky Business", "Analyze Sky Business visit data and KPIs", "sky_business", key="btn8")
+    with row3_cols[2]:
+        menu_button_with_tooltip("📁 Sky Orbit File Uploader", "Upload files and query your data", "sky_orbit_file_upload", key="btn9")
+
+
+if st.session_state.screen == "area_selection":
+
+    # Load the Lottie animation JSON from the URL
+    lottie_url = "https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json"  # or your preferred animation URL
+    lottie_json = load_lottieurl(lottie_url)
+    
+    # Show the animation if loaded successfully
+    if lottie_json:
+        st_lottie(lottie_json, height=280, key="area_selection_anim")
+    else:
+        st.info("🌀 Animation failed to load — but area selection still works.")
+    
+    # ... rest of your area_selection code here
+
+import pandas as pd
+import streamlit as st
+import pdfplumber  # pip install pdfplumber
+import docx        # pip install python-docx
+from langchain_openai import ChatOpenAI
+from langchain.agents.agent_types import AgentType
+from langchain_experimental.agents import create_pandas_dataframe_agent
+
+if st.session_state.get("screen") == "sky_orbit_file_upload":
+
+    st.title("📁 Sky Orbit File Uploader")
+    st.markdown("""
+        Upload your Excel, CSV, PDF, TXT, or Word (.docx) files below and ask questions about their contents.
+        This AI is specialized in understanding your uploaded files only, but you can still chat normally without uploading.
+    """)
+
+    uploaded_file = st.file_uploader(
+        "Choose a file to upload",
+        type=["xlsx", "xls", "csv", "pdf", "txt", "docx"],
+        accept_multiple_files=False
+    )
+
+    # Reset uploaded data and chat if new file uploaded
+    if uploaded_file is not None:
+        # If new file different than previous upload, reset chat & agent
+        if uploaded_file.name != st.session_state.get("last_uploaded_file", None):
+            st.session_state.file_ai_chat = []
+            if "file_df_agent" in st.session_state:
+                del st.session_state["file_df_agent"]
+            st.session_state.last_uploaded_file = uploaded_file.name
+            st.session_state.uploaded_df = None
+            st.session_state.uploaded_text = None
+
+        df = None
+        extracted_text = None
+
+        if uploaded_file.type in ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                  "application/vnd.ms-excel"]:
+            try:
+                df = pd.read_excel(uploaded_file)
+            except Exception as e:
+                st.error(f"Failed to read Excel file: {e}")
+
+        elif uploaded_file.type == "text/csv":
+            try:
+                df = pd.read_csv(uploaded_file)
+            except Exception as e:
+                st.error(f"Failed to read CSV file: {e}")
+
+        elif uploaded_file.type == "application/pdf":
+            try:
+                with pdfplumber.open(uploaded_file) as pdf:
+                    extracted_text = ""
+                    for page in pdf.pages:
+                        extracted_text += page.extract_text() + "\n"
+                st.text_area("Preview of extracted PDF text (first 1000 chars):", extracted_text[:1000], height=200)
+            except Exception as e:
+                st.error(f"Failed to extract PDF text: {e}")
+
+        elif uploaded_file.type == "text/plain":
+            try:
+                extracted_text = uploaded_file.getvalue().decode("utf-8")
+                st.text_area("Preview of uploaded TXT file (first 1000 chars):", extracted_text[:1000], height=200)
+            except Exception as e:
+                st.error(f"Failed to read TXT file: {e}")
+
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            try:
+                doc = docx.Document(uploaded_file)
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip() != ""]
+                extracted_text = "\n".join(paragraphs)
+                st.text_area("Preview of uploaded DOCX file (first 1000 chars):", extracted_text[:1000], height=200)
+            except Exception as e:
+                st.error(f"Failed to read DOCX file: {e}")
+
+        st.write(f"**Uploaded file:** {uploaded_file.name} ({round(uploaded_file.size / 1024, 2)} KB)")
+
+        st.session_state.uploaded_df = df
+        st.session_state.uploaded_text = extracted_text
+
+    else:
+        st.info("Upload a file to begin chatting with your file AI or just ask questions below.")
+        st.session_state.uploaded_df = None
+        st.session_state.uploaded_text = None
+
+    # Initialize chat history if missing
+    if "file_ai_chat" not in st.session_state:
+        st.session_state.file_ai_chat = []
+
+    # Function to prepare or get existing AI agent
+    def get_agent():
+        llm_stream = ChatOpenAI(
+            api_key=st.secrets["openai"]["api_key"],
+            model_name="gpt-4o-mini",
+            streaming=True,
+        )
+        if st.session_state.get("uploaded_df") is not None:
+            return create_pandas_dataframe_agent(
+                llm=llm_stream,
+                df=st.session_state.uploaded_df,
+                verbose=False,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
+                allow_dangerous_code=True,
+            )
+        elif st.session_state.get("uploaded_text") is not None:
+            dummy_df = pd.DataFrame({"Text": [st.session_state.uploaded_text]})
+            return create_pandas_dataframe_agent(
+                llm=llm_stream,
+                df=dummy_df,
+                verbose=False,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
+                allow_dangerous_code=True,
+            )
+        else:
+            # Fallback dummy df for normal conversation without upload
+            dummy_df = pd.DataFrame({"Info": ["No file uploaded. Ask me anything or upload a file."]})
+            return create_pandas_dataframe_agent(
+                llm=llm_stream,
+                df=dummy_df,
+                verbose=False,
+                agent_type=AgentType.OPENAI_FUNCTIONS,
+                allow_dangerous_code=True,
+            )
+
+    if "file_df_agent" not in st.session_state:
+        st.session_state.file_df_agent = get_agent()
+
+    agent = st.session_state.file_df_agent
+
+    # User question input and handling
+    question = st.chat_input("Ask your file AI a question:")
+
+    if question:
+        with st.spinner("Processing your question..."):
+            try:
+                response = agent.run(question)
+            except Exception as e:
+                response = f"⚠️ AI error: {e}"
+
+        st.session_state.file_ai_chat.append({"question": question, "response": response})
+        st.rerun()
+
+    # Display conversation bubbles
+    for chat in st.session_state.file_ai_chat:
+        st.chat_message("user").markdown(chat["question"])
+        st.chat_message("assistant").markdown(chat["response"])
+
 
 
 
