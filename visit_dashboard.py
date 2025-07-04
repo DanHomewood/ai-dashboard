@@ -494,25 +494,7 @@ if st.session_state.screen == "instruction_guide":
     st.stop()
 
 # --- Main App Content ---
-# --- MAIN APP CONTENT (after login) ---
-st.markdown(f"""
-<style>
-.logo {{
-    text-align: center;
-    margin-bottom: 2rem;
-}}
-.logo img {{
-    width: 750px;  /* Adjust size here */
-    height: auto;
-    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
-    display: inline-block;
-}}
-</style>
 
-<div class="logo">
-    <img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
-</div>
-""", unsafe_allow_html=True)
 
 
 # Add the animated CSS style with dark/light theme support
