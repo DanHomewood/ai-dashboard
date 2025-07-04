@@ -504,6 +504,10 @@ Welcome to the advanced reporting hub use the options below to explore all areas
 
 # --- NUMBER 6 ---#
 # --- SECTION: AREA SELECTION MAIN MENU ---
+if st.session_state.screen == "area_selection":
+    if st.button("⬅️ Back to User Guide & Overview"):
+        st.session_state.screen = "instruction_guide"
+        st.rerun()
 def menu_button_with_tooltip(label, tooltip_text, screen_name, key=None): 
     col1, col2 = st.columns([10,1], gap="small")  # wider button, narrow icon
     with col1:
