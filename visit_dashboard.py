@@ -5565,39 +5565,7 @@ if st.session_state.get("screen") == "ai":
         unsafe_allow_html=True
     )
 
-    # Inline uploader + chat bar
-    with st.container():
-        st.markdown('<div class="upload-chat-row">', unsafe_allow_html=True)
 
-        uploaded = st.file_uploader(
-            label="Upload Excel / CSV",
-            type=["xlsx", "csv"],
-            key="upload_bar",
-            label_visibility="collapsed"
-        )
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-
-    # Store and preview uploaded file
-    if uploaded:
-        try:
-            if uploaded.name.endswith(".csv"):
-                st.session_state.user_df = pd.read_csv(uploaded)
-            else:
-                st.session_state.user_df = pd.read_excel(uploaded)
-
-            st.session_state.user_file_name = uploaded.name
-            st.success(f"✅ Upload complete: **{uploaded.name}** loaded into DataFrame")
-            st.caption("Preview of first 10 rows:")
-            st.dataframe(st.session_state.user_df.head(10))
-
-        except Exception as e:
-            st.session_state.user_df = None
-            st.error(f"❌ Couldn’t read file: {e}")
-
-    # Always set a reference
-    user_df = st.session_state.get("user_df", None)
 
 # Ensure these keys always exist so later code never KeyErrors
 st.session_state.setdefault("user_df", None)
