@@ -346,6 +346,13 @@ if st.session_state.screen == "area_selection":
         menu_button_with_tooltip("🏢 Sky Business", "Analyze Sky Business visit data and KPIs", "sky_business", key="btn8")
     with row3_cols[2]:
         menu_button_with_tooltip("📁 Sky Orbit File Uploader", "Upload files and query your data", "sky_orbit_file_upload", key="btn9")
+import requests
+
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 
 if st.session_state.screen == "area_selection":
