@@ -22,6 +22,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.agents.agent_types import AgentType
 from langchain.schema import HumanMessage, SystemMessage
 from collections import defaultdict
+import pdfplumber
 
 
 # --- Session State Defaults ---
