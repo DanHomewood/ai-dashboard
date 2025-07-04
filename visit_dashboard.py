@@ -5005,8 +5005,19 @@ if (
 
     # Load data only here inside block 14
     df_oracle = load_all_data()
+    dataset_to_team = {
+        "VIP South Oracle Data": "VIP South",
+        "VIP North Oracle Data": "VIP North",
+        "Tier 2 South Oracle Data": "Tier 2 South",
+        "Tier 2 North Oracle Data": "Tier 2 North",
+    }
+
+    if selected_dataset in dataset_to_team:
+        team_name = dataset_to_team[selected_dataset]
+        df_oracle = df_oracle[df_oracle["Team"] == team_name]
 
     # Now you can safely use df_oracle below in Block 14 only
+	
 
     # ---------------- Load & Clean ----------------
     df = df_oracle.copy()
