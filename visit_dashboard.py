@@ -126,10 +126,25 @@ st.markdown("""
     }
 
     /* ---------- LOGO + LOGIN PAGE ---------- */
-    .logo {
-        text-align: center;
-        margin-bottom: 20px;
-    }
+    st.markdown(f"""
+    <style>
+    .logo {{
+	text-align: center;
+	margin-bottom: 2rem;
+    }}
+    .logo img {{
+	width: 750px;  /* Adjust size here */
+	height: auto;
+	filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
+	display: inline-block;
+    }}
+    </style>
+	
+    <div class="logo">
+	<img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
+    </div>
+    """, unsafe_allow_html=True)
+
 
     .login-header {
         font-size: 28px;
