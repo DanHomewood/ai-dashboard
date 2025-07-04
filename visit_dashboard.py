@@ -135,7 +135,7 @@ st.markdown(f"""
 .logo img {{
     width: 750px;  /* Adjust size here */
     height: auto;
-    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
+    filter: drop-shadow(0px 0px 8px rgba(10, 102, 194, 0.7));
     display: inline-block;
 }}
 
@@ -212,25 +212,13 @@ st.markdown(f"""
 header, .stSidebar {{
     display: none;
 }}
-st.markdown(f"""
-<style>
-.logo {{
-    text-align: center;
-    margin-bottom: 2rem;
-}}
-
-.logo img {{
-    width: 750px;  /* Adjust size here */
-    height: auto;
-    filter: drop-shadow(0px 0px 8px rgba(10, 102, 194, 0.7));
-    display: inline-block;
-}}
 </style>
 
 <div class="logo">
     <img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
