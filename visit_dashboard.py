@@ -380,6 +380,9 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 if st.session_state.get("screen") == "sky_orbit_file_upload":
 
     st.title("📁 Sky Orbit File Uploader")
+    if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_sky_orbit_file_upload"):
+        st.session_state.screen = "area_selection"
+        st.rerun()
     st.markdown("""
         Upload your Excel, CSV, PDF, TXT, or Word (.docx) files below and ask questions about their contents.
         This AI is specialized in understanding your uploaded files only, but you can still chat normally without uploading.
