@@ -495,7 +495,7 @@ if st.session_state.screen == "instruction_guide":
     # Stop here so nothing else below renders on this screen
     st.stop()
 # --- Main App Content ---
-st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='750'></div>", unsafe_allow_html=True)
 
 # Add the animated CSS style with dark/light theme support
 st.markdown("""
