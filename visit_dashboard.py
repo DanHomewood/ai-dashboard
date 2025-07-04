@@ -27,6 +27,8 @@ import pdfplumber
 
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
+    st.session_state.screen = "instruction_guide"
+if "screen" not in st.session_state:
     st.session_state.screen = "area_selection"
 if "user_df" not in st.session_state:
     st.session_state.user_df = None
@@ -233,7 +235,204 @@ def login_screen_with_animation(logo_base64):
 if not st.session_state.authenticated:
     login_screen_with_animation(logo_base64 or "")
     st.stop()
+if st.session_state.authenticated and st.session_state.screen == "login":
+    st.session_state.screen = "instruction_guide"
+import streamlit as st
+if st.session_state.screen == "instruction_guide":
+    st.markdown(
+        """
+        <style>
+        /* Section headers */
+        .section-header {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #80c3ff;
+            text-shadow: 0 0 6px rgba(0, 115, 230, 0.7);
+        }
 
+        /* Expander customization */
+        details > summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.2rem;
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #0a66c2, #2171c7);
+            color: white;
+            box-shadow: 0 4px 8px rgba(10,102,194,0.5);
+            margin-bottom: 0.6rem;
+            transition: background 0.3s ease;
+            user-select: none;
+        }
+        details[open] > summary {
+            background: linear-gradient(90deg, #2171c7, #0a66c2);
+            box-shadow: 0 6px 12px rgba(33,113,199,0.7);
+        }
+        details > summary:hover {
+            background: #0d4a8f;
+        }
+        details > div, details > p {
+            margin-left: 1rem;
+            margin-right: 1rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #dceeff;
+            white-space: pre-wrap;
+            user-select: text;
+            overflow-wrap: break-word;
+        }
+
+        /* Important Notes list style */
+        .important-notes {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-top: 1rem;
+            margin-left: 1rem;
+            color: #b0d4ff;
+        }
+        .important-notes li {
+            margin-bottom: 0.6rem;
+        }
+
+        /* Big button styling */
+        .big-button {
+            display: block;
+            margin: 3rem auto 0 auto;
+            padding: 1.2rem 3rem;
+            background: linear-gradient(90deg, #0a66c2, #2171c7);
+            color: white;
+            font-size: 1.6rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 9999px;
+            box-shadow: 0 8px 16px rgba(10,102,194,0.6);
+            cursor: pointer;
+            transition: background 0.3s ease;
+            text-align: center;
+            width: max-content;
+            user-select: none;
+            text-decoration: none;
+        }
+        .big-button:hover {
+            background: linear-gradient(90deg, #2171c7, #0a66c2);
+            box-shadow: 0 12px 24px rgba(33,113,199,0.9);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<h1>Sky Orbit Visit Dashboard — User Guide & Overview</h1>', unsafe_allow_html=True)
+
+    st.markdown('<h2 class="section-header">What is Sky Orbit?</h2>', unsafe_allow_html=True)
+    with st.expander("Click to expand"):
+        st.markdown("""
+        - **Centralized data dashboard** aggregating Oracle visit data from VIP North, VIP South, Tier 2 North, and Tier 2 South teams.
+        - **Interactive visualizations** enable easy exploration, analysis, and comparison.
+        - Built with **secure login**, AI-powered chat assistant, detailed KPIs, trends, and forecasting features.
+        - Designed to empower teams with real-time, actionable insights.
+        """)
+
+    st.markdown('<h2 class="section-header">How to Use the Dashboard</h2>', unsafe_allow_html=True)
+
+    with st.expander("Main Menu"):
+        st.markdown("""
+        - Select any area to explore by clicking the corresponding button:
+          - **Operational Area:** Manage field operations and schedules.
+          - **Dashboards:** View key performance indicators and trends.
+          - **AI Chat (Sky Orbit AI):** Ask questions and receive AI-generated insights.
+          - **Suggestions:** Submit and review improvement ideas.
+          - **Forecasts:** View predictive analysis on visits and values.
+          - **Sky Retail & Sky Business:** Access filtered KPIs by business units.
+          - **Sky Orbit File Uploader:** Upload and analyze your own data files.
+        - The menu is designed for quick navigation to your focus area.
+        """)
+
+    with st.expander("Upload Your Data (Optional)"):
+        st.markdown("""
+        - Upload Excel or CSV files containing visit data for **custom analysis**.
+        - If no upload is made, the dashboard uses the **default Oracle combined dataset**.
+        - Supported file formats: `.xlsx`, `.xls`, `.csv`.
+        - Uploading new files replaces the default data for all AI and dashboard queries.
+        """)
+
+    with st.expander("Sky Retail Area"):
+        st.markdown("""
+        - Analyze visit data filtered by retail stakeholders such as Currys, Sky Retail, and EE.
+        - View KPIs including:
+          - Total visits and total value.
+          - Average visit value and duration.
+          - Monthly visit trends and day-of-week breakdowns.
+        - Drill down into charts and tables by stakeholder, team, or engineer.
+        """)
+
+    with st.expander("Sky Business Area"):
+        st.markdown("""
+        - Focuses on visits tagged as “Sky Business”.
+        - Provides KPIs on total visits, value, and completion rates.
+        - Explore activity breakdown charts, monthly trends, and sunburst visualizations.
+        - Includes team-level forecasts and detailed heatmap tables.
+        """)
+
+    with st.expander("VIP - SB Standby Section"):
+        st.markdown("""
+        - Specialized metrics for “VIP - SB Standby” visit types.
+        - Summaries of:
+          - Completed visits.
+          - Total and average visit values.
+          - Average start and end times.
+          - Activity status distributions.
+          - Monthly visit counts.
+        - Includes forecasts based on recent months.
+        - Time metrics only count visits with valid start and end times.
+        """)
+
+    with st.expander("SLA Dashboard"):
+        st.markdown("""
+        - Track ticket volumes against SLA buckets (2h, 4h, 5 day, and 8h).
+        - KPIs on total tickets, SLA met/missed counts, and percentages.
+        - Visualize monthly ticket trends and SLA performance breakdowns.
+        - Forecast upcoming ticket volumes based on historic data.
+        """)
+
+    with st.expander("Suggestion Box"):
+        st.markdown("""
+        - Submit new suggestions or delete existing ones via a simple interface.
+        - Uses Excel-based storage with OneDrive-safe temporary files.
+        - Unique keys ensure no data conflicts between users.
+        """)
+
+    with st.expander('AI Chat Assistant (“Sky Orbit”)'):
+        st.markdown("""
+        - Ask natural language questions about your visit data.
+        - Get answers on:
+          - Total costs and visit counts.
+          - Top postcodes and percentage differences.
+          - Trend analysis and charts generated by the AI.
+        - All chat conversations are logged with timestamps.
+        - Access is password protected for security.
+        """)
+
+    st.markdown('<h2 class="section-header">Important Notes</h2>', unsafe_allow_html=True)
+    st.markdown("""
+    <ul class="important-notes">
+    <li>All data and views refresh on app start and can be filtered dynamically.</li>
+    <li>Forecasts use simple linear trends based on recent months.</li>
+    <li>Some KPIs or tables depend on available columns — if data is missing, warnings will be shown.</li>
+    <li>Uploading your own file replaces the default Oracle data for analysis.</li>
+    <li>Time-related metrics require valid time columns and are calculated carefully.</li>
+    </ul>
+    """, unsafe_allow_html=True)
+
+    if st.button("🚀 Take me to the App", key="goto_area_selection", help="Go to main app screen"):
+        st.session_state.screen = "area_selection"
+        st.rerun()
+
+
+    # Stop here so nothing else below renders on this screen
+    st.stop()
 # --- Main App Content ---
 st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
 
