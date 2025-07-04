@@ -126,7 +126,6 @@ button[kind="primary"] > div > p {{
 }}
 
 /* ---------- LOGO ---------- */
-/*
 .logo {{
     text-align: center;
     margin-bottom: 2rem;
@@ -138,7 +137,6 @@ button[kind="primary"] > div > p {{
     filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
     display: inline-block;
 }}
-*/
 
 /* ---------- LOGIN HEADER ---------- */
 .login-header {{
@@ -215,8 +213,9 @@ header, .stSidebar {{
 }}
 </style>
 
-<!-- Logo HTML removed to prevent duplicate logos -->
+<!-- Removed logo HTML here to avoid duplicate logos -->
 """, unsafe_allow_html=True)
+
 
 
 
