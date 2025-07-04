@@ -224,6 +224,7 @@ header, .stSidebar {{
 
 
 
+
 # --- Login screen with animation ---
 def login_screen_with_animation(logo_base64):
     lottie = load_lottie_url("https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json")
