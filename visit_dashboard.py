@@ -238,91 +238,142 @@ if not st.session_state.authenticated:
 if st.session_state.authenticated and st.session_state.screen == "login":
     st.session_state.screen = "instruction_guide"
 import streamlit as st
+
 if st.session_state.screen == "instruction_guide":
-    st.markdown(
-        """
-        <style>
-        /* Section headers */
-        .section-header {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            color: #80c3ff;
-            text-shadow: 0 0 6px rgba(0, 115, 230, 0.7);
-        }
 
-        /* Expander customization */
-        details > summary {
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 1.2rem;
-            padding: 0.6rem 1rem;
-            border-radius: 10px;
-            background: linear-gradient(90deg, #0a66c2, #2171c7);
-            color: white;
-            box-shadow: 0 4px 8px rgba(10,102,194,0.5);
-            margin-bottom: 0.6rem;
-            transition: background 0.3s ease;
-            user-select: none;
-        }
-        details[open] > summary {
-            background: linear-gradient(90deg, #2171c7, #0a66c2);
-            box-shadow: 0 6px 12px rgba(33,113,199,0.7);
-        }
-        details > summary:hover {
-            background: #0d4a8f;
-        }
-        details > div, details > p {
-            margin-left: 1rem;
-            margin-right: 1rem;
-            font-size: 1rem;
-            line-height: 1.5;
-            color: #dceeff;
-            white-space: pre-wrap;
-            user-select: text;
-            overflow-wrap: break-word;
-        }
+    # Show logo centered above title with glow effect
+    st.markdown(f"""
+    <style>
+    .logo {{
+        text-align: center;
+        margin-bottom: 2rem;
+    }}
 
-        /* Important Notes list style */
-        .important-notes {
-            font-size: 1rem;
-            line-height: 1.6;
-            margin-top: 1rem;
-            margin-left: 1rem;
-            color: #b0d4ff;
-        }
-        .important-notes li {
-            margin-bottom: 0.6rem;
-        }
+    .logo img {{
+        width: 750x;  /* Adjust width as needed */
+        height: auto;
+        filter: drop-shadow(0 0 5px rgba(10, 102, 194, 0.7));
+    }}
+            
+    /* Container for header */
+    .header-box {{
+        text-align: center;
+        margin-bottom: 40px;
+    }}
+    .header-box img {{
+        width: 700px;
+        filter: drop-shadow(0 0 8px #0a66c2);
+        margin-bottom: 20px;
+    }}
+    .header-box h1 {{
+        font-size: 3rem;
+        color: #0a66c2;
+        font-weight: 900;
+        text-shadow: 0 0 12px #2171c7;
+        margin-bottom: 0.2rem;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+    .header-box h3 {{
+        font-size: 1.3rem;
+        font-style: italic;
+        color: #4491ff;
+        margin-top: 0;
+        font-weight: 600;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
 
-        /* Big button styling */
-        .big-button {
-            display: block;
-            margin: 3rem auto 0 auto;
-            padding: 1.2rem 3rem;
-            background: linear-gradient(90deg, #0a66c2, #2171c7);
-            color: white;
-            font-size: 1.6rem;
-            font-weight: 700;
-            border: none;
-            border-radius: 9999px;
-            box-shadow: 0 8px 16px rgba(10,102,194,0.6);
-            cursor: pointer;
-            transition: background 0.3s ease;
-            text-align: center;
-            width: max-content;
-            user-select: none;
-            text-decoration: none;
-        }
-        .big-button:hover {
-            background: linear-gradient(90deg, #2171c7, #0a66c2);
-            box-shadow: 0 12px 24px rgba(33,113,199,0.9);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    /* Section headers */
+    .section-header {{
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
+        color: #80c3ff;
+        text-shadow: 0 0 6px rgba(0, 115, 230, 0.7);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+
+    /* Expander customization */
+    details > summary {{
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1.25rem;
+        padding: 0.7rem 1.2rem;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #0a66c2, #2171c7);
+        color: white;
+        box-shadow: 0 5px 10px rgba(10,102,194,0.5);
+        margin-bottom: 0.7rem;
+        transition: background 0.3s ease;
+        user-select: none;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+    details[open] > summary {{
+        background: linear-gradient(90deg, #2171c7, #0a66c2);
+        box-shadow: 0 7px 14px rgba(33,113,199,0.7);
+    }}
+    details > summary:hover {{
+        background: #0d4a8f;
+    }}
+    details > div, details > p {{
+        margin-left: 1.2rem;
+        margin-right: 1.2rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #dceeff;
+        white-space: pre-wrap;
+        user-select: text;
+        overflow-wrap: break-word;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+
+    /* Important Notes list style */
+    .important-notes {{
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-top: 1rem;
+        margin-left: 1.2rem;
+        color: #b0d4ff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+    .important-notes li {{
+        margin-bottom: 0.7rem;
+    }}
+
+    /* Big button styling */
+    .big-button {{
+        display: block;
+        margin: 3rem auto 0 auto;
+        padding: 1.4rem 3.5rem;
+        background: linear-gradient(90deg, #0a66c2, #2171c7);
+        color: white;
+        font-size: 1.8rem;
+        font-weight: 900;
+        border: none;
+        border-radius: 9999px;
+        box-shadow: 0 10px 22px rgba(10,102,194,0.7);
+        cursor: pointer;
+        transition: background 0.35s ease;
+        text-align: center;
+        width: max-content;
+        user-select: none;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 1.1px;
+    }}
+    .big-button:hover {{
+        background: linear-gradient(90deg, #2171c7, #0a66c2);
+        box-shadow: 0 15px 28px rgba(33,113,199,0.95);
+    }}
+    </style>
+
+    <div class="header-box">
+      <img src="data:image/png;base64,{logo_base64}" alt="Sky Logo" />
+      <h1>Sky Orbit Visit Dashboard — User Guide & Overview</h1>
+      <h3>Your one-stop hub for exploring Oracle visit data with ease!</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown('<h1>Sky Orbit Visit Dashboard — User Guide & Overview</h1>', unsafe_allow_html=True)
 
