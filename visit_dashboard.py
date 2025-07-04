@@ -416,6 +416,16 @@ if st.session_state.screen == "instruction_guide":
         """)
 
     st.markdown('<h2 class="section-header">Important Notes</h2>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        .important-notes {
+            color: black !important;  /* Or 'red' for red text */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown("""
     <ul class="important-notes">
     <li>All data and views refresh on app start and can be filtered dynamically.</li>
