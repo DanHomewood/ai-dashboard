@@ -3495,326 +3495,103 @@ if st.session_state.get("screen") == "operational_area":
                 else:
                         st.warning("No data found for last visits over 10:25. Please check upstream filters.")
 
-    # --- NUMBER 7 ----------------------------------------------------------
-    # --- SECTION: ACTIVITY STATUS BREAKDOWN --------------------------------
-    from prophet import Prophet
-    import plotly.express as px
-    import plotly.graph_objects as go
-    section = st.session_state.get("section", "default_section")
+# --- NUMBER 7 ----------------------------------------------------------
+# --- SECTION: ACTIVITY STATUS BREAKDOWN --------------------------------
+from prophet import Prophet
+import plotly.express as px
+import plotly.graph_objects as go
 
-	    if section == "activity_status":
-	        st.markdown("## 📊 Activity Status Breakdown")
-	
-	        # Prep all 4 datasets as (name, df) pairs
-	        team_datasets = {
-	            "VIP North": df_vip_north,
-	            "VIP South": df_vip_south,
-	            "Tier 2 North": df_t2_north,
-	            "Tier 2 South": df_t2_south,
-	        }
-	        with st.expander("🌍 All Teams Summary", expanded=True):
-	            # Combine all team dataframes into one for All Teams analysis
-	            df = pd.concat([df_vip_north, df_vip_south, df_t2_north, df_t2_south], ignore_index=True)
-	
-	            # Clean data: remove rows with missing or empty Activity Status or Date
-	            df = df[df["Activity Status"].notna()]
-	            df = df[df["Activity Status"].str.strip() != ""]
-	            df = df[df["Date"].notna()]
-	
-	            # Normalize Activity Status (lowercase + strip)
-	            df["Activity Status"] = df["Activity Status"].str.lower().str.strip()
-	
-	            # Convert Date to datetime and add Month period column for sorting
-	            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-	            df = df[df["Date"].notna()]  # Remove rows with invalid dates if any
-	            df["Month"] = df["Date"].dt.to_period("M")
-	            df["Month_str"] = df["Month"].astype(str)
-	
-	            # 1. Overall counts per Activity Status (for bar chart and KPIs)
-	            overall_counts = df["Activity Status"].value_counts().sort_index()
-	            overall_counts_df = overall_counts.reset_index()
-	            overall_counts_df.columns = ["Activity Status", "Count"]  # Fix column names
-	
-	            st.markdown("### Overall Visit Counts by Activity Status")
-	            fig_counts = px.bar(
-	                overall_counts_df,
-	                x="Activity Status",
-	                y="Count",
-	                title="Overall Visit Counts by Activity Status"
-	            )
-	            st.plotly_chart(fig_counts, use_container_width=True)
-	
-	            # 2. Overall completion rate = Completed / (Completed + Cancelled + Not Done)
-	            completed = overall_counts.get("completed", 0)
-	            cancelled = overall_counts.get("cancelled", 0)
-	            not_done = overall_counts.get("not done", 0)
-	            denom = completed + cancelled + not_done
-	            completion_rate = (completed / denom * 100) if denom > 0 else 0
-	            st.markdown(f"**Overall Completion Rate:** {completion_rate:.2f}% (Completed / (Completed + Cancelled + Not Done))")
-	
-	            # 3. Monthly counts pivot table (Activity Status x Month)
-	            monthly_pivot = df.pivot_table(
-	                index="Month",
-	                columns="Activity Status",
-	                values="Date",  # Count of non-null Date as proxy for count
-	                aggfunc="count",
-	                fill_value=0
-	            ).sort_index()
-	
-	            # 4. Monthly Pending % = (pending visits / total visits per month) * 100
-	            monthly_totals = monthly_pivot.sum(axis=1)
-	            monthly_pending = monthly_pivot.get("pending", pd.Series(0, index=monthly_pivot.index))
-	            monthly_pending_pct = (monthly_pending / monthly_totals * 100).fillna(0)
-	
-	            # 5. Line chart with all Activity Status monthly counts
-	            monthly_pivot_str = monthly_pivot.copy()
-	            monthly_pivot_str.index = monthly_pivot_str.index.astype(str)
-	            fig_monthly = px.line(
-	                monthly_pivot_str,
-	                x=monthly_pivot_str.index,
-	                y=monthly_pivot_str.columns,
-	                markers=True,
-	                title="Monthly Activity Status Counts"
-	            )
-	            st.plotly_chart(fig_monthly, use_container_width=True)
-	
-	            # 6. Monthly Pending % line chart
-	            fig_pending = px.line(
-	                x=monthly_pending_pct.index.astype(str),
-	                y=monthly_pending_pct.values,
-	                labels={"x": "Month", "y": "Pending %"},
-	                title="Monthly Pending Percentage"
-	            )
-	            st.plotly_chart(fig_pending, use_container_width=True)
-	
-	            # 7. Display Monthly Pending % table sorted by month ascending
-	            pending_df = monthly_pending_pct.reset_index()
-	            pending_df.columns = ["Month", "Pending %"]
-	            pending_df = pending_df.sort_values("Month")
-	            st.dataframe(pending_df.style.format({"Pending %": "{:.2f}"}), use_container_width=True)
-	
-	
-	        with st.expander("🌍 All Teams Summary", expanded=True):  # <-- Collapsible expander added here
-	
-	                # Combine all 4 datasets for the "All Teams" summary
-	                df_all_teams = pd.concat([df_vip_north, df_vip_south, df_t2_north, df_t2_south], ignore_index=True)
-	
-	                # 1. Overall totals by Activity Status (all time)
-	                overall_counts = df_all_teams["Activity Status"].value_counts().sort_index()
-	                st.markdown("#### Overall Visit Counts by Activity Status")
-	                st.bar_chart(overall_counts)
-	
-	                # 2. Monthly Aggregated Summary
-	                if "Month" in df_all_teams.columns:
-	                    monthly_counts = df_all_teams.groupby(["Month", "Activity Status"]).size().unstack(fill_value=0)
-	                    monthly_counts["Total Visits"] = monthly_counts.sum(axis=1)
-	                    monthly_pct_change = monthly_counts.pct_change().fillna(0) * 100
-	                    monthly_pct_change = monthly_pct_change.add_suffix(" % Change")
-	                    max_visits = monthly_counts.max()
-	                    max_visits.name = "Max Visits"
-	                    min_visits = monthly_counts.min()
-	                    min_visits.name = "Min Visits"
-	
-	                    monthly_summary = monthly_counts.join(monthly_pct_change).join(max_visits).join(min_visits)
-	                    monthly_summary = monthly_summary.sort_index()
-	
-	                    st.markdown("#### Monthly Summary KPIs by Activity Status")
-	                    st.dataframe(monthly_summary.style.format({
-	                        col: "{:.2f}" for col in monthly_summary.columns if "% Change" in col
-	                    }))
-	
-	                    # Monthly totals bar chart for quick visual
-	                    st.bar_chart(monthly_counts["Total Visits"])
-	
-	                else:
-	                    st.warning("Missing 'Month' column for All Teams summary.")
-	
-	                # 3. Weekly Aggregated Summary
-	                if "week" in df_all_teams.columns:
-	                    weekly_counts = df_all_teams.groupby(["week", "Activity Status"]).size().unstack(fill_value=0)
-	                    weekly_counts["Total Visits"] = weekly_counts.sum(axis=1)
-	                    weekly_pct_change = weekly_counts.pct_change().fillna(0) * 100
-	                    weekly_pct_change = weekly_pct_change.add_suffix(" % Change")
-	                    max_visits = weekly_counts.max()
-	                    max_visits.name = "Max Visits"
-	                    min_visits = weekly_counts.min()
-	                    min_visits.name = "Min Visits"
-	
-	                    weekly_summary = weekly_counts.join(weekly_pct_change).join(max_visits).join(min_visits)
-	                    weekly_summary = weekly_summary.sort_index()
-	
-	                    st.markdown("#### Weekly Summary KPIs by Activity Status")
-	                    st.dataframe(weekly_summary.style.format({
-	                        col: "{:.2f}" for col in weekly_summary.columns if "% Change" in col
-	                    }))
-	
-	                    # Weekly totals line chart for quick visual
-	                    st.line_chart(weekly_counts["Total Visits"])
-	
-	                else:
-	                    st.warning("Missing 'week' column for All Teams summary.")
-	
-	        
-	    # --- Then continue with your existing individual team breakdowns here ---
-	
-	        for team_name, df in team_datasets.items():
-	            # Main expander for each team
-	            with st.expander(f"🔵 {team_name} — Activity Overview", expanded=False):
-	
-	                # Check for Activity Status column
-	                if "Activity Status" not in df.columns:
-	                    st.warning(f"No 'Activity Status' in {team_name}")
-	                    continue
-	
-	                # Use tabs inside the expander instead of nested expanders
-	                tabs = st.tabs([
-	                    "📅 Monthly Breakdown",
-	                    "📆 Weekly Breakdown",
-	                    "📈 Forecast Next 6 Months",
-	                    "🌞 Sunburst View",
-	                    "📅 Gantt Chart",
-	                    "🔎 Drilldown"
-	                ])
-	
-	                # Monthly Breakdown Tab
-	                with tabs[0]:
-	                    if "Month" in df.columns:
-	                        # Count visits by month and activity status
-	                        monthly_counts = df.groupby(["Month", "Activity Status"]).size().unstack(fill_value=0)
-	
-	                        st.bar_chart(monthly_counts)
-	
-	                        # Total visits per month (sum across all statuses)
-	                        monthly_counts["Total Visits"] = monthly_counts.sum(axis=1)
-	
-	                        # Month-on-Month % Change per status plus total
-	                        monthly_pct_change = monthly_counts.pct_change().fillna(0) * 100
-	                        monthly_pct_change = monthly_pct_change.add_suffix(" % Change")
-	
-	                        # Max visits by status across all months
-	                        max_visits = monthly_counts.max()
-	                        max_visits.name = "Max Visits"
-	
-	                        # Min visits by status across all months
-	                        min_visits = monthly_counts.min()
-	                        min_visits.name = "Min Visits"
-	
-	                        # Combine all KPI info into one table
-	                        summary_df = monthly_counts.join(monthly_pct_change)
-	                        summary_df = summary_df.join(max_visits)
-	                        summary_df = summary_df.join(min_visits)
-	
-	                        # Sort by Month if possible (you may want to convert to datetime or categorical first)
-	                        summary_df = summary_df.sort_index()
-	
-	                        st.markdown("### Monthly Summary KPIs by Activity Status")
-	                        st.dataframe(summary_df.style.format({
-	                            col: "{:.2f}" for col in summary_df.columns if "% Change" in col
-	                        }))
-	                    else:
-	                        st.warning("Missing 'Month' column")
-	
-	                # Weekly Breakdown Tab
-	                with tabs[1]:
-	                    if "week" in df.columns:
-	                        # Count visits by week and activity status
-	                        weekly_counts = df.groupby(["week", "Activity Status"]).size().unstack(fill_value=0)
-	
-	                        st.line_chart(weekly_counts)
-	
-	                        # Total visits per week (sum across all statuses)
-	                        weekly_counts["Total Visits"] = weekly_counts.sum(axis=1)
-	
-	                        # Week-on-Week % Change per status plus total
-	                        weekly_pct_change = weekly_counts.pct_change().fillna(0) * 100
-	                        weekly_pct_change = weekly_pct_change.add_suffix(" % Change")
-	
-	                        # Max visits by status across all weeks
-	                        max_visits = weekly_counts.max()
-	                        max_visits.name = "Max Visits"
-	
-	                        # Min visits by status across all weeks
-	                        min_visits = weekly_counts.min()
-	                        min_visits.name = "Min Visits"
-	
-	                        # Combine all KPI info into one table
-	                        summary_week_df = weekly_counts.join(weekly_pct_change)
-	                        summary_week_df = summary_week_df.join(max_visits)
-	                        summary_week_df = summary_week_df.join(min_visits)
-	
-	                        summary_week_df = summary_week_df.sort_index()
-	
-	                        st.markdown("### Weekly Summary KPIs by Activity Status")
-	                        st.dataframe(summary_week_df.style.format({
-	                            col: "{:.2f}" for col in summary_week_df.columns if "% Change" in col
-	                        }))
-	                    else:
-	                        st.warning("Missing 'week' column")
-	
-	
-	
-	                # Forecast Tab
-	                with tabs[2]:
-	                    try:
-	                        forecast_data = df[df["Activity Status"].notna()]
-	                        forecast_df = forecast_data.groupby("Date").size().reset_index(name="y")
-	                        forecast_df.columns = ["ds", "y"]
-	
-	                        m = Prophet()
-	                        m.fit(forecast_df)
-	                        future = m.make_future_dataframe(periods=180)
-	                        forecast = m.predict(future)
-	
-	                        fig = px.line(forecast, x="ds", y="yhat", title="6-Month Forecast")
-	                        st.plotly_chart(fig, use_container_width=True)
-	                    except Exception as e:
-	                        st.warning(f"Forecasting failed: {e}")
-	
-	                # Sunburst View Tab
-	                with tabs[3]:
-	                    try:
-	                        df['Month'] = df['Month'].astype(str)
-	                        fig = px.sunburst(df, path=["Month", "Activity Status"], title="Status Distribution by Month")
-	                        st.plotly_chart(fig, use_container_width=True)
-	                    except Exception as e:
-	                        st.warning(f"Sunburst error: {e}")
-	
-	                # Gantt Chart Tab
-	                with tabs[4]:
-	                    try:
-	                        if "Date" in df.columns and "Start" in df.columns and "End" in df.columns and "Activity Status" in df.columns:
-	                            df_gantt = df.copy()
-	
-	                            # Combine Date with Start/End time into full datetime
-	                            df_gantt["Start"] = pd.to_datetime(df_gantt["Date"].astype(str) + " " + df_gantt["Start"].astype(str), errors="coerce")
-	                            df_gantt["End"] = pd.to_datetime(df_gantt["Date"].astype(str) + " " + df_gantt["End"].astype(str), errors="coerce")
-	
-	                            # Remove rows with missing or invalid times or statuses
-	                            df_gantt.dropna(subset=["Start", "End", "Activity Status"], inplace=True)
-	
-	                            fig = px.timeline(
-	                                df_gantt,
-	                                x_start="Start",
-	                                x_end="End",
-	                                y="Activity Status",
-	                                color="Activity Status",
-	                                title=f"Activity Gantt Timeline – {team_name}",
-	                                height=400
-	                            )
-	                            fig.update_yaxes(autorange="reversed")
-	                            st.plotly_chart(fig)
-	                    except Exception as e:
-	                        st.error(f"Gantt chart error: {e}")
-	
-	                # Drilldown Tab
-	                with tabs[5]:
-	                    selected_status = st.selectbox(
-	                        f"Filter {team_name} by Activity Status",
-	                        options=sorted(df["Activity Status"].dropna().unique()),
-	                        key=f"drilldown_{team_name.replace(' ', '_')}"
-	                    )
-	                    drill = df[df["Activity Status"] == selected_status]
-	                    st.dataframe(drill, use_container_width=True)
+if section == "activity_status":
+    st.markdown("## 📊 Activity Status Breakdown")
+
+    # Prep all 4 datasets as (name, df) pairs
+    team_datasets = {
+        "VIP North": df_vip_north,
+        "VIP South": df_vip_south,
+        "Tier 2 North": df_t2_north,
+        "Tier 2 South": df_t2_south,
+    }
+    with st.expander("🌍 All Teams Summary", expanded=True):
+        # Combine all team dataframes into one for All Teams analysis
+        df = pd.concat([df_vip_north, df_vip_south, df_t2_north, df_t2_south], ignore_index=True)
+
+        # Clean data: remove rows with missing or empty Activity Status or Date
+        df = df[df["Activity Status"].notna()]
+        df = df[df["Activity Status"].str.strip() != ""]
+        df = df[df["Date"].notna()]
+
+        # Normalize Activity Status (lowercase + strip)
+        df["Activity Status"] = df["Activity Status"].str.lower().str.strip()
+
+        # Convert Date to datetime and add Month period column for sorting
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df[df["Date"].notna()]  # Remove rows with invalid dates if any
+        df["Month"] = df["Date"].dt.to_period("M")
+        df["Month_str"] = df["Month"].astype(str)
+
+        # 1. Overall counts per Activity Status (for bar chart and KPIs)
+        overall_counts = df["Activity Status"].value_counts().sort_index()
+        overall_counts_df = overall_counts.reset_index()
+        overall_counts_df.columns = ["Activity Status", "Count"]  # Fix column names
+
+        st.markdown("### Overall Visit Counts by Activity Status")
+        fig_counts = px.bar(
+            overall_counts_df,
+            x="Activity Status",
+            y="Count",
+            title="Overall Visit Counts by Activity Status"
+        )
+        st.plotly_chart(fig_counts, use_container_width=True)
+
+        # 2. Overall completion rate = Completed / (Completed + Cancelled + Not Done)
+        completed = overall_counts.get("completed", 0)
+        cancelled = overall_counts.get("cancelled", 0)
+        not_done = overall_counts.get("not done", 0)
+        denom = completed + cancelled + not_done
+        completion_rate = (completed / denom * 100) if denom > 0 else 0
+        st.markdown(f"**Overall Completion Rate:** {completion_rate:.2f}% (Completed / (Completed + Cancelled + Not Done))")
+
+        # 3. Monthly counts pivot table (Activity Status x Month)
+        monthly_pivot = df.pivot_table(
+            index="Month",
+            columns="Activity Status",
+            values="Date",  # Count of non-null Date as proxy for count
+            aggfunc="count",
+            fill_value=0
+        ).sort_index()
+
+        # 4. Monthly Pending % = (pending visits / total visits per month) * 100
+        monthly_totals = monthly_pivot.sum(axis=1)
+        monthly_pending = monthly_pivot.get("pending", pd.Series(0, index=monthly_pivot.index))
+        monthly_pending_pct = (monthly_pending / monthly_totals * 100).fillna(0)
+
+        # 5. Line chart with all Activity Status monthly counts
+        monthly_pivot_str = monthly_pivot.copy()
+        monthly_pivot_str.index = monthly_pivot_str.index.astype(str)
+        fig_monthly = px.line(
+            monthly_pivot_str,
+            x=monthly_pivot_str.index,
+            y=monthly_pivot_str.columns,
+            markers=True,
+            title="Monthly Activity Status Counts"
+        )
+        st.plotly_chart(fig_monthly, use_container_width=True)
+
+        # 6. Monthly Pending % line chart
+        fig_pending = px.line(
+            x=monthly_pending_pct.index.astype(str),
+            y=monthly_pending_pct.values,
+            labels={"x": "Month", "y": "Pending %"},
+            title="Monthly Pending Percentage"
+        )
+        st.plotly_chart(fig_pending, use_container_width=True)
+
+        # 7. Display Monthly Pending % table sorted by month ascending
+        pending_df = monthly_pending_pct.reset_index()
+        pending_df.columns = ["Month", "Pending %"]
+        pending_df = pending_df.sort_values("Month")
+        st.dataframe(pending_df.style.format({"Pending %": "{:.2f}"}), use_container_width=True)
+
 
 
 
