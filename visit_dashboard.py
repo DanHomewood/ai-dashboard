@@ -250,13 +250,11 @@ if not st.session_state.authenticated:
     st.stop()
 if st.session_state.authenticated and st.session_state.screen == "login":
     st.session_state.screen = "instruction_guide"
-import streamlit as st
 
 if st.session_state.screen == "instruction_guide":
 
-    # Show logo centered above title with glow effect
-
-            
+    st.markdown(f"""
+    <style>
     /* Container for header */
     .header-box {{
         text-align: center;
@@ -377,8 +375,6 @@ if st.session_state.screen == "instruction_guide":
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<h1>Sky Orbit Visit Dashboard — User Guide & Overview</h1>', unsafe_allow_html=True)
-
     st.markdown('<h2 class="section-header">What is Sky Orbit?</h2>', unsafe_allow_html=True)
     with st.expander("Click to expand"):
         st.markdown("""
@@ -496,6 +492,7 @@ if st.session_state.screen == "instruction_guide":
 
     # Stop here so nothing else below renders on this screen
     st.stop()
+
 # --- Main App Content ---
 # --- MAIN APP CONTENT (after login) ---
 st.markdown(f"""
@@ -562,6 +559,7 @@ st.markdown("""
 Welcome to the advanced reporting hub use the options below to explore all areas
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
