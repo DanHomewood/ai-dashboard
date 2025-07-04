@@ -220,11 +220,6 @@ header, .stSidebar {{
 
 
 
-
-
-
-
-
 # --- Login screen with animation ---
 def login_screen_with_animation(logo_base64):
     lottie = load_lottie_url("https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json")
@@ -260,18 +255,7 @@ import streamlit as st
 if st.session_state.screen == "instruction_guide":
 
     # Show logo centered above title with glow effect
-    st.markdown(f"""
-    <style>
-    .logo {{
-        text-align: center;
-        margin-bottom: 2rem;
-    }}
 
-    .logo img {{
-        width: 750x;  /* Adjust width as needed */
-        height: auto;
-        filter: drop-shadow(0 0 5px rgba(10, 102, 194, 0.7));
-    }}
             
     /* Container for header */
     .header-box {{
