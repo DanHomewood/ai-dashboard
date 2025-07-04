@@ -126,18 +126,29 @@ st.markdown("""
     }
 
 st.markdown(f"""
+<div class="logo">
+    <img src='data:image/png;base64,{logo_base64}' />
+</div>
+""", unsafe_allow_html=True)
+
+# --- TYPING INTRO TEXT ---
+st.markdown("""
 <style>
-/* ---------- LOGO ---------- */
-.logo {{
-    text-align: center;
-    margin-bottom: 2rem;
-}}
-.logo img {{
-    width: 750px;  /* Adjust size here */
-    height: auto;
-    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
-    display: inline-block;
-}}
+.adv-summary {
+    font-size: 20px;
+    font-weight: 400;
+    border-right: 2px solid rgba(255,255,255,0.75);
+    white-space: nowrap;
+    overflow: hidden;
+    width: fit-content;
+    margin: 0 auto 30px;
+    animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
+}
+</style>
+<div class='adv-summary'>
+Welcome to the advanced reporting hub use the options below to explore all areas
+</div>
+""", unsafe_allow_html=True)
 
 /* ---------- LOGIN HEADER ---------- */
 .login-header {{
