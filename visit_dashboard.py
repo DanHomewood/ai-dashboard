@@ -3500,6 +3500,7 @@ if st.session_state.get("screen") == "operational_area":
     from prophet import Prophet
     import plotly.express as px
     import plotly.graph_objects as go
+    section = st.session_state.get("section", "default_section")
 
     if section == "activity_status":
         st.markdown("## 📊 Activity Status Breakdown")
