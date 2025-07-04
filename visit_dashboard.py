@@ -125,18 +125,18 @@ button[kind="primary"] > div > p {{
     font-weight: bold;
 }}
 
-/* ---------- LOGO ---------- */
-.logo {{
-    text-align: center;
-    margin-bottom: 2rem;
-}}
+#/* ---------- LOGO ---------- */
+#.logo {{
+#    text-align: center;
+#    margin-bottom: 2rem;
+#}}
 
-.logo img {{
-    width: 750px;  /* Adjust size here */
-    height: auto;
-    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
-    display: inline-block;
-}}
+#.logo img {{
+#    width: 750px;  /* Adjust size here */
+#    height: auto;
+#    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
+#    display: inline-block;
+#}}
 
 /* ---------- LOGIN HEADER ---------- */
 .login-header {{
@@ -213,10 +213,10 @@ header, .stSidebar {{
 }}
 </style>
 
-<div class="logo">
-    <img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
-</div>
-""", unsafe_allow_html=True)
+#<div class="logo">
+#    <img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
+#</div>
+#""", unsafe_allow_html=True)
 
 
 
