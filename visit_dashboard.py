@@ -125,101 +125,100 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* ---------- LOGO + LOGIN PAGE ---------- */
-    st.markdown(f"""
-    <style>
-    .logo {{
-	text-align: center;
-	margin-bottom: 2rem;
-    }}
-    .logo img {{
-	width: 750px;  /* Adjust size here */
-	height: auto;
-	filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
-	display: inline-block;
-    }}
-    </style>
-	
-    <div class="logo">
-	<img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown(f"""
+<style>
+/* ---------- LOGO ---------- */
+.logo {{
+    text-align: center;
+    margin-bottom: 2rem;
+}}
+.logo img {{
+    width: 750px;  /* Adjust size here */
+    height: auto;
+    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
+    display: inline-block;
+}}
 
+/* ---------- LOGIN HEADER ---------- */
+.login-header {{
+    font-size: 28px;
+    text-align: center;
+    font-weight: bold;
+    color: #004080 !important;
+    border-right: 2px solid rgba(0,64,128,0.75);
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 100%;
+    margin: 0 auto 12px;
+    animation: typing 4s steps(40, end) infinite, blink 0.75s step-end infinite;
+}}
 
-    .login-header {
-        font-size: 28px;
-        text-align: center;
-        font-weight: bold;
-        color: #004080 !important;
-        border-right: 2px solid rgba(0,64,128,0.75);
-        white-space: nowrap;
-        overflow: hidden;
-        max-width: 100%;
-        margin: 0 auto 12px;
-        animation: typing 4s steps(40, end) infinite, blink 0.75s step-end infinite;
-    }
+.login-sub {{
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #004080 !important;
+}}
 
-    .login-sub {
-        font-size: 16px;
-        text-align: center;
-        margin-bottom: 20px;
-        color: #004080 !important;
-    }
+.lock-icon {{
+    font-size: 36px;
+    text-align: center;
+    display: block;
+    color: #004080 !important;
+}}
 
-    .lock-icon {
-        font-size: 36px;
-        text-align: center;
-        display: block;
-        color: #004080 !important;
-    }
+/* ---------- WELCOME LINE ---------- */
+.adv-summary {{
+    color: #004080 !important;
+    font-size: 20px;
+    font-weight: 400;
+    border-right: 2px solid rgba(0,64,128,0.75);
+    white-space: nowrap;
+    overflow: hidden;
+    width: fit-content;
+    margin: 0 auto 30px;
+    animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
+}}
 
-    /* ---------- WELCOME LINE ---------- */
-    .adv-summary {
-        color: #004080 !important;
-        font-size: 20px;
-        font-weight: 400;
-        border-right: 2px solid rgba(0,64,128,0.75);
-        white-space: nowrap;
-        overflow: hidden;
-        width: fit-content;
-        margin: 0 auto 30px;
-        animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
-    }
+/* ---------- ANIMATIONS ---------- */
+@keyframes typing {{
+    0% {{ width: 0; }}
+    40%, 60% {{ width: 100%; }}
+    100% {{ width: 0; }}
+}}
 
-    /* ---------- ANIMATIONS ---------- */
-    @keyframes typing {
-        0% { width: 0; }
-        40%, 60% { width: 100%; }
-        100% { width: 0; }
-    }
+@keyframes blink {{
+    from, to {{ border-color: transparent }}
+    50% {{ border-color: rgba(0,64,128,0.75); }}
+}}
 
-    @keyframes blink {
-        from, to { border-color: transparent }
-        50% { border-color: rgba(0,64,128,0.75); }
-    }
+/* ---------- LOTTIE + FOOTER ---------- */
+.lottie-box {{
+    margin-top: 40px;
+    text-align: center;
+}}
 
-    /* ---------- LOTTIE + FOOTER ---------- */
-    .lottie-box {
-        margin-top: 40px;
-        text-align: center;
-    }
+.footer {{
+    text-align: center;
+    margin-top: 30px;
+    font-size: 13px;
+    color: grey;
+}}
 
-    .footer {
-        text-align: center;
-        margin-top: 30px;
-        font-size: 13px;
-        color: grey;
-    }
+.block-container .css-1lcbmhc.e1fqkh3o9 {{
+    padding-top: 2rem;
+}}
 
-    .block-container .css-1lcbmhc.e1fqkh3o9 {
-        padding-top: 2rem;
-    }
+header, .stSidebar {{
+    display: none;
+}}
+</style>
 
-    header, .stSidebar {
-        display: none;
-    }
-    </style>
+<div class="logo">
+    <img src='data:image/png;base64,{logo_base64}' alt="Sky Logo" />
+</div>
 """, unsafe_allow_html=True)
+
 
 
 # --- Login screen with animation ---
