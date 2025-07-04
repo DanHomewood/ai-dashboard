@@ -19,3 +19,4 @@ tabulate
 requests
 Prophet
 pdfplumber
+python-docx
