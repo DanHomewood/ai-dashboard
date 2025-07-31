@@ -25,6 +25,8 @@ from collections import defaultdict
 from langchain_community.chat_models import ChatOpenAI
 import pdfplumber
 from st_aggrid import AgGrid, GridOptionsBuilder
+import db
+db.init_db()
 
 
 
