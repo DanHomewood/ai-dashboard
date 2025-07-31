@@ -574,44 +574,44 @@ if st.session_state.screen == "instruction_guide":
         }
     ]
 
-    # SESSION STATE FOR EXPANSION
+        # SESSION STATE FOR EXPANSION
     if "open_card" not in st.session_state:
         st.session_state.open_card = None
 
     # CSS FOR BOXES
     st.markdown("""
-        <style>
-        .card-button {
-            background: linear-gradient(135deg, #0099ff 30%, #004488 100%);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            width: 100%;
-            height: 110px;
-            font-size: 1.05em;
-            font-weight: bold;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-            margin-bottom: 12px;
-            transition: box-shadow 0.18s, background 0.22s;
-            cursor: pointer;
-        }
-        .card-button:hover {
-            box-shadow: 0 8px 30px rgba(0,153,255,0.18);
-            background: linear-gradient(135deg, #00c6ff 10%, #004488 90%);
-        }
-        .card-content {
-            background: #151d2c;
-            color: #fff;
-            border-radius: 18px;
-            padding: 16px 20px 10px 20px;
-            margin-top: -8px;
-            min-height: 85px;
-            font-size: 0.99em;
-            box-shadow: 0 4px 14px rgba(0,153,255,0.07);
-            animation: fadeIn 0.38s;
-        }
-        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-        </style>
+    <style>
+    .card-button {
+        background: linear-gradient(135deg, #0099ff 30%, #004488 100%);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        width: 100%;
+        height: 110px;
+        font-size: 1.05em;
+        font-weight: bold;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+        margin-bottom: 12px;
+        transition: box-shadow 0.18s, background 0.22s;
+        cursor: pointer;
+    }
+    .card-button:hover {
+        box-shadow: 0 8px 30px rgba(0,153,255,0.18);
+        background: linear-gradient(135deg, #00c6ff 10%, #004488 90%);
+    }
+    .card-content {
+        background: #151d2c;
+        color: #fff;
+        border-radius: 18px;
+        padding: 16px 20px 10px 20px;
+        margin-top: -8px;
+        min-height: 85px;
+        font-size: 0.99em;
+        box-shadow: 0 4px 14px rgba(0,153,255,0.07);
+        animation: fadeIn 0.38s;
+    }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    </style>
     """, unsafe_allow_html=True)
 
     # GRID LAYOUT: 3 x 3
@@ -631,52 +631,57 @@ if st.session_state.screen == "instruction_guide":
                             st.session_state.open_card = None
                         else:
                             st.session_state.open_card = idx
-                    # Custom button style
+
+                    # Apply custom button style via JS
                     st.markdown(f"""
-                        <script>
-                        let btn = window.parent.document.querySelectorAll('button[data-testid="baseButton-cardbtn_{idx}"]')[0];
-                        if(btn) btn.className += " card-button";
-                        </script>
+                    <script>
+                    let btn = window.parent.document
+                      .querySelector('button[data-testid="baseButton-cardbtn_{idx}"]');
+                    if(btn) btn.classList.add("card-button");
+                    </script>
                     """, unsafe_allow_html=True)
+
                     # Expanded content if this card is open
                     if st.session_state.open_card == idx:
                         st.markdown(
                             f'<div class="card-content">{sections[idx]["content"]}</div>', 
                             unsafe_allow_html=True
                         )
-	    # ——— Darken Important Notes text ———
-	    st.markdown("""
-	    <style>
-	    .section-header {
-	      font-size: 1.5rem;
-	      font-weight: 700;
-	      color: #2c2c2c !important;
-	      margin-top: 2rem;
-	      margin-bottom: 0.5rem;
-	    }
-	    .important-notes {
-	      color: #333333 !important;      /* deep charcoal */
-	      font-weight: 500 !important;     /* medium weight */
-	      line-height: 1.6 !important;
-	      padding-left: 1rem;
-	    }
-	    .important-notes li {
-	      margin-bottom: 0.5rem;
-	    }
-	    </style>
-	    """, unsafe_allow_html=True)
-	
-	# ——— Important Notes Section ———
-	st.markdown('<div class="section-header">Important Notes</div>', unsafe_allow_html=True)
-	st.markdown("""
-	<ul class="important-notes">
-	  <li>All data and views refresh on app start and can be filtered dynamically.</li>
-	  <li>Forecasts use simple linear trends based on recent months.</li>
-	  <li>Some KPIs or tables depend on available columns—if data is missing, you’ll see warnings.</li>
-	  <li>Uploading your own file replaces the default Oracle data for analysis.</li>
-	  <li>Time-related metrics require valid time columns and are calculated carefully.</li>
-	</ul>
-	""", unsafe_allow_html=True)
+
+    # ——— Darken Important Notes text ———
+    st.markdown("""
+    <style>
+    .section-header {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2c2c2c !important;
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .important-notes {
+      color: #333333 !important;
+      font-weight: 500 !important;
+      line-height: 1.6 !important;
+      padding-left: 1rem;
+    }
+    .important-notes li {
+      margin-bottom: 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ——— Important Notes Section ———
+    st.markdown('<div class="section-header">Important Notes</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <ul class="important-notes">
+      <li>All data and views refresh on app start and can be filtered dynamically.</li>
+      <li>Forecasts use simple linear trends based on recent months.</li>
+      <li>Some KPIs or tables depend on available columns—if data is missing, you’ll see warnings.</li>
+      <li>Uploading your own file replaces the default Oracle data for analysis.</li>
+      <li>Time-related metrics require valid time columns and are calculated carefully.</li>
+    </ul>
+    """, unsafe_allow_html=True)
+
 
 
 
