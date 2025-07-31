@@ -20,3 +20,4 @@ requests
 Prophet
 pdfplumber
 python-docx
+streamlit-aggrid
