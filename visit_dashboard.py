@@ -975,6 +975,13 @@ elif st.session_state.screen == "budget":
             st.session_state.override_alloc = False
             st.success("Allocations reapplied.")
             st.rerun()
+	if st.button("⚠️ Reset All Expenses"):
+            with db.get_conn() as conn:
+                conn.execute("DELETE FROM expenses")
+            st.session_state.current_exp = pd.DataFrame(columns=["Name","Date","Area","Description","Amount"])
+            st.success("All expenses cleared from the database!")
+            st.rerun()
+
 
 
         # ---- Back button ----
