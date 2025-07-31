@@ -645,26 +645,26 @@ if st.session_state.screen == "instruction_guide":
                             unsafe_allow_html=True
                         )
     # ——— Darken Important Notes text ———
-st.markdown("""
-<style>
-.section-header {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2c2c2c !important;
-  margin-top: 2rem;
-  margin-bottom: 0.5rem;
-}
-.important-notes {
-  color: #333333 !important;      /* deep charcoal */
-  font-weight: 500 !important;     /* medium weight */
-  line-height: 1.6 !important;
-  padding-left: 1rem;
-}
-.important-notes li {
-  margin-bottom: 0.5rem;
-}
-</style>
-""", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .section-header {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2c2c2c !important;
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .important-notes {
+      color: #333333 !important;      /* deep charcoal */
+      font-weight: 500 !important;     /* medium weight */
+      line-height: 1.6 !important;
+      padding-left: 1rem;
+    }
+    .important-notes li {
+      margin-bottom: 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ——— Important Notes Section ———
 st.markdown('<div class="section-header">Important Notes</div>', unsafe_allow_html=True)
@@ -681,7 +681,7 @@ st.markdown("""
 
 
 
-
+    
     st.markdown("""
         <style>
         .stButton > button {
