@@ -892,9 +892,15 @@ elif st.session_state.screen == "budget":
                    pd.Timestamp.today())
         )
         cur = st.session_state.current_exp.copy()
-        mask = ((cur["Date"] >= pd.to_datetime(start_date)) &
-                (cur["Date"] <= pd.to_datetime(end_date)))
+        # ensure Date is datetime
+        cur["Date"] = pd.to_datetime(cur["Date"], errors="coerce")
+        # now safe to compare
+        mask = (
+            (cur["Date"] >= pd.to_datetime(start_date)) &
+            (cur["Date"] <= pd.to_datetime(end_date))
+        )
         filtered = cur.loc[mask]
+
 
         # Add New Expense
         st.markdown("#### ➕ Add New Expense")
