@@ -781,15 +781,9 @@ elif st.session_state.screen == "budget":
     if "current_exp" not in st.session_state:
         st.session_state.current_exp = full_exp.copy()
 
-    # 1) Compute & display total remaining budget,
-    #    honoring override_alloc
-    if st.session_state.override_alloc:
-        used = 0
-    else:
-        used = budgets_df["Allocated"].sum()
-
+    # 1) Compute & display total remaining budget
     exp_sum   = st.session_state.current_exp["Amount"].sum()
-    remaining = TOTAL_BUDGET - used - exp_sum
+    remaining = TOTAL_BUDGET - exp_sum
 
     st.markdown(
         f"<h2 style='text-align:center; color:#62d2a2; font-size:2.5rem;'>"
@@ -797,6 +791,7 @@ elif st.session_state.screen == "budget":
         unsafe_allow_html=True,
     )
     st.markdown("---")
+
 
     # 2) Prepare Budget Summary table data
     total_by_area = (
