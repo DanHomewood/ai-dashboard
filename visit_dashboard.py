@@ -810,185 +810,186 @@ elif st.session_state.screen == "budget":
     summary_df.index.name = "Stakeholder"
     pretty = summary_df.applymap(lambda x: f"£{x:,.2f}")
 
-# 3) Three tabs: Summary / Adjust / Expenses
-tab_sum, tab_adj, tab_exp = st.tabs([
-    "🧾 Budget Summary",
-    "🔧 Adjust Allocations",
-    "💼 Expenses",
-])
+    # 3) Three tabs: Summary / Adjust / Expenses
+    tab_sum, tab_adj, tab_exp = st.tabs([
+        "🧾 Budget Summary",
+        "🔧 Adjust Allocations",
+        "💼 Expenses",
+    ])
 
-# ---- TAB 1: Read-only summary ----
-with tab_sum:
-    spent = summary_df["Total Expense"].sum()
-    remaining_pct = remaining / TOTAL_BUDGET * 100
-    c1, c2, c3 = st.columns(3)
-    c1.metric("💷 Spent so far", f"£{spent:,.0f}")
-    c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
-    c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
-    st.markdown("#### 1️⃣ Budget Usage by Stakeholder")
-    for stakeholder, row in summary_df.iterrows():
-        used_amt  = row["Total Expense"]
-        alloc_amt = row["Allocated"]
-        pct       = min(int(used_amt / alloc_amt * 100), 100)
-        color = "#62d2a2" if pct < 70 else "#f0ad4e" if pct < 90 else "#d9534f"
-        st.markdown(f"**{stakeholder}** — £{used_amt:,.2f} / £{alloc_amt:,.2f}")
-        st.markdown(
-            f"""<progress value="{pct}" max="100"
-                style="width:100%; height:1rem; accent-color: {color};">
-            </progress>""",
-            unsafe_allow_html=True,
-        )
-    st.markdown("#### 2️⃣ Allocated vs Spent Chart")
-    chart_df = summary_df.reset_index()[["Stakeholder", "Allocated", "Total Expense"]]
-    st.bar_chart(chart_df.set_index("Stakeholder"))
-    st.markdown("---")
-    st.table(pretty)
-
-# ---- TAB 2: +/- allocators ----
-import matplotlib.pyplot as plt
-with tab_adj:
-    # 2.1) Allocation controls
-    with st.expander("🔧 Adjust Quarterly Allocations", expanded=False):
-        updated = False
-        alloc_df = budgets_df.copy()
-        for area in alloc_df.index:
-            c1, c2, c3, c4 = st.columns([3, 1, 2, 1])
-            c1.markdown(f"**{area}**")
-            if c2.button("–", key=f"dec_{area}"):
-                alloc_df.at[area, "Allocated"] -= 1_000
-                updated = True
-            c3.markdown(f"£{alloc_df.at[area,'Allocated']:,.0f}")
-            if c4.button("+", key=f"inc_{area}"):
-                alloc_df.at[area, "Allocated"] += 1_000
-                updated = True
-        if updated:
-            with db.get_conn() as conn:
-                for area, alloc in alloc_df["Allocated"].items():
-                    conn.execute(
-                        "UPDATE budgets SET allocated = ? WHERE area = ?",
-                        (int(alloc), area)
-                    )
-            st.session_state.budgets_df = alloc_df
-            st.rerun()
-
-    # 2.2) Donut chart
-    with st.expander("🍩 Allocation Breakdown", expanded=False):
-        fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
-        sizes = alloc_df["Allocated"]
-        labels = alloc_df.index
-
-        wedges, texts, autotexts = ax.pie(
-            sizes,
-            labels=None,               # turn off direct labels
-            autopct="%1.0f%%",         # show percent on slices
-            startangle=90,
-            pctdistance=0.85,          # put pct labels closer to ring
-            wedgeprops=dict(width=0.3) # make it a donut
-        )
-
-        centre_circle = plt.Circle((0,0), 0.70, fc='white')
-        ax.add_artist(centre_circle)
-
-        ax.legend(
-            wedges,
-            labels,
-            title="Stakeholder",
-            loc="center left",
-            bbox_to_anchor=(1, 0, 0.5, 1)
-        )
-
-        ax.set_aspect("equal")
-        ax.patch.set_alpha(0)
-        st.pyplot(fig)
-
-    # 2.3) Detailed table
-    with st.expander("📋 Detailed Budget Table", expanded=True):
+    # ---- TAB 1: Read-only summary ----
+    with tab_sum:
+        spent = summary_df["Total Expense"].sum()
+        remaining_pct = remaining / TOTAL_BUDGET * 100
+        c1, c2, c3 = st.columns(3)
+        c1.metric("💷 Spent so far", f"£{spent:,.0f}")
+        c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
+        c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
+        st.markdown("#### 1️⃣ Budget Usage by Stakeholder")
+        for stakeholder, row in summary_df.iterrows():
+            used_amt  = row["Total Expense"]
+            alloc_amt = row["Allocated"]
+            pct       = min(int(used_amt / alloc_amt * 100), 100)
+            color = "#62d2a2" if pct < 70 else "#f0ad4e" if pct < 90 else "#d9534f"
+            st.markdown(f"**{stakeholder}** — £{used_amt:,.2f} / £{alloc_amt:,.2f}")
+            st.markdown(
+                f"""<progress value="{pct}" max="100"
+                    style="width:100%; height:1rem; accent-color: {color};">
+                </progress>""",
+                unsafe_allow_html=True,
+            )
+        st.markdown("#### 2️⃣ Allocated vs Spent Chart")
+        chart_df = summary_df.reset_index()[["Stakeholder", "Allocated", "Total Expense"]]
+        st.bar_chart(chart_df.set_index("Stakeholder"))
+        st.markdown("---")
         st.table(pretty)
 
-# ---- TAB 3: Expenses management ----
-with tab_exp:
-    # Date filter
-    st.markdown("📅 Filter Expenses by Date")
-    start_date, end_date = st.date_input(
-        "Show from → to:",
-        value=(pd.Timestamp.today() - pd.Timedelta(days=90),
-               pd.Timestamp.today())
-    )
-    cur = st.session_state.current_exp.copy()
-    cur["Date"] = pd.to_datetime(cur["Date"], errors="coerce")
-    mask = (
-        (cur["Date"] >= pd.to_datetime(start_date)) &
-        (cur["Date"] <= pd.to_datetime(end_date))
-    )
-    filtered = cur.loc[mask]
+    # ---- TAB 2: +/- allocators ----
+    import matplotlib.pyplot as plt
+    with tab_adj:
+        # 2.1) Allocation controls
+        with st.expander("🔧 Adjust Quarterly Allocations", expanded=False):
+            updated = False
+            alloc_df = budgets_df.copy()
+            for area in alloc_df.index:
+                c1, c2, c3, c4 = st.columns([3, 1, 2, 1])
+                c1.markdown(f"**{area}**")
+                if c2.button("–", key=f"dec_{area}"):
+                    alloc_df.at[area, "Allocated"] -= 1_000
+                    updated = True
+                c3.markdown(f"£{alloc_df.at[area,'Allocated']:,.0f}")
+                if c4.button("+", key=f"inc_{area}"):
+                    alloc_df.at[area, "Allocated"] += 1_000
+                    updated = True
+            if updated:
+                with db.get_conn() as conn:
+                    for area, alloc in alloc_df["Allocated"].items():
+                        conn.execute(
+                            "UPDATE budgets SET allocated = ? WHERE area = ?",
+                            (int(alloc), area)
+                        )
+                st.session_state.budgets_df = alloc_df
+                st.rerun()
 
-    # Add New Expense
-    st.markdown("#### ➕ Add New Expense")
-    with st.form("exp_form", clear_on_submit=True):
-        name = st.text_input("Name", placeholder="e.g. Invoice #1234")
-        d1, d2 = st.columns(2)
-        date = d1.date_input("Date", value=pd.Timestamp("today").date())
-        stakeholder = d2.selectbox("Stakeholder", budgets_df.index.tolist())
-        desc = st.text_input("Description")
-        amount = st.number_input("Total Value (£)", 0.0, format="%.2f")
-        if st.form_submit_button("Add Entry"):
-            new = {"Name": name, "Date": date, "Area": stakeholder,
-                   "Description": desc, "Amount": amount}
-            db.add_expense(new)
-            st.session_state.current_exp = pd.concat(
-                [st.session_state.current_exp, pd.DataFrame([new])],
-                ignore_index=True
+        # 2.2) Donut chart
+        with st.expander("🍩 Allocation Breakdown", expanded=False):
+            fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
+            sizes = alloc_df["Allocated"]
+            labels = alloc_df.index
+
+            wedges, texts, autotexts = ax.pie(
+                sizes,
+                labels=None,
+                autopct="%1.0f%%",
+                startangle=90,
+                pctdistance=0.85,
+                wedgeprops=dict(width=0.3)
             )
-            st.success("Entry added!")
 
-    # Display filtered entries
-    st.markdown("#### 📑 Current Entries")
-    disp = filtered.copy()
-    disp["Date"] = disp["Date"].dt.strftime("%d-%m-%Y")
-    disp["Total Value"] = disp["Amount"].apply(lambda x: f"£{x:,.2f}")
-    st.dataframe(
-        disp[["Name","Date","Area","Description","Total Value"]]
-        .sort_values("Date", ascending=False),
-        use_container_width=True
-    )
+            centre_circle = plt.Circle((0,0), 0.70, fc='white')
+            ax.add_artist(centre_circle)
 
-    # Raw Expense Log
-    with st.expander("📚 Raw Expense Log", expanded=False):
-        raw = full_exp.copy()
-        raw["Date"] = raw["Date"].dt.strftime("%d-%m-%Y")
-        raw["Total Value"] = raw["Amount"].apply(lambda x: f"£{x:,.2f}")
+            ax.legend(
+                wedges,
+                labels,
+                title="Stakeholder",
+                loc="center left",
+                bbox_to_anchor=(1, 0, 0.5, 1)
+            )
+
+            ax.set_aspect("equal")
+            ax.patch.set_alpha(0)
+            st.pyplot(fig)
+
+        # 2.3) Detailed table
+        with st.expander("📋 Detailed Budget Table", expanded=True):
+            st.table(pretty)
+
+    # ---- TAB 3: Expenses management ----
+    with tab_exp:
+        # Date filter
+        st.markdown("📅 Filter Expenses by Date")
+        start_date, end_date = st.date_input(
+            "Show from → to:",
+            value=(pd.Timestamp.today() - pd.Timedelta(days=90),
+                   pd.Timestamp.today())
+        )
+        cur = st.session_state.current_exp.copy()
+        cur["Date"] = pd.to_datetime(cur["Date"], errors="coerce")
+        mask = (
+            (cur["Date"] >= pd.to_datetime(start_date)) &
+            (cur["Date"] <= pd.to_datetime(end_date))
+        )
+        filtered = cur.loc[mask]
+
+        # Add New Expense
+        st.markdown("#### ➕ Add New Expense")
+        with st.form("exp_form", clear_on_submit=True):
+            name = st.text_input("Name", placeholder="e.g. Invoice #1234")
+            d1, d2 = st.columns(2)
+            date = d1.date_input("Date", value=pd.Timestamp("today").date())
+            stakeholder = d2.selectbox("Stakeholder", budgets_df.index.tolist())
+            desc = st.text_input("Description")
+            amount = st.number_input("Total Value (£)", 0.0, format="%.2f")
+            if st.form_submit_button("Add Entry"):
+                new = {"Name": name, "Date": date, "Area": stakeholder,
+                       "Description": desc, "Amount": amount}
+                db.add_expense(new)
+                st.session_state.current_exp = pd.concat(
+                    [st.session_state.current_exp, pd.DataFrame([new])],
+                    ignore_index=True
+                )
+                st.success("Entry added!")
+
+        # Display filtered entries
+        st.markdown("#### 📑 Current Entries")
+        disp = filtered.copy()
+        disp["Date"] = disp["Date"].dt.strftime("%d-%m-%Y")
+        disp["Total Value"] = disp["Amount"].apply(lambda x: f"£{x:,.2f}")
         st.dataframe(
-            raw[["Name","Date","Area","Description","Total Value"]]
+            disp[["Name","Date","Area","Description","Total Value"]]
             .sort_values("Date", ascending=False),
             use_container_width=True
         )
 
-    # Control buttons
-    btn_clear, btn_reset, btn_reapply, btn_reset_all = st.columns(4)
-    if btn_clear.button("🗑️ Clear Current Entries"):
-        st.session_state.current_exp = full_exp.iloc[0:0].copy()
-        st.success("Current entries cleared.")
-        st.rerun()
-    if btn_reset.button("🔄 Reset Remaining"):
-        st.session_state.override_alloc = True
-        st.success("Allocations ignored—remaining reset.")
-        st.rerun()
-    if st.session_state.override_alloc and btn_reapply.button("↩️ Reapply Allocations"):
-        st.session_state.override_alloc = False
-        st.success("Allocations reapplied.")
-        st.rerun()
-    if btn_reset_all.button("⚠️ Reset All Expenses"):
-        with db.get_conn() as conn:
-            conn.execute("DELETE FROM expenses")
-        st.session_state.current_exp = pd.DataFrame(
-            columns=["Name","Date","Area","Description","Amount"]
-        )
-        st.success("All expenses cleared from the database!")
-        st.rerun()
+        # Raw Expense Log
+        with st.expander("📚 Raw Expense Log", expanded=False):
+            raw = full_exp.copy()
+            raw["Date"] = raw["Date"].dt.strftime("%d-%m-%Y")
+            raw["Total Value"] = raw["Amount"].apply(lambda x: f"£{x:,.2f}")
+            st.dataframe(
+                raw[["Name","Date","Area","Description","Total Value"]]
+                .sort_values("Date", ascending=False),
+                use_container_width=True
+            )
 
-    # Back button
-    if st.button("⬅️ Back to Dashboard"):
-        st.session_state.screen = "dashboard"
+        # Control buttons
+        btn_clear, btn_reset, btn_reapply, btn_reset_all = st.columns(4)
+        if btn_clear.button("🗑️ Clear Current Entries"):
+            st.session_state.current_exp = full_exp.iloc[0:0].copy()
+            st.success("Current entries cleared.")
+            st.rerun()
+        if btn_reset.button("🔄 Reset Remaining"):
+            st.session_state.override_alloc = True
+            st.success("Allocations ignored—remaining reset.")
+            st.rerun()
+        if st.session_state.override_alloc and btn_reapply.button("↩️ Reapply Allocations"):
+            st.session_state.override_alloc = False
+            st.success("Allocations reapplied.")
+            st.rerun()
+        if btn_reset_all.button("⚠️ Reset All Expenses"):
+            with db.get_conn() as conn:
+                conn.execute("DELETE FROM expenses")
+            st.session_state.current_exp = pd.DataFrame(
+                columns=["Name","Date","Area","Description","Amount"]
+            )
+            st.success("All expenses cleared from the database!")
+            st.rerun()
+
+        # Back button
+        if st.button("⬅️ Back to Dashboard"):
+            st.session_state.screen = "dashboard"
+
 
 
 
