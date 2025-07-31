@@ -868,19 +868,38 @@ elif st.session_state.screen == "budget":
                 st.session_state.budgets_df = alloc_df
                 st.rerun()
         with st.expander("🍩 Allocation Breakdown", expanded=False):
-            fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
-            wedges, texts, autotexts = ax.pie(
-                alloc_df["Allocated"],
-                labels=alloc_df.index,
-                autopct="%1.0f%%",
-                startangle=90,
-                textprops={"color":"white","weight":"bold"}
-            )
-            ax.add_artist(plt.Circle((0,0),0.70,fc='none'))
-            ax.set_aspect("equal"); ax.patch.set_alpha(0)
-            st.pyplot(fig)
-        with st.expander("📋 Detailed Budget Table", expanded=True):
-            st.table(pretty)
+	    fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
+	    sizes = alloc_df["Allocated"]
+	    labels = alloc_df.index
+	
+	    # Draw a donut chart
+	    wedges, texts, autotexts = ax.pie(
+	        sizes,
+	        labels=None,               # turn off direct labels
+	        autopct="%1.0f%%",         # show percent on slices
+	        startangle=90,
+	        pctdistance=0.85,          # put pct labels closer to ring
+	        wedgeprops=dict(width=0.3) # make it a donut
+	    )
+	
+	    # Center circle for donut “hole”
+	    centre_circle = plt.Circle((0,0), 0.70, fc='white')
+	    ax.add_artist(centre_circle)
+	
+	    # Add legend outside
+	    ax.legend(
+	        wedges,
+	        labels,
+	        title="Stakeholder",
+	        loc="center left",
+	        bbox_to_anchor=(1, 0, 0.5, 1)
+	    )
+	
+	    # Equal aspect for circle
+	    ax.set_aspect("equal")
+	    ax.patch.set_alpha(0)
+	    st.pyplot(fig)
+
 
     # ---- TAB 3: Expenses management ----
     with tab_exp:
