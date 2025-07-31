@@ -843,62 +843,70 @@ elif st.session_state.screen == "budget":
         st.bar_chart(chart_df.set_index("Stakeholder"))
         st.markdown("---")
         st.table(pretty)
+	
+# ---- TAB 2: +/- allocators ----
+import matplotlib.pyplot as plt
+with tab_adj:
+    # 2.1) Allocation controls
+    with st.expander("🔧 Adjust Quarterly Allocations", expanded=False):
+        updated = False
+        alloc_df = budgets_df.copy()
+        for area in alloc_df.index:
+            c1, c2, c3, c4 = st.columns([3, 1, 2, 1])
+            c1.markdown(f"**{area}**")
+            if c2.button("–", key=f"dec_{area}"):
+                alloc_df.at[area, "Allocated"] -= 1_000; updated = True
+            c3.markdown(f"£{alloc_df.at[area,'Allocated']:,.0f}")
+            if c4.button("+", key=f"inc_{area}"):
+                alloc_df.at[area, "Allocated"] += 1_000; updated = True
+        if updated:
+            with db.get_conn() as conn:
+                for area, alloc in alloc_df["Allocated"].items():
+                    conn.execute(
+                        "UPDATE budgets SET allocated = ? WHERE area = ?",
+                        (int(alloc), area)
+                    )
+            st.session_state.budgets_df = alloc_df
+            st.rerun()
 
-    # ---- TAB 2: +/- allocators ----
-    import matplotlib.pyplot as plt
-    with tab_adj:
-        with st.expander("🔧 Adjust Quarterly Allocations", expanded=False):
-            updated = False
-            alloc_df = budgets_df.copy()
-            for area in alloc_df.index:
-                c1, c2, c3, c4 = st.columns([3, 1, 2, 1])
-                c1.markdown(f"**{area}**")
-                if c2.button("–", key=f"dec_{area}"):
-                    alloc_df.at[area, "Allocated"] -= 1_000; updated = True
-                c3.markdown(f"£{alloc_df.at[area,'Allocated']:,.0f}")
-                if c4.button("+", key=f"inc_{area}"):
-                    alloc_df.at[area, "Allocated"] += 1_000; updated = True
-            if updated:
-                with db.get_conn() as conn:
-                    for area, alloc in alloc_df["Allocated"].items():
-                        conn.execute(
-                            "UPDATE budgets SET allocated = ? WHERE area = ?",
-                            (int(alloc), area)
-                        )
-                st.session_state.budgets_df = alloc_df
-                st.rerun()
-        with st.expander("🍩 Allocation Breakdown", expanded=False):
-	    fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
-	    sizes = alloc_df["Allocated"]
-	    labels = alloc_df.index
-	
-	    # Draw a donut chart
-	    wedges, texts, autotexts = ax.pie(
-	        sizes,
-	        labels=None,               # turn off direct labels
-	        autopct="%1.0f%%",         # show percent on slices
-	        startangle=90,
-	        pctdistance=0.85,          # put pct labels closer to ring
-	        wedgeprops=dict(width=0.3) # make it a donut
-	    )
-	
-	    # Center circle for donut “hole”
-	    centre_circle = plt.Circle((0,0), 0.70, fc='white')
-	    ax.add_artist(centre_circle)
-	
-	    # Add legend outside
-	    ax.legend(
-	        wedges,
-	        labels,
-	        title="Stakeholder",
-	        loc="center left",
-	        bbox_to_anchor=(1, 0, 0.5, 1)
-	    )
-	
-	    # Equal aspect for circle
-	    ax.set_aspect("equal")
-	    ax.patch.set_alpha(0)
-	    st.pyplot(fig)
+    # 2.2) Donut chart
+    with st.expander("🍩 Allocation Breakdown", expanded=False):
+        fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
+        sizes = alloc_df["Allocated"]
+        labels = alloc_df.index
+
+        # Draw a donut chart
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=None,               # turn off direct labels
+            autopct="%1.0f%%",         # show percent on slices
+            startangle=90,
+            pctdistance=0.85,          # put pct labels closer to ring
+            wedgeprops=dict(width=0.3) # make it a donut
+        )
+
+        # Center circle for the donut “hole”
+        centre_circle = plt.Circle((0,0), 0.70, fc='white')
+        ax.add_artist(centre_circle)
+
+        # Legend outside the chart
+        ax.legend(
+            wedges,
+            labels,
+            title="Stakeholder",
+            loc="center left",
+            bbox_to_anchor=(1, 0, 0.5, 1)
+        )
+
+        ax.set_aspect("equal")
+        ax.patch.set_alpha(0)
+        st.pyplot(fig)
+
+    # 2.3) Detailed table
+    with st.expander("📋 Detailed Budget Table", expanded=True):
+        st.table(pretty)
+
+
 
 
     # ---- TAB 3: Expenses management ----
