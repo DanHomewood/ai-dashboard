@@ -18,16 +18,22 @@ from datetime import datetime as dt
 from openai import OpenAI, OpenAIError
 from statsmodels.tsa.arima.model import ARIMA
 from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain.chat_models import ChatOpenAI
-from langchain.agents.agent_types import AgentType
+#from langchain.chat_models import ChatOpenAI
+from langchain.agents.agent_types import AgentType 
 from langchain.schema import HumanMessage, SystemMessage
 from collections import defaultdict
+from langchain_community.chat_models import ChatOpenAI
 import pdfplumber
+from st_aggrid import AgGrid, GridOptionsBuilder
+
+
 
 
 # --- Session State Defaults ---
 if "screen" not in st.session_state:
     st.session_state.screen = "instruction_guide"
+if "quick_summary" not in st.session_state:
+    st.session_state.quick_summary = False
 if "screen" not in st.session_state:
     st.session_state.screen = "area_selection"
 if "user_df" not in st.session_state:
@@ -43,14 +49,18 @@ if "ai_chat" not in st.session_state:
 
 
 # --- Load Lottie Animation ---
-def load_lottie_url(url):
-    try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except:
+import streamlit as st
+import requests
+from streamlit_lottie import st_lottie
+
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
         return None
+    return r.json()
+
+# Then rest of your code here
+
 
 # --- Cache: Load Excel file and add source ---
 @st.cache_data(show_spinner=False)
@@ -95,166 +105,291 @@ else:
     st.error("No data loaded from Oracle files.")
     st.stop()
 
-st.markdown(f"""
+## --- Full Styling and Login Block with Unified Look ---
+import streamlit as st
+from datetime import datetime as dt
+
+# --- DARK THEME + CUSTOM STYLES ---
+st.markdown("""
 <style>
-/* ---------- FORCE LIGHT THEME ---------- */
-html, body, .main {{
-    background-color: white !important;
-    color: #004080 !important;
-}}
+/* 🌑 DARK MODE THEME */
+body, .main, .stApp {
+    background-color: #0e1117 !important;
+    color: #e0e0e0 !important;
+    font-family: 'Segoe UI', 'Inter', sans-serif;
+}
 
-@media (prefers-color-scheme: dark) {{
-    html, body, .main {{
-        background-color: white !important;
-        color: #004080 !important;
-    }}
-}}
+/* 🔵 BLUE BUTTON STYLE */
+.stButton > button {
+    background: linear-gradient(to right, #007bff, #0051a2) !important;
+    color: #ffffff !important;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    margin: 0.4rem;
+    box-shadow: 0 0 10px rgba(0,123,255,0.4);
+    transition: 0.3s ease-in-out;
+}
+.stButton > button:hover {
+    background: linear-gradient(to right, #3399ff, #0073e6) !important;
+    box-shadow: 0 0 16px rgba(0,123,255,0.6);
+}
 
-/* ---------- GLOBAL TEXT COLORS ---------- */
-body, .css-1d391kg, .stText, .stMarkdown, .css-1cpxqw2, .css-ffhzg2 {{
-    color: #004080 !important;
-}}
-
-h1, h2, h3, h4, h5, h6 {{
-    color: #004080 !important;
-}}
-
-button[kind="secondary"] > div > p,
-button[kind="primary"] > div > p {{
-    color: #004080 !important;
-    font-weight: bold;
-}}
-
-/* ---------- LOGO ---------- */
-.logo {{
-    text-align: center;
-    margin-bottom: 2rem;
-}}
-
-.logo img {{
-    width: 750px;  /* Adjust size here */
+/* 🖼️ FULL WIDTH LOGO */
+.logo {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0 1rem 0;
+}
+.logo img {
+    width: 100%;
+    max-width: 600px;
     height: auto;
-    filter: drop-shadow(0 0 8px rgba(10, 102, 194, 0.7));
+}
+
+/* 🧭 HEADINGS */
+h1, h2, h3, h4 {
+    color: #ffffff !important;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+/* 📦 TEXT + CONTAINERS */
+.stMarkdown, .stText, .stContainer {
+    background-color: transparent !important;
+    color: #e0e0e0 !important;
+}
+
+/* ✅ INFO BOX */
+.info-box {
+    background-color: #1f2937;
+    color: #d1d5db;
+    border-left: 4px solid #3b82f6;
+    padding: 0.8rem 1.2rem;
+    border-radius: 8px;
+    margin-top: 2rem;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+/* 🌀 TYPING ANIMATION */
+@keyframes typing {
+  0% { width: 0 }
+  40%, 60% { width: 100% }
+  100% { width: 0 }
+}
+@keyframes blink {
+  50% { border-color: rgba(255,255,255,0.75); }
+}
+.login-header-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.login-header {
     display: inline-block;
-}}
-
-/* ---------- LOGIN HEADER ---------- */
-.login-header {{
-    font-size: 28px;
-    text-align: center;
-    font-weight: bold;
-    color: #004080 !important;
-    border-right: 2px solid rgba(0,64,128,0.75);
-    white-space: nowrap;
-    overflow: hidden;
-    max-width: 100%;
-    margin: 0 auto 12px;
-    animation: typing 4s steps(40, end) infinite, blink 0.75s step-end infinite;
-}}
-
-.login-sub {{
-    font-size: 16px;
-    text-align: center;
-    margin-bottom: 20px;
-    color: #004080 !important;
-}}
-
-.lock-icon {{
-    font-size: 36px;
-    text-align: center;
-    display: block;
-    color: #004080 !important;
-}}
-
-/* ---------- WELCOME LINE ---------- */
-.adv-summary {{
-    color: #004080 !important;
     font-size: 20px;
-    font-weight: 400;
-    border-right: 2px solid rgba(0,64,128,0.75);
+    font-weight: 500;
+    border-right: 2px solid rgba(255,255,255,0.75);
     white-space: nowrap;
     overflow: hidden;
-    width: fit-content;
-    margin: 0 auto 30px;
-    animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
-}}
-
-/* ---------- ANIMATIONS ---------- */
-@keyframes typing {{
-    0% {{ width: 0; }}
-    40%, 60% {{ width: 100%; }}
-    100% {{ width: 0; }}
-}}
-
-@keyframes blink {{
-    from, to {{ border-color: transparent }}
-    50% {{ border-color: rgba(0,64,128,0.75); }}
-}}
-
-/* ---------- LOTTIE + FOOTER ---------- */
-.lottie-box {{
-    margin-top: 40px;
+    width: 32ch;
+    animation: typing 6s steps(32, end) infinite, blink 0.75s step-end infinite;
+    color: white;
     text-align: center;
-}}
+}
 
-.footer {{
-    text-align: center;
-    margin-top: 30px;
-    font-size: 13px;
-    color: grey;
-}}
-
-.block-container .css-1lcbmhc.e1fqkh3o9 {{
-    padding-top: 2rem;
-}}
-
-header, .stSidebar {{
-    display: none;
-}}
+/* 🧩 SIDEBAR + FOOTER */
+.stSidebar {
+    background-color: #15171e !important;
+}
+footer, #MainMenu, header {
+    visibility: hidden;
+}
 </style>
-
-<!-- Removed logo HTML here to avoid duplicate logos -->
 """, unsafe_allow_html=True)
 
+# --- LOGIN FUNCTION ---
+import streamlit as st
+from streamlit_lottie import st_lottie
+from datetime import datetime as dt
+import requests
 
+# Load lottie animation JSON from URL
+def load_lottie_url(url: str):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            return None
+        return response.json()
+    except:
+        return None
 
+# --- LOGIN SCREEN FUNCTION ---
+import streamlit as st
+from streamlit_lottie import st_lottie
+import requests
+from datetime import datetime as dt
 
+# Your user dictionary
+users = {
+    "Matt Hughes":     {"password": "mattpw", "team": "VIP Team North"},
+    "Andy Holmes":     {"password": "andypw", "team": "Tier 2 North"},
+    "Steve Paisley":   {"password": "stevepw", "team": "Tier 2 South"},
+    "Branks Krneta":   {"password": "brankspw", "team": "TAP's Team"},
+    "Chris Woods":     {"password": "chrispw", "team": "Highlands & Islands"},
+    "Rachel Wylie":    {"password": "rachelpw", "team": "Sky Retail"},
+    "Darryl Fuller":   {"password": "darrylpw", "team": "Highlands & Islands"},
+    "Christian Boyce": {"password": "chrisbpw", "team": "VIP Team South"},
+    "Rob Mangar":      {"password": "robpw", "team": "Operational Team"},
+    "Dan Homewood":    {"password": "danpw", "team": "Finance Team"},
+}
+name_list = list(users.keys())
 
-# --- Login screen with animation ---
+def load_lottie_url(url: str):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            return None
+        return response.json()
+    except:
+        return None
+
+# --- LOGIN SCREEN FUNCTION ---
 def login_screen_with_animation(logo_base64):
     lottie = load_lottie_url("https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json")
-    st.markdown(f"<div class='logo'><img src='data:image/png;base64,{logo_base64}' width='400'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='login-header'>🔐 Login to Visit Insights Dashboard</div>", unsafe_allow_html=True)
-    st.markdown("<div class='login-sub'>Please enter your access code to continue.</div>", unsafe_allow_html=True)
 
-    password = st.text_input("Access Code", type="password")
-    if password == "sky":
-        st.session_state.authenticated = True
-        st.rerun()
-    elif password != "":
-        st.error("Invalid code. Try again.")
+    # Full-width logo
+    st.markdown(f"""
+    <div class="logo">
+        <img src='data:image/png;base64,{logo_base64}' />
+    </div>
+    """, unsafe_allow_html=True)
 
+    # Animated login header
+    st.markdown("""
+    <div class='login-header-wrapper'>
+      <div class='login-header'>
+        🔐 Login to Visit Insights Dashboard
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Subheader
+    st.markdown("<p style='text-align:center;'>Please choose your name to continue.</p>", unsafe_allow_html=True)
+
+    # Name dropdown
+    selected_name = st.selectbox("Choose Your Name", ["-- Select --"] + name_list)
+    if selected_name and selected_name != "-- Select --":
+        password = st.text_input("Enter your password", type="password", key="user_pw")
+        if password:
+            if password == users[selected_name]["password"]:
+                st.session_state.authenticated = True
+                st.session_state.username = selected_name
+                st.rerun()
+            else:
+                st.error("Incorrect password for this user.")
+    else:
+        st.info("Please select your name to proceed.")
+
+    # Optional animation
     if lottie:
-        st.markdown("<div class='lottie-box'>", unsafe_allow_html=True)
         st_lottie(lottie, height=280, key="login_anim")
-        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("🌀 Animation failed to load — but login still works.")
 
+    # Footer
     current_time = dt.now().strftime("%A, %d %B %Y | %H:%M:%S")
-    st.markdown(f"<div class='footer'>{current_time} | v1.0.0</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='footer' style='text-align:center; opacity:0.6;'>{current_time} | v1.0.0</div>", unsafe_allow_html=True)
+import streamlit as st
+from streamlit_modal import Modal
+import random
 
-# --- Auth Check ---
+# Example messages or themes
+fun_quotes = [
+    "Success is the sum of small efforts, repeated day in and day out.",
+    "Your hard work is making a difference!",
+    "Teamwork divides the task and multiplies the success.",
+    "Keep up the amazing work!"
+]
+
+def show_welcome_modal(name, team):
+    modal = Modal(key="welcome_modal", title=f"👋 Welcome, {name}!", padding=30)
+    if modal.is_open():
+        st.write(f"Welcome to the dashboard, {name}!")
+        st.write(f"You're leading **{team}**. {random.choice(fun_quotes)}")
+        st.button("Let's Go!", on_click=modal.close)
+
+# After successful login:
+if st.session_state.get("authenticated") and st.session_state.screen == "instruction_guide":
+    user = users[st.session_state.username]
+    # Show welcome modal (this pops up on login)
+    show_welcome_modal(st.session_state.username, user['team'])
+
+    # Or as a card at the top of the page:
+    
+
+# --- AUTH CHECK ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if "screen" not in st.session_state:
+    st.session_state.screen = "login"
+
 if not st.session_state.authenticated:
     login_screen_with_animation(logo_base64 or "")
     st.stop()
+
 if st.session_state.authenticated and st.session_state.screen == "login":
     st.session_state.screen = "instruction_guide"
 
 if st.session_state.screen == "instruction_guide":
+    # Your instruction guide logic here
+    
+    st.markdown(f"""
+    <div class="logo">
+        <img src='data:image/png;base64,{logo_base64}' />
+    </div>
+    """, unsafe_allow_html=True)
 
+    # --- TYPING INTRO TEXT ---
+    st.markdown("""
+    <style>
+    .adv-summary {
+        font-size: 20px;
+        font-weight: 400;
+        border-right: 2px solid rgba(255,255,255,0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        width: fit-content;
+        margin: 0 auto 30px;
+        animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
+    }
+    </style>
+    <div class='adv-summary'>
+    Welcome to the advanced reporting hub use the options below to explore all areas
+    </div>
+    """, unsafe_allow_html=True)
+
+
+    # Show logo centered above title with glow effect
     st.markdown(f"""
     <style>
+    .logo {{
+        text-align: center;
+        margin-bottom: 2rem;
+    }}
+
+    .logo img {{
+        width: 750x;  /* Adjust width as needed */
+        height: auto;
+        filter: drop-shadow(0 0 5px rgba(10, 102, 194, 0.7));
+    }}
+            
     /* Container for header */
     .header-box {{
         text-align: center;
@@ -369,187 +504,1222 @@ if st.session_state.screen == "instruction_guide":
     </style>
 
     <div class="header-box">
-      <img src="data:image/png;base64,{logo_base64}" alt="Sky Logo" />
+      
       <h1>Sky Orbit Visit Dashboard — User Guide & Overview</h1>
       <h3>Your one-stop hub for exploring Oracle visit data with ease!</h3>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<h2 class="section-header">What is Sky Orbit?</h2>', unsafe_allow_html=True)
-    with st.expander("Click to expand"):
-        st.markdown("""
-        - **Centralized data dashboard** aggregating Oracle visit data from VIP North, VIP South, Tier 2 North, and Tier 2 South teams.
-        - **Interactive visualizations** enable easy exploration, analysis, and comparison.
-        - Built with **secure login**, AI-powered chat assistant, detailed KPIs, trends, and forecasting features.
-        - Designed to empower teams with real-time, actionable insights.
-        """)
+    st.markdown(f"""
+    <div style='
+      padding:32px; 
+      background:linear-gradient(90deg, #00c6ff, #0072ff); 
+      color:white; 
+      border-radius:18px; 
+      font-size:1.6em; 
+      margin-bottom:2em;
+      text-align:center;
+      box-shadow:0 4px 24px rgba(0,0,0,0.1);'>
+      👋 Welcome back, <b>{st.session_state.username}</b>!<br>
+      <span style='font-size:1.1em;'>Thanks for looking after <b>{user['team']}</b>.<br>
+      <i>{random.choice(fun_quotes)}</i>
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown('<h2 class="section-header">How to Use the Dashboard</h2>', unsafe_allow_html=True)
+    import streamlit as st
+    from streamlit_modal import Modal
 
-    with st.expander("Main Menu"):
-        st.markdown("""
-        - Select any area to explore by clicking the corresponding button:
-          - **Operational Area:** Manage field operations and schedules.
-          - **Dashboards:** View key performance indicators and trends.
-          - **AI Chat (Sky Orbit AI):** Ask questions and receive AI-generated insights.
-          - **Suggestions:** Submit and review improvement ideas.
-          - **Forecasts:** View predictive analysis on visits and values.
-          - **Sky Retail & Sky Business:** Access filtered KPIs by business units.
-          - **Sky Orbit File Uploader:** Upload and analyze your own data files.
-        - The menu is designed for quick navigation to your focus area.
-        """)
 
-    with st.expander("Upload Your Data (Optional)"):
-        st.markdown("""
-        - Upload Excel or CSV files containing visit data for **custom analysis**.
-        - If no upload is made, the dashboard uses the **default Oracle combined dataset**.
-        - Supported file formats: `.xlsx`, `.xls`, `.csv`.
-        - Uploading new files replaces the default data for all AI and dashboard queries.
-        """)
 
-    with st.expander("Sky Retail Area"):
-        st.markdown("""
-        - Analyze visit data filtered by retail stakeholders such as Currys, Sky Retail, and EE.
-        - View KPIs including:
-          - Total visits and total value.
-          - Average visit value and duration.
-          - Monthly visit trends and day-of-week breakdowns.
-        - Drill down into charts and tables by stakeholder, team, or engineer.
-        """)
-
-    with st.expander("Sky Business Area"):
-        st.markdown("""
-        - Focuses on visits tagged as “Sky Business”.
-        - Provides KPIs on total visits, value, and completion rates.
-        - Explore activity breakdown charts, monthly trends, and sunburst visualizations.
-        - Includes team-level forecasts and detailed heatmap tables.
-        """)
-
-    with st.expander("VIP - SB Standby Section"):
-        st.markdown("""
-        - Specialized metrics for “VIP - SB Standby” visit types.
-        - Summaries of:
-          - Completed visits.
-          - Total and average visit values.
-          - Average start and end times.
-          - Activity status distributions.
-          - Monthly visit counts.
-        - Includes forecasts based on recent months.
-        - Time metrics only count visits with valid start and end times.
-        """)
-
-    with st.expander("SLA Dashboard"):
-        st.markdown("""
-        - Track ticket volumes against SLA buckets (2h, 4h, 5 day, and 8h).
-        - KPIs on total tickets, SLA met/missed counts, and percentages.
-        - Visualize monthly ticket trends and SLA performance breakdowns.
-        - Forecast upcoming ticket volumes based on historic data.
-        """)
-
-    with st.expander("Suggestion Box"):
-        st.markdown("""
-        - Submit new suggestions or delete existing ones via a simple interface.
-        - Uses Excel-based storage with OneDrive-safe temporary files.
-        - Unique keys ensure no data conflicts between users.
-        """)
-
-    with st.expander('AI Chat Assistant (“Sky Orbit”)'):
-        st.markdown("""
-        - Ask natural language questions about your visit data.
-        - Get answers on:
-          - Total costs and visit counts.
-          - Top postcodes and percentage differences.
-          - Trend analysis and charts generated by the AI.
-        - All chat conversations are logged with timestamps.
-        - Access is password protected for security.
-        """)
-
-    st.markdown('<h2 class="section-header">Important Notes</h2>', unsafe_allow_html=True)
-    st.markdown(
-        """
-        <style>
-        .important-notes {
-            color: black !important;  /* Or 'red' for red text */
+    # SECTION DATA
+    sections = [
+        {
+            "title": "What is Sky Orbit?",
+            "content": "Sky Orbit is an interactive dashboard built especially for our teams that brings together Oracle visit data from multiple teams (VIP North, VIP South, Tier 2 North, Tier 2 South). It helps you explore, analyse, and visualize this data easily with features like secure login, AI-powered chat, detailed KPIs, trends, and forecasting."
+        },
+        {
+            "title": "Main Menu",
+            "content": "From here, pick the area you want to explore — like Operational Area, Dashboards, AI Chat (Sky Orbit AI), Suggestions, Forecasts, Sky Retail, Sky Business, and more. Just click the button to jump in."
+        },
+        {
+            "title": "Upload Your Data (Optional)",
+            "content": "You can upload your own Excel or CSV file with visit data to explore dynamically. If you don’t upload anything, the app uses default Oracle data combined from the four main teams."
+        },
+        {
+            "title": "Sky Retail Area",
+            "content": "View detailed KPIs and trends filtered by stakeholders such as Currys, Sky Retail, and EE. See totals for visits and value, average times, monthly trends, and day-of-week breakdowns. Explore charts and tables by stakeholder, team, or engineer."
+        },
+        {
+            "title": "Sky Business Area",
+            "content": "This filters the data to “Sky Business” visit types, showing KPIs for total visits, values, and completion rates. You get activity breakdown charts, monthly trends, sunburst visuals, forecasts by team, and detailed tables with heatmaps."
+        },
+        {
+            "title": "VIP - SB Standby Section",
+            "content": "Specialized KPIs and charts for “VIP - SB Standby” visits. Summaries of completed visits, total values, average start/end times, activity status distributions, and monthly counts. Forecasts are included here too. (Note: Time metrics only count rows with valid start/end times.)"
+        },
+        {
+            "title": "SLA Dashboard",
+            "content": "Track tickets against SLA buckets like 2h, 4h, 5 day, and 8h targets. View KPIs for total tickets, SLA met/missed counts, and percentages. Visualize ticket volumes by SLA and monthly trends, plus get forecasts for upcoming months."
+        },
+        {
+            "title": "Suggestion Box",
+            "content": "Submit or delete suggestions through an Excel-based interface. It uses OneDrive-safe temp files with unique keys to avoid data conflicts."
+        },
+        {
+            "title": "AI Chat Assistant (“Sky Orbit”)",
+            "content": "Ask natural language questions about the visit data. You can get answers on total costs, top postcodes, percentage differences, and other stats. The AI also generates charts when relevant. All chats are logged with timestamps and password-protected access."
         }
+    ]
+
+    # SESSION STATE FOR EXPANSION
+    if "open_card" not in st.session_state:
+        st.session_state.open_card = None
+
+    # CSS FOR BOXES
+    st.markdown("""
+        <style>
+        .card-button {
+            background: linear-gradient(135deg, #0099ff 30%, #004488 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            width: 100%;
+            height: 110px;
+            font-size: 1.05em;
+            font-weight: bold;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+            margin-bottom: 12px;
+            transition: box-shadow 0.18s, background 0.22s;
+            cursor: pointer;
+        }
+        .card-button:hover {
+            box-shadow: 0 8px 30px rgba(0,153,255,0.18);
+            background: linear-gradient(135deg, #00c6ff 10%, #004488 90%);
+        }
+        .card-content {
+            background: #151d2c;
+            color: #fff;
+            border-radius: 18px;
+            padding: 16px 20px 10px 20px;
+            margin-top: -8px;
+            min-height: 85px;
+            font-size: 0.99em;
+            box-shadow: 0 4px 14px rgba(0,153,255,0.07);
+            animation: fadeIn 0.38s;
+        }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
+
+    # GRID LAYOUT: 3 x 3
+    for row in range(3):
+        cols = st.columns(3)
+        for col in range(3):
+            idx = row * 3 + col
+            if idx < len(sections):
+                with cols[col]:
+                    # Button triggers expansion
+                    if st.button(
+                        sections[idx]["title"], 
+                        key=f"cardbtn_{idx}",
+                        help="Click to expand"
+                    ):
+                        if st.session_state.open_card == idx:
+                            st.session_state.open_card = None
+                        else:
+                            st.session_state.open_card = idx
+                    # Custom button style
+                    st.markdown(f"""
+                        <script>
+                        let btn = window.parent.document.querySelectorAll('button[data-testid="baseButton-cardbtn_{idx}"]')[0];
+                        if(btn) btn.className += " card-button";
+                        </script>
+                    """, unsafe_allow_html=True)
+                    # Expanded content if this card is open
+                    if st.session_state.open_card == idx:
+                        st.markdown(
+                            f'<div class="card-content">{sections[idx]["content"]}</div>', 
+                            unsafe_allow_html=True
+                        )
+
+    # --- Important Notes Section (unchanged) ---
+    st.markdown('<div class="section-header">Important Notes</div>', unsafe_allow_html=True)
     st.markdown("""
     <ul class="important-notes">
     <li>All data and views refresh on app start and can be filtered dynamically.</li>
     <li>Forecasts use simple linear trends based on recent months.</li>
-    <li>Some KPIs or tables depend on available columns — if data is missing, warnings will be shown.</li>
+    <li>Some KPIs or tables depend on available columns—if data is missing, you’ll see warnings.</li>
     <li>Uploading your own file replaces the default Oracle data for analysis.</li>
     <li>Time-related metrics require valid time columns and are calculated carefully.</li>
     </ul>
     """, unsafe_allow_html=True)
 
-    if st.button("🚀 Take me to the App", key="goto_area_selection", help="Go to main app screen"):
-        st.session_state.screen = "area_selection"
+
+
+    st.markdown("""
+        <style>
+        .stButton > button {
+            font-size: 1.2em !important;
+            font-weight: bold !important;
+            border-radius: 16px !important;
+            padding: 0.75em 1.4em !important;
+            background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%) !important;
+            color: white !important;
+            margin-bottom: 1em;
+            box-shadow: 0 3px 16px rgba(0,153,255,0.10);
+        }
+        .stButton > button:hover {
+            background: linear-gradient(90deg, #0072ff 0%, #00c6ff 100%) !important;
+            color: #fff !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # 2️⃣ Navigation buttons (side by side + Budget)
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🚀 Take me to the App"):
+            st.session_state.screen = "area_selection"
+            st.rerun()
+
+    with col2:
+        if st.button("🔎 Quick Overview Summary"):
+            st.session_state.screen = "quick_summary"
+            st.rerun()
+
+    with col3:
+        if st.button("💰 Go to Budget Page"):
+            st.session_state.screen    = "budget"
+            st.session_state.user_name = "Dan Homewood"  # or real login logic
+
+elif st.session_state.screen == "budget":
+    # 0) Initialize override flag
+    if "override_alloc" not in st.session_state:
+        st.session_state.override_alloc = False
+
+    import os
+    import pandas as pd
+        # —————— ADMIN AUTH ——————
+    ADMIN_PW = "Dan"  # change this to something safe!
+    if "is_admin" not in st.session_state:
+        st.session_state.is_admin = False
+
+    pw = st.text_input("🔒 Admin password to unlock editing:", type="password")
+    if pw and pw == ADMIN_PW:
+        st.session_state.is_admin = True
+        st.success("🔓 Edit mode unlocked!")
+    elif pw:
+        st.error("❌ Wrong password")
+
+    # -- Local constants for this screen --
+    TOTAL_BUDGET = 280_000
+    BUDGET_FILE  = "budgets.csv"
+    EXPENSE_FILE = "expenses.csv"
+
+    # -- Header & total budget --
+    st.markdown(
+        f"<h2 style='text-align:center; color:#fff; font-size:2.5rem;'>"
+        f"📅 Total Budget (2025/26): £{TOTAL_BUDGET:,}</h2>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
+
+    # -- Load or seed budgets --
+    if "budgets_df" not in st.session_state:
+        if os.path.exists(BUDGET_FILE):
+            st.session_state.budgets_df = pd.read_csv(BUDGET_FILE, index_col=0)
+        else:
+            init = {
+                "Area": ["Sky Retail", "Sky Business", "Sky VIP", "Tier 2"],
+                "Allocated": [70000, 70000, 70000, 70000]
+            }
+            df_init = pd.DataFrame(init).set_index("Area")
+            df_init.to_csv(BUDGET_FILE)
+            st.session_state.budgets_df = df_init
+    budgets_df = st.session_state.budgets_df.copy()
+
+    # -- Ensure the full expense CSV exists / load it --
+    if not os.path.exists(EXPENSE_FILE):
+        pd.DataFrame(columns=["Name","Date","Area","Description","Amount"])\
+          .to_csv(EXPENSE_FILE, index=False)
+    full_exp = pd.read_csv(EXPENSE_FILE, parse_dates=["Date"])
+
+    # -- Initialize the "current" display log if needed --
+    if "current_exp" not in st.session_state:
+        st.session_state.current_exp = full_exp.copy()
+
+    # 1) Compute & display total remaining budget,
+    #    honoring override_alloc
+    if st.session_state.override_alloc:
+        used = 0
+    else:
+        used = budgets_df["Allocated"].sum()
+
+    exp_sum   = st.session_state.current_exp["Amount"].sum()
+    remaining = TOTAL_BUDGET - used - exp_sum
+
+    st.markdown(
+        f"<h2 style='text-align:center; color:#62d2a2; font-size:2.5rem;'>"
+        f"💷 Budget Remaining: £{remaining:,.0f}</h2>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
+
+    # 2) Prepare Budget Summary table data
+    total_by_area = (
+        st.session_state.current_exp
+        .groupby("Area")["Amount"].sum()
+        .reindex(budgets_df.index)
+        .fillna(0)
+    )
+    summary_df = pd.DataFrame({
+        "Total Expense": total_by_area,
+        "Allocated":    budgets_df["Allocated"]
+    })
+    summary_df["Remaining"] = summary_df["Allocated"] - summary_df["Total Expense"]
+    summary_df.index.name = "Stakeholder"
+    pretty = summary_df.applymap(lambda x: f"£{x:,.2f}")
+
+    
+
+    # 3) Three tabs: Summary / Adjust / Expenses
+    tab_sum, tab_adj, tab_exp = st.tabs([
+        "🧾 Budget Summary",
+        "🔧 Adjust Allocations",
+        "💼 Expenses",
+    ])
+
+    # ---- TAB 1: Read-only summary ----
+    with tab_sum:
+        # KPI cards
+        spent = summary_df["Total Expense"].sum()
+        remaining_pct = remaining / TOTAL_BUDGET * 100
+        c1, c2, c3 = st.columns(3)
+        c1.metric("💷 Spent so far", f"£{spent:,.0f}")
+        c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
+        c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
+
+        # Color-coded progress bars
+        st.markdown("#### 1️⃣ Budget Usage by Stakeholder")
+        for stakeholder, row in summary_df.iterrows():
+            used_amt  = row["Total Expense"]
+            alloc_amt = row["Allocated"]
+            pct       = min(int(used_amt / alloc_amt * 100), 100)
+            if pct < 70:
+                color = "#62d2a2"
+            elif pct < 90:
+                color = "#f0ad4e"
+            else:
+                color = "#d9534f"
+            st.markdown(f"**{stakeholder}** — £{used_amt:,.2f} / £{alloc_amt:,.2f}")
+            st.markdown(f"""
+                <progress value="{pct}" max="100"
+                    style="width:100%; height:1rem; accent-color: {color};">
+                </progress>
+            """, unsafe_allow_html=True)
+
+        # Bar chart
+        st.markdown("#### 2️⃣ Allocated vs Spent Chart")
+        chart_df = summary_df.reset_index()[["Stakeholder", "Allocated", "Total Expense"]]
+        st.bar_chart(chart_df.set_index("Stakeholder"))
+
+        st.markdown("---")
+        st.table(pretty)
+
+
+    # ---- TAB 2: +/- allocators ----
+    import matplotlib.pyplot as plt
+
+    with tab_adj:
+        # 2.1) Allocation controls
+        with st.expander("🔧 Adjust Quarterly Allocations", expanded=False):
+            updated = False
+            alloc_df = budgets_df.copy()
+            for area in alloc_df.index:
+                c1, c2, c3, c4 = st.columns([3, 1, 2, 1])
+                c1.markdown(f"**{area}**")
+                if c2.button("–", key=f"dec_{area}"):
+                    alloc_df.at[area, "Allocated"] -= 1_000; updated = True
+                c3.markdown(f"£{alloc_df.at[area,'Allocated']:,.0f}")
+                if c4.button("+", key=f"inc_{area}"):
+                    alloc_df.at[area, "Allocated"] += 1_000; updated = True
+            if updated:
+                st.session_state.budgets_df["Allocated"] = alloc_df["Allocated"]
+                st.session_state.budgets_df.to_csv(BUDGET_FILE)
+                st.rerun()
+
+        # 2.2) Donut chart
+        with st.expander("🍩 Allocation Breakdown", expanded=False):
+            fig, ax = plt.subplots(figsize=(4,4), facecolor="none")
+            wedges, texts, autotexts = ax.pie(
+                alloc_df["Allocated"],
+                labels=alloc_df.index,
+                autopct="%1.0f%%",
+                startangle=90,
+                textprops={"color":"white","weight":"bold"}
+            )
+            centre = plt.Circle((0,0),0.70,fc='none')
+            ax.add_artist(centre)
+            ax.set_aspect("equal"); ax.patch.set_alpha(0)
+            st.pyplot(fig)
+
+
+        # 2.4) Detailed table
+        with st.expander("📋 Detailed Budget Table", expanded=True):
+            st.table(pretty)
+
+
+    # ---- TAB 3: Expenses management ----
+    with tab_exp:
+        # 3.1) Date filter
+        st.markdown("📅 Filter Expenses by Date")
+        start_date, end_date = st.date_input(
+            "Show from → to:",
+            value=(pd.Timestamp.today() - pd.Timedelta(days=90), pd.Timestamp.today())
+        )
+        cur = st.session_state.current_exp.copy()
+        cur["Date"] = pd.to_datetime(cur["Date"], errors="coerce")
+        mask = (cur["Date"] >= pd.to_datetime(start_date)) & (cur["Date"] <= pd.to_datetime(end_date))
+        filtered = cur.loc[mask]
+
+        # 3.2) Add New Expense
+        st.markdown("#### ➕ Add New Expense")
+        with st.form("exp_form", clear_on_submit=True):
+            name = st.text_input("Name", placeholder="e.g. Invoice #1234")
+            d1, d2 = st.columns(2)
+            date = d1.date_input("Date", value=pd.Timestamp("today").date())
+            stakeholder = d2.selectbox("Stakeholder", budgets_df.index.tolist())
+            desc = st.text_input("Description"); amount = st.number_input("Total Value (£)",0.0,format="%.2f")
+            if st.form_submit_button("Add Entry"):
+                new = {"Name": name, "Date": date, "Area": stakeholder,
+                    "Description": desc, "Amount": amount}
+                full_exp = pd.concat([full_exp, pd.DataFrame([new])], ignore_index=True)
+                full_exp.to_csv(EXPENSE_FILE, index=False)
+                st.session_state.current_exp = pd.concat(
+                    [st.session_state.current_exp, pd.DataFrame([new])], ignore_index=True
+                )
+                st.success("Entry added!")
+
+        # 3.3) Display filtered entries
+        st.markdown("#### 📑 Current Entries")
+        disp = filtered.copy()
+        disp["Date"] = disp["Date"].dt.strftime("%d-%m-%Y")
+        disp["Total Value"] = disp["Amount"].apply(lambda x: f"£{x:,.2f}")
+        st.dataframe(disp[["Name","Date","Area","Description","Total Value"]]
+                    .sort_values("Date",ascending=False), use_container_width=True)
+
+        # 3.4) Raw Expense Log
+        with st.expander("📚 Raw Expense Log", expanded=False):
+            raw = full_exp.copy()
+            raw["Date"] = pd.to_datetime(raw["Date"], errors="coerce").dt.strftime("%d-%m-%Y")
+            raw["Total Value"] = raw["Amount"].apply(lambda x: f"£{x:,.2f}")
+            st.dataframe(raw[["Name","Date","Area","Description","Total Value"]]
+                        .sort_values("Date",ascending=False), use_container_width=True)
+
+        # 3.5) Button row
+        btn_clear, btn_reset, btn_reapply = st.columns(3)
+        if btn_clear.button("🗑️ Clear Current Entries"):
+            st.session_state.current_exp = full_exp.copy().iloc[0:0]
+            st.success("Current entries cleared.")
+            st.rerun()
+        if btn_reset.button("🔄 Reset Remaining"):
+            st.session_state.override_alloc = True
+            st.success("Allocations ignored—remaining reset.")
+            st.rerun()
+        if st.session_state.override_alloc and btn_reapply.button("↩️ Reapply Allocations"):
+            st.session_state.override_alloc = False
+            st.success("Allocations reapplied.")
+            st.rerun()
+
+
+        # ---- Back button ----
+        if st.button("⬅️ Back to Dashboard"):
+            st.session_state.screen = "dashboard"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
+
+
+
+
+# ✅ Optimized Dataset Loading Block
+
+import pandas as pd
+import streamlit as st
+import re
+
+# --- Oracle Files ---
+oracle_files = {
+    "VIP North": "VIP North Oracle Data.xlsx",
+    "VIP South": "VIP South Oracle Data.xlsx",
+    "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+    "Tier 2 South": "Tier 2 South Oracle Data.xlsx"
+}
+
+@st.cache_data(show_spinner=False)
+def load_oracle_files(oracle_files):
+    dataframes = []
+    for team_name, file in oracle_files.items():
+        try:
+            df = pd.read_excel(file)
+            df["Team"] = team_name
+            df.columns = df.columns.str.strip()
+            dataframes.append(df)
+        except Exception as e:
+            st.warning(f"⚠️ Could not load {file}: {e}")
+    return dataframes
+
+oracle_dataframes = load_oracle_files(oracle_files)
+
+combined_oracle_df = pd.concat(oracle_dataframes, ignore_index=True) if oracle_dataframes else pd.DataFrame()
+
+# --- Subsets from Oracle ---
+vip_north_df = combined_oracle_df[combined_oracle_df["Team"] == "VIP North"]
+vip_south_df = combined_oracle_df[combined_oracle_df["Team"] == "VIP South"]
+tier2_north_df = combined_oracle_df[combined_oracle_df["Team"] == "Tier 2 North"]
+tier2_south_df = combined_oracle_df[combined_oracle_df["Team"] == "Tier 2 South"]
+
+sky_retail_df = combined_oracle_df[
+    combined_oracle_df.get("Sky Retail Stakeholder", "").astype(str).str.contains("Sky Retail", case=False, na=False)
+] if "Sky Retail Stakeholder" in combined_oracle_df.columns else pd.DataFrame()
+
+highlands_df = combined_oracle_df[
+    combined_oracle_df["Visit Type"].astype(str).str.contains("Highlands|Islands", case=False, na=False)
+] if "Visit Type" in combined_oracle_df.columns else pd.DataFrame()
+
+# --- Other Datasets ---
+@st.cache_data(show_spinner=False)
+def load_excel(path):
+    return pd.read_excel(path)
+
+try:
+    sky_business_df = load_excel("AI Test SB Visits.xlsx")
+    sky_business_df.columns = sky_business_df.columns.str.strip()
+except Exception as e:
+    st.warning(f"⚠️ Could not load Sky Business file: {e}")
+    sky_business_df = pd.DataFrame()
+
+try:
+    call_log_df = load_excel("Call Log Data.xlsx")
+    call_log_df.columns = call_log_df.columns.str.strip()
+except Exception as e:
+    st.warning(f"⚠️ Could not load Call Log Data.xlsx: {e}")
+    call_log_df = pd.DataFrame()
+
+# --- Highlands File ---
+try:
+    highlands_file = pd.ExcelFile("Highlands Islands.xlsx")
+    yearly_sheets = [s for s in highlands_file.sheet_names if "Year" in s]
+    company_sheets = [s for s in highlands_file.sheet_names if "Company" in s]
+    dfs = {sheet: highlands_file.parse(sheet) for sheet in yearly_sheets + company_sheets}
+except Exception as e:
+    st.error(f"⚠️ Error loading Highlands & Islands data: {e}")
+    highlands_file = None
+    yearly_sheets = []
+    dfs = {}
+
+# --- Combined Dictionary ---
+all_tabs = {
+    "VIP North": vip_north_df,
+    "VIP South": vip_south_df,
+    "Tier 2 North": tier2_north_df,
+    "Tier 2 South": tier2_south_df,
+    "Sky Retail": sky_retail_df,
+    "Sky Business": sky_business_df,
+    "Call Log": call_log_df,
+    "Highlands & Islands": highlands_df,
+}
+
+# --- Time Formatting Functions ---
+def format_time_avg(series):
+    clean = series.dropna().astype(str)
+    clean = clean[~clean.str.contains("00:00:00|00:00|NaT|nan|None", na=False)]
+    times = pd.to_timedelta(clean, errors='coerce').dropna()
+    return str((times.mean()).components.hours).zfill(2) + ":" + str((times.mean()).components.minutes).zfill(2) if not times.empty else "00:00"
+
+def format_total_time(series):
+    times = pd.to_timedelta(series.dropna().astype(str), errors='coerce')
+    total = times.sum()
+    return f"{int(total.total_seconds() // 3600):02}:{int((total.total_seconds() % 3600) // 60):02}" if not times.empty else "00:00"
+# --- Utility for Highlands weighted averages ---
+def weighted_avg(df, value_col, weight_col):
+    try:
+        valid = df[weight_col] > 0
+        return (df.loc[valid, value_col] * df.loc[valid, weight_col]).sum() / df.loc[valid, weight_col].sum()
+    except Exception:
+        return None
+
+
+if  st.session_state.screen == "quick_summary":
+    st.title("🔎 Quick Overview Summary")
+
+    # 1️⃣ Dataset dropdown
+    selected_tab = st.selectbox(
+        "Choose dataset:",
+        list(all_tabs.keys()),
+        key="quick_summary_selectbox"
+    )
+    df = all_tabs[selected_tab]
+
+    # 2️⃣ Navigation buttons (side by side)
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("⬅️ Team Area", key=f"team_area_btn_{selected_tab}"):
+            st.session_state.selected_team_area = selected_tab
+            # route into the correct screen for detailed charts
+            if selected_tab == "Sky Retail":
+                st.session_state.screen = "sky_retail"
+            elif selected_tab == "Sky Business":
+                st.session_state.screen = "sky_business"
+            elif selected_tab == "Call Log":
+                st.session_state.screen = "dashboard_view"
+                st.session_state.selected_dataset = "Call Log Data"
+            elif selected_tab == "Highlands & Islands":
+                st.session_state.screen = "highlands_islands"
+            else:
+                st.session_state.screen = "manager_chart_select"
+            st.rerun()
+    with col2:
+        if st.button("🌍 Explore Full App", key=f"explore_app_btn_{selected_tab}"):
+            st.session_state.screen = "area_selection"
+            st.rerun()
+
+    # 3️⃣ Quick KPIs & Metrics (Sky Business, Highlands & Islands, Call Log, or Generic)
+    if df.empty and selected_tab != "Highlands & Islands":
+        st.warning(f"No data available for **{selected_tab}**.")
+    else:
+        if selected_tab == "Sky Business":
+            # --- Sky Business custom summary ---
+            total_visits     = len(df)
+            unique_engineers = df["Business Engineers Name"].nunique() if "Business Engineers Name" in df.columns else 0
+
+            df["Total Value"] = pd.to_numeric(df.get("Total Value", pd.Series(dtype="float")), errors="coerce")
+            total_value       = df["Total Value"].sum()
+            avg_value         = df["Total Value"].mean()
+
+            r1c1, r1c2 = st.columns(2)
+            r2c1, r2c2 = st.columns(2)
+            r1c1.metric("Total Visits",        total_visits)
+            r1c2.metric("Unique Engineers",    unique_engineers)
+            r2c1.metric("Total Value (£)",     f"£{total_value:,.0f}")
+            r2c2.metric("Avg Visit Value (£)", f"£{avg_value:,.0f}")
+
+        elif selected_tab == "Highlands & Islands":
+            # --- Highlands & Islands custom summary ---
+            def safe_sum(sheet, col):
+                if col not in dfs[sheet].columns:
+                    return 0.0
+                return pd.to_numeric(dfs[sheet][col], errors="coerce").sum()
+
+            sheets = yearly_sheets + company_sheets
+            total_issued    = sum(safe_sum(s, "Issued Visits")    for s in sheets)
+            total_completed = sum(safe_sum(s, "Completed Visits") for s in sheets)
+            total_not_done  = sum(safe_sum(s, "Not Done Vists")   for s in sheets)
+            total_rev7      = sum(safe_sum(s, "7 Day Revisits")   for s in sheets)
+            total_surveys   = sum(safe_sum(s, "Surveys")          for s in sheets)
+
+            completion_pct  = (total_completed / total_issued * 100) if total_issued else 0.0
+            not_done_pct    = (total_not_done  / total_issued * 100) if total_issued else 0.0
+
+            concat_df       = pd.concat([dfs[s] for s in sheets], ignore_index=True)
+            avg_job_min     = weighted_avg(concat_df, "Average Complete Job Time (Min)", "Completed Visits")
+            weighted_nps    = weighted_avg(concat_df, "NPS", "Surveys")
+
+            r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+            r1c1.metric("Issued Visits",       f"{int(total_issued):,}")
+            r1c2.metric("Completed Visits",    f"{int(total_completed):,}")
+            r1c3.metric("Completion Rate (%)", f"{completion_pct:.1f}%")
+            r1c4.metric("Not Done (%)",        f"{not_done_pct:.1f}%")
+
+            r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+            r2c1.metric("7‑Day Revisits",     f"{int(total_rev7):,}")
+            r2c2.metric("Avg Job Time (min)", f"{avg_job_min:.1f}" if avg_job_min is not None else "N/A")
+            r2c3.metric("Total Surveys",      f"{int(total_surveys):,}")
+            r2c4.metric("Weighted NPS",       f"{weighted_nps:.1f}" if weighted_nps is not None else "N/A")
+
+        elif selected_tab == "Call Log":
+            # --- Call Log custom summary ---
+            total_calls    = len(df)
+            unique_engs    = df["Name of Engineer"].nunique() if "Name of Engineer" in df.columns else 0
+            unique_regions = df["Region"].nunique()         if "Region" in df.columns else 0
+            unique_opts    = df["Option Selected"].nunique() if "Option Selected" in df.columns else 0
+            unique_months  = df["Month"].nunique()          if "Month" in df.columns else 0
+            unique_vr      = df["VR Number (If Known)"].nunique()                     if "VR Number (If Known)" in df.columns else 0
+            unique_callers = df["Name Of Engineer Who Made The Call"].nunique()        if "Name Of Engineer Who Made The Call" in df.columns else 0
+            unique_emails  = df["Engineers email address (who made the call)"].nunique() if "Engineers email address (who made the call)" in df.columns else 0
+
+            # coerce date column before using .dt
+            if "Date of Call Taken" in df.columns:
+                df["Date of Call Taken"] = pd.to_datetime(
+                    df["Date of Call Taken"], errors="coerce"
+                )
+
+            # busiest day
+            peak_day, peak_count = "N/A", 0
+            if "Date of Call Taken" in df.columns:
+                calls_per_day = df["Date of Call Taken"].dt.date.value_counts()
+                if not calls_per_day.empty:
+                    peak_day   = calls_per_day.idxmax().strftime("%d %b %Y")
+                    peak_count = calls_per_day.max()
+
+            # layout in a 3×3 grid
+            r1c1, r1c2, r1c3 = st.columns(3)
+            r2c1, r2c2, r2c3 = st.columns(3)
+            r3c1, r3c2, r3c3 = st.columns(3)
+
+            r1c1.metric("Total Calls",          f"{total_calls:,}")
+            r1c2.metric("Unique Engineers",     unique_engs)
+            r1c3.metric("Unique Regions",       unique_regions)
+
+            r2c1.metric("Options Selected",     unique_opts)
+            r2c2.metric("Distinct Months",      unique_months)
+            r2c3.metric("Known VR Numbers",     unique_vr)
+
+            r3c1.metric("Caller Engineers",     unique_callers)
+            r3c2.metric("Engineer Emails",      unique_emails)
+            r3c3.metric("Peak Call Day",        f"{peak_day} ({peak_count})")
+
+
+        else:
+            # --- Generic summary for Oracle / Sky Retail ---
+            total_visits = len(df)
+
+            def count_status(col, status):
+                return df[col].astype(str).str.contains(status, case=False, na=False).sum() if col in df.columns else 0
+
+            completed   = count_status("Activity Status", "Completed")
+            cancelled   = count_status("Activity Status", "Cancelled")
+            suspended   = count_status("Activity Status", "Suspended")
+            not_done    = count_status("Activity Status", "Not Done")
+            pending     = count_status("Activity Status", "Pending")
+            started     = count_status("Activity Status", "Started")
+            unique_engs = df["Name"].nunique() if "Name" in df.columns else 0
+
+            total_time     = format_total_time(df["Total Time"])           if "Total Time" in df.columns         else "00:00"
+            avg_work       = format_time_avg(df["Total Working Time"])     if "Total Working Time" in df.columns else "00:00"
+            avg_activate   = format_time_avg(df["Activate"])               if "Activate" in df.columns           else "00:00"
+            avg_deactivate = format_time_avg(df["Deactivate"])             if "Deactivate" in df.columns         else "00:00"
+            lunch_df       = df[df["Visit Type"].str.contains("Lunch", case=False, na=False)] if "Visit Type" in df.columns else pd.DataFrame()
+            avg_lunch      = format_time_avg(lunch_df["Total Time"])       if not lunch_df.empty and "Total Time" in lunch_df.columns else "00:00"
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Total Visits",       total_visits)
+            c2.metric("Completed",          completed)
+            c3.metric("Cancelled",          cancelled)
+            c4.metric("Suspended",          suspended)
+
+            c5, c6, c7, c8 = st.columns(4)
+            c5.metric("Not Done",           not_done)
+            c6.metric("Pending",            pending)
+            c7.metric("Started",            started)
+            c8.metric("Unique Engineers",   unique_engs)
+
+            c9, c10, c11, c12 = st.columns(4)
+            c9.metric("Total Time",         total_time)
+            c10.metric("Avg Working Time",  avg_work)
+            c11.metric("Avg Activate",      avg_activate)
+            c12.metric("Avg Deactivate",    avg_deactivate)
+
+            st.metric("Avg Lunch (30)",     avg_lunch)
+
+
+
+
+
+
+
+    
+
+
+
+if st.session_state.screen == "manager_chart_select":
+    if st.button("⬅️ Back to Quick Summary"):
+        st.session_state.screen = "quick_summary"
         st.rerun()
 
+    selected_team = st.session_state.get("selected_team_area", None)
+    chart_options = {}
 
-    # Stop here so nothing else below renders on this screen
-    st.stop()
+    if selected_team in ["VIP North", "VIP South", "Tier 2 North", "Tier 2 South"]:
+        st.title(f"👥 {selected_team} — Team Area")
+        df = all_tabs[selected_team]
+        # … build chart_options …
 
-# --- Main App Content ---
+    elif selected_team == "Sky Retail":
+        st.title("👥 Sky Retail — Team Area")
+        # … your Sky Retail logic …
 
+    elif selected_team == "Sky Business":
+        st.title("👥 Sky Business — Team Area")
+        # … your Sky Business logic …
 
+    elif selected_team == "Call Log":
+        st.title("📞 Call Log — Team Area")
+        # … your Call Log logic …
 
-# Add the animated CSS style with dark/light theme support
-st.markdown("""
-<style>
-@media (prefers-color-scheme: dark) {
-  .adv-summary {
-    color: white;
-  }
-}
-@media (prefers-color-scheme: light) {
-  .adv-summary {
-    color: black;
-  }
-}
+    elif selected_team == "Highlands & Islands":
+        # ← NEW!
+        st.session_state.screen = "highlands_islands"
+        st.rerun()
 
-.adv-summary {
-    font-size: 20px;
-    font-weight: 400;
-    border-right: 2px solid rgba(255,255,255,0.75);
-    white-space: nowrap;
-    overflow: hidden;
-    width: fit-content;
-    margin: 0 auto 30px;
-    animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
-}
+    else:
+        st.info("Please select a valid team to see options.")
+        st.stop()
 
-@keyframes typing {
-    0% { width: 0; }
-    40%, 60% { width: 100%; }
-    100% { width: 0; }
-}
-@keyframes blink {
-    from, to { border-color: transparent }
-    50% { border-color: rgba(255,255,255,0.75); }
-}
-</style>
-""", unsafe_allow_html=True)
+    # … now your chart_options multiselect and rendering …
 
 
-# Then add the animated text content using the class
-st.markdown("""
-<div class='adv-summary'>
-Welcome to the advanced reporting hub use the options below to explore all areas
-</div>
-""", unsafe_allow_html=True)
+        chart_options = {
+            "kpis_block": "📈 Team KPIs",
+            "summary_kpis": "📋 Summary KPIs",
+            "top_visit_types": "📊 Top Visit Types",
+            "top_engineers": "👨 Top Engineers by Visits",
+            "weekly_trends": "📈 Weekly Visit Trends",
+            "status_breakdown": "🟦 Status Breakdown Bar",
+            "engineer_pie": "🥧 Engineer Visit Share (Pie)",
+            "daily_trend": "📅 Daily Visits Trend",
+            "dow_bar": "📊 Visits by Day of Week",
+            "value_per_type": "💷 Avg Value per Visit Type",
+            "stakeholder": "🏢 Visits by Stakeholder",
+            "week_heatmap": "🔥 DOW vs Week Heatmap",
+            "monthly_value": "💰 Total Value by Month",
+            "sunburst": "🌞 Sunburst Charts (all)",
+            "stacked_bar": "📊 Stacked Bar: Visit Type by Month",
+            "parallel_categories": "🔗 Parallel Categories: Engineer → Visit Type → Postcode",
+            "treemap": "🌲 Drilldown Treemap: Stakeholder → Visit Type → Month",
+            "heatmap": "🌡️ Visit Type vs Week Heatmap",
+            "visit_type_treemap": "🌳 Treemap: Visit Type by Total Value",
+            "pie_chart": "🥧 Visit Type Share (Pie)",
+            "table_view": "📋 Full Oracle Visit Table"
+        }
+
+    if selected_team == "Sky Retail":
+        st.title("👥 Sky Retail — Team Area")
+        st.info("Click below to view the full Sky Retail dashboard:")
+
+        if st.button("🔎 Go to Sky Retail Dashboard"):
+            st.session_state.screen = "sky_retail"
+            st.rerun()
+
+        
+
+    # Only show the dropdown if a valid team is selected
+    if chart_options:
+        selected_charts = st.multiselect(
+            "Select which charts/tables to display:",
+            options=list(chart_options.keys()),
+            format_func=lambda k: chart_options[k],
+            key="team_chart_multiselect"
+        )
+        for chart_key in selected_charts:
+            if chart_key == "kpi":
+                # Stakeholder KPIs (put your expander logic here)
+                with st.expander("📊 Stakeholder KPIs", expanded=True):
+                    # (insert your KPI code block here for the selected stakeholder)
+                    pass
+
+            elif chart_key == "monthly_visits":
+                # Monthly Visits Table
+                st.markdown("**Monthly Visits (last 4 months shown)**")
+                show_aggrid(monthly_visits.tail(4))
+
+            elif chart_key == "monthly_value":
+                st.markdown("**Monthly Total Value (£) (last 4 months shown)**")
+                show_aggrid(monthly_value.tail(4))
+
+            elif chart_key == "visits_by_dow":
+                st.markdown("**Visits by Day of Week**")
+                show_aggrid(visits_by_day)
+
+            elif chart_key == "value_by_dow":
+                st.markdown("**Total Value (£) by Day of Week**")
+                show_aggrid(value_by_day)
+
+            elif chart_key == "stakeholder_breakdown":
+                with st.expander(f"📋 Breakdown by {stakeholder} Stakeholder", expanded=False):
+                    st.dataframe(by_stake, use_container_width=True)
+
+            elif chart_key == "monthly_visit_trends":
+                with st.expander(f"📈 Monthly Visit Trends for {stakeholder}", expanded=False):
+                    st.plotly_chart(fig_visits, use_container_width=True)
+
+            elif chart_key == "monthly_value_trends":
+                with st.expander(f"📈 Monthly Value Trends for {stakeholder}", expanded=False):
+                    st.plotly_chart(fig_value, use_container_width=True)
+
+            elif chart_key == "activity_status_pie":
+                with st.expander(f"🥧 Visit Activity Status Split for {stakeholder}", expanded=False):
+                    st.plotly_chart(fig_pie, use_container_width=True)
+
+            elif chart_key == "team_breakdown":
+                with st.expander("📋 Team Breakdown by Stakeholder", expanded=False):
+                    st.dataframe(team_pivot, use_container_width=True)
+
+            elif chart_key == "engineer_breakdown":
+                with st.expander(f"👤 Engineer Breakdown for {stakeholder}", expanded=False):
+                    st.dataframe(display, use_container_width=True)
+
+            elif chart_key == "overall_forecasts":
+                with st.expander(f"🔮 Overall {stakeholder} Forecasts", expanded=False):
+                    st.plotly_chart(fig_visits_fc, use_container_width=True)
+                    st.plotly_chart(fig_value_fc, use_container_width=True)
+
+            elif chart_key == "team_forecasts":
+                with st.expander(f"🔮 {stakeholder} Team Forecasts (Visits & Value)", expanded=False):
+                    st.plotly_chart(fig_team_visits, use_container_width=True)
+                    st.plotly_chart(fig_team_value, use_container_width=True)
+
+            elif chart_key == "mom_change_visits":
+                with st.expander("📊 Month-on-Month Change Table (Visits)", expanded=False):
+                    st.dataframe(visits_tbl, use_container_width=True)
+
+            elif chart_key == "mom_change_value":
+                with st.expander("📊 Month-on-Month Change Table (Value)", expanded=False):
+                    st.dataframe(value_tbl, use_container_width=True)
+
+            elif chart_key == "combined_charts":
+                with st.expander("📊 Combined Monthly Trend Charts", expanded=False):
+                    st.plotly_chart(fig_value_trends, use_container_width=True)
+                    st.plotly_chart(fig_visits_trends, use_container_width=True)
+                    st.plotly_chart(fig_value_changes, use_container_width=True)
+                    st.plotly_chart(fig_visits_changes, use_container_width=True)
+                    st.plotly_chart(fig_heatmap_value_max, use_container_width=True)
+                    st.plotly_chart(fig_heatmap_visits_max, use_container_width=True)
+
+            elif chart_key == "dow_bar_chart":
+                with st.expander("📅 Visits by Day of Week", expanded=False):
+                    st.plotly_chart(fig_day, use_container_width=True)
+
+            elif chart_key == "raw_data":
+                with st.expander(f"🔎 Show Raw Data for {stakeholder}", expanded=False):
+                    st.dataframe(df.dropna(axis=1, how="all"), use_container_width=True)
+    
+        st.markdown(f"### KPIs for {selected_team}")
+    else:
+        st.info("Please select a valid team to see options.")
+
+        #st.write(df.head())  # Just shows the data as a table for now
+
+    import datetime, pandas as pd
+
+    def to_timedelta_str(x):
+        if pd.isnull(x) or x in ["", "-", "NaT", None, " "]:
+            return pd.NaT
+        if isinstance(x, (pd.Timedelta, datetime.timedelta)):
+            return x
+        if isinstance(x, datetime.time):
+            return datetime.timedelta(hours=x.hour, minutes=x.minute, seconds=x.second)
+        if isinstance(x, (float, int)):
+            try:
+                return datetime.timedelta(seconds=int(float(x) * 86400))
+            except Exception:
+                return pd.NaT
+        if isinstance(x, pd.Timestamp):
+            t = x.time()
+            return datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
+        if isinstance(x, str):
+            s = x.strip()
+            if s in ["", "-", "NaT", " "]:
+                return pd.NaT
+            try:
+                h, m, s = map(int, s.split(":")[:3])
+                return datetime.timedelta(hours=h, minutes=m, seconds=s)
+            except Exception:
+                pass
+            try:
+                return pd.to_timedelta(s)
+            except Exception:
+                return pd.NaT
+        return pd.NaT
+
+    def kpis_block(df):
+        if df.empty:
+            st.warning("No data for the current selection.")
+            return
+
+        local_df = df.copy()
+        local_df.columns = local_df.columns.str.strip()
+        local_df = local_df.rename(columns={"Name": "Engineer", "Total Value": "Value"})
+
+        # KPIs
+        total_visits   = len(local_df)
+        unique_engs    = local_df["Engineer"].nunique() if "Engineer" in local_df.columns else "N/A"
+        total_value    = f"£{local_df['Value'].sum(skipna=True):,.2f}" if "Value" in local_df.columns else "N/A"
+
+        # Average Activate/Deactivate
+        valid_times = local_df.copy()
+        if {"Activate", "Deactivate"}.issubset(valid_times.columns):
+            valid_times["Activate"]   = valid_times["Activate"].apply(to_timedelta_str)
+            valid_times["Deactivate"] = valid_times["Deactivate"].apply(to_timedelta_str)
+            valid_times = valid_times[
+                valid_times["Activate"].notna() &
+                valid_times["Deactivate"].notna() &
+                (valid_times["Activate"]   > datetime.timedelta(0)) &
+                (valid_times["Deactivate"] > datetime.timedelta(0))
+            ]
+        else:
+            valid_times = pd.DataFrame()
+
+        def avg_time_str(col):
+            if col not in valid_times.columns or valid_times.empty:
+                return "N/A"
+            vals = valid_times[col].dropna()
+            if vals.empty:
+                return "N/A"
+            avg = vals.mean()
+            return f"{int(avg.total_seconds()//3600):02}:{int((avg.total_seconds()%3600)//60):02}"
+
+        avg_activate   = avg_time_str("Activate")
+        avg_deactivate = avg_time_str("Deactivate")
+
+        # Most Common Visit Type (not lunch)
+        most_common_type = "N/A"
+        if "Visit Type" in local_df.columns:
+            vt = local_df[~local_df["Visit Type"].str.contains("lunch", case=False, na=False)]
+            if not vt["Visit Type"].mode().empty:
+                most_common_type = vt["Visit Type"].mode()[0]
+
+        # Busiest day
+        busiest_day, busiest_count = "N/A", ""
+        if "Date" in local_df.columns:
+            counts = pd.to_datetime(local_df["Date"], errors="coerce").dt.date.value_counts()
+            if not counts.empty:
+                busiest_day   = counts.idxmax().strftime("%d %B %Y")
+                busiest_count = f"{counts.max()} visits"
+
+        # --- DISPLAY AS BULLET POINTS ---
+        
+        st.markdown("### 📈 Key Performance Indicators (KPIs)")
+        st.markdown(f"""
+        - **Total Visits:** {total_visits}
+        - **Unique Engineers:** {unique_engs}
+        - **Total Value:** {total_value}
+        - **Most Common Visit Type:** {most_common_type}
+        - **Avg Activate:** {avg_activate}
+        - **Avg Deactivate:** {avg_deactivate}
+        - **Busiest Day:** {busiest_day} ({busiest_count})
+        """)
+    if selected_team == "Highlands & Islands":
+        st.title("🗺️ Highlands & Islands — Team Area")
+        st.markdown("### 📈 Key Performance Indicators (KPIs)")
+        st.markdown(f"""
+        - **Total Visits:** {total_visits}
+        - **Unique Engineers:** {unique_engs}
+        - **Total Value:** {total_value}
+        - **Most Common Visit Type:** {most_common_type}
+        - **Avg Activate:** {avg_activate}
+        - **Avg Deactivate:** {avg_deactivate}
+        - **Busiest Day:** {busiest_day} ({busiest_count})
+        """)
+
+    if st.button("Show Me Charts"):
+        st.session_state.selected_team_charts = selected_charts
+        st.rerun()
+    selected = st.session_state.get("selected_team_charts", [])
+    
+    for chart_key in selected:
+        if chart_key == "summary_kpis":
+            with st.expander("📋 Summary KPIs", expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Total Visits", len(df))
+                col2.metric("Unique Engineers", df["Name"].nunique())
+                col3.metric("Visit Types", df["Visit Type"].nunique())
+                col4.metric("Total Value (£)", f"£{df['Total Value'].dropna().sum():,.2f}")
+
+        elif chart_key == "kpis_block":
+            kpis_block(df)
+
+        elif chart_key == "top_visit_types":
+            if "Visit Type" in df.columns:
+                with st.expander("📊 Top Visit Types"):
+                    top_vt = df["Visit Type"].value_counts().head(10).reset_index()
+                    top_vt.columns = ["Visit Type", "Count"]
+                    st.plotly_chart(px.bar(top_vt, x="Visit Type", y="Count", color="Visit Type",
+                                        title="Top Visit Types by Volume"), use_container_width=True)
+
+        elif chart_key == "top_engineers":
+            if "Name" in df.columns:
+                with st.expander("👨 Top Engineers by Visits"):
+                    eng_top = df["Name"].value_counts().head(10).reset_index()
+                    eng_top.columns = ["Engineer", "Visits"]
+                    st.plotly_chart(px.bar(eng_top, x="Engineer", y="Visits", color="Engineer",
+                                        title="Top Engineers by Visit Count"), use_container_width=True)
+
+        elif chart_key == "weekly_trends":
+            if "Week" in df.columns:
+                with st.expander("📈 Weekly Visit Trends"):
+                    weekly = df.groupby("Week").size().reset_index(name="Visits")
+                    st.plotly_chart(px.line(weekly, x="Week", y="Visits", title="Visits Over Weeks"),
+                                    use_container_width=True)
+
+        elif chart_key == "monthly_value":
+            if "Month" in df.columns and "Total Value" in df.columns:
+                with st.expander("💰 Total Value by Month"):
+                    monthly_val = df.groupby("Month")["Total Value"].sum().reset_index()
+                    st.plotly_chart(px.bar(monthly_val, x="Month", y="Total Value", color="Month",
+                                        title="Total Value by Month"), use_container_width=True)
+
+        elif chart_key == "sunburst":
+            sunburst_configs = [
+                ("🌞 Visit Activity Sunburst", ["Visit Type", "Activity Status"], "Visit Type & Activity Status Distribution"),
+                ("📍 Sunburst: Visit Type to Postcode", ["Visit Type", "Postcode"], "Visit Type → Postcode Distribution"),
+                ("🔀 Sunburst: Engineer → Visit Type → Week", ["Name", "Visit Type", "Week"], "Engineer > Visit Type > Week Breakdown"),
+                ("🌀 Sunburst: Visit Type → Week", ["Visit Type", "Week"], "Visit Count by Visit Type and Week"),
+                ("🧩 Sunburst: Engineer → Postcode", ["Name", "Postcode"], "Engineer > Postcode Mapping"),
+                ("🗓️ Sunburst: Visit Type → Month", ["Visit Type", "Month"], "Visit Type Distribution by Month"),
+                ("📅 Sunburst: Visit Type → Date", ["Visit Type", "Date"], "Visit Type Breakdown by Exact Date"),
+                ("📋 Sunburst: Visit Type → Day", ["Visit Type", "Day"], "Visit Type by Day of Week"),
+                ("📑 Sunburst: Stakeholder → Visit Type", ["Sky Retail Stakeholder", "Visit Type"], "Stakeholder to Visit Type Breakdown")
+            ]
+            for label, cols, title in sunburst_configs:
+                if set(cols).issubset(df.columns):
+                    with st.expander(label):
+                        sb = df.groupby(cols).size().reset_index(name="Count")
+                        fig = px.sunburst(sb, path=cols, values="Count", title=title)
+                        st.plotly_chart(fig, use_container_width=True)
+        elif chart_key == "status_breakdown":
+            if "Activity Status" in df.columns:
+                with st.expander("🟦 Status Breakdown Bar"):
+                    st.markdown("Volume of visits by status (Completed, Cancelled, Not Done)")
+                    bar = df["Activity Status"].value_counts().reset_index()
+                    bar.columns = ["Status", "Count"]
+                    st.plotly_chart(px.bar(bar, x="Status", y="Count", color="Status",
+                                        title="Visit Status Counts"), use_container_width=True)
+        elif chart_key == "engineer_pie":
+            if "Name" in df.columns:
+                with st.expander("🥧 Engineer Visit Share (Pie)"):
+                    pie = df["Name"].value_counts().reset_index()
+                    pie.columns = ["Engineer", "Visits"]
+                    fig = px.pie(pie, names="Engineer", values="Visits", title="Visits by Engineer")
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+        elif chart_key == "daily_trend":
+            if "Date" in df.columns:
+                with st.expander("📅 Daily Visits Trend"):
+                    daily = df.groupby(df["Date"].dt.date).size().reset_index(name="Visits")
+                    st.plotly_chart(px.line(daily, x="Date", y="Visits", title="Visits Per Day"), use_container_width=True)
+
+        elif chart_key == "dow_bar":
+            if "Date" in df.columns:
+                with st.expander("📊 Visits by Day of Week"):
+                    dow = df.copy()
+                    dow["Day"] = pd.to_datetime(dow["Date"], errors="coerce").dt.day_name()
+                    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    chart = (dow["Day"].value_counts().reindex(day_order).reset_index())
+                    chart.columns = ["Day", "Visits"]
+                    st.plotly_chart(px.bar(chart, x="Day", y="Visits", title="Visits by Day of Week"), use_container_width=True)
+
+        elif chart_key == "value_per_type":
+            if "Visit Type" in df.columns and "Value" in df.columns:
+                with st.expander("💷 Avg Value per Visit Type"):
+                    val_df = df.groupby("Visit Type")["Value"].mean().reset_index()
+                    st.plotly_chart(px.bar(val_df, x="Visit Type", y="Value", title="Avg Value by Visit Type"), use_container_width=True)
+
+        elif chart_key == "stakeholder":
+            if "Sky Retail Stakeholder" in df.columns:
+                with st.expander("🏢 Visits by Stakeholder"):
+                    stake = df["Sky Retail Stakeholder"].value_counts().reset_index()
+                    stake.columns = ["Stakeholder", "Visits"]
+                    st.plotly_chart(px.bar(stake, x="Stakeholder", y="Visits", title="Visits by Stakeholder"), use_container_width=True)
 
 
+        elif chart_key == "stacked_bar":
+            if {"Visit Type", "Month"}.issubset(df.columns):
+                with st.expander("📊 Stacked Bar: Visit Type by Month"):
+                    bar_df = df.groupby(["Month", "Visit Type"]).size().reset_index(name="Visits")
+                    fig = px.bar(bar_df, x="Month", y="Visits", color="Visit Type", title="Monthly Visit Counts by Visit Type",
+                                text_auto=True)
+                    st.plotly_chart(fig, use_container_width=True)
 
+        elif chart_key == "parallel_categories":
+            if {"Name", "Visit Type", "Postcode"}.issubset(df.columns):
+                with st.expander("🔗 Parallel Categories: Engineer → Visit Type → Postcode"):
+                    pc_df = df[["Name", "Visit Type", "Postcode"]].dropna().astype(str)
+                    fig = px.parallel_categories(pc_df, dimensions=["Name", "Visit Type", "Postcode"],
+                                                color_continuous_scale=px.colors.sequential.Inferno,
+                                                title="Engineer to Visit Type to Postcode Flow")
+                    st.plotly_chart(fig, use_container_width=True)
 
+        elif chart_key == "treemap":
+            if {"Sky Retail Stakeholder", "Visit Type", "Month", "Total Value"}.issubset(df.columns):
+                with st.expander("🌲 Drilldown Treemap: Stakeholder → Visit Type → Month"):
+                    tree_df = df.groupby(["Sky Retail Stakeholder", "Visit Type", "Month"])["Total Value"].sum().reset_index()
+                    fig = px.treemap(tree_df, path=["Sky Retail Stakeholder", "Visit Type", "Month"],
+                                    values="Total Value", title="Value Drilldown by Stakeholder → Visit Type → Month")
+                    st.plotly_chart(fig, use_container_width=True)
 
+        elif chart_key == "heatmap":
+            if {"Visit Type", "Week"}.issubset(df.columns):
+                with st.expander("🌡️ Visit Type vs Week Heatmap"):
+                    heat_df = pd.pivot_table(df, index="Visit Type", columns="Week", aggfunc="size", fill_value=0)
+                    st.plotly_chart(px.imshow(heat_df, aspect="auto", title="Visit Heatmap: Types by Week"),
+                                    use_container_width=True)
 
+        elif chart_key == "visit_type_treemap":
+            if {"Visit Type", "Total Value"}.issubset(df.columns):
+                with st.expander("🌳 Treemap: Visit Type by Total Value"):
+                    tm = df.groupby("Visit Type")["Total Value"].sum().reset_index()
+                    fig = px.treemap(tm, path=["Visit Type"], values="Total Value",
+                                    title="Total Value by Visit Type")
+                    st.plotly_chart(fig, use_container_width=True)
 
+        elif chart_key == "pie_chart":
+            if "Visit Type" in df.columns:
+                with st.expander("🥧 Visit Type Share (Pie)"):
+                    pie = df["Visit Type"].value_counts().reset_index()
+                    pie.columns = ["Visit Type", "Count"]
+                    fig = px.pie(pie, names="Visit Type", values="Count", title="Visit Type Distribution")
+                    st.plotly_chart(fig, use_container_width=True)
 
+        elif chart_key == "week_heatmap":
+            if "Date" in df.columns:
+                with st.expander("🔥 Day vs Week Heatmap"):
+                    temp = df.copy()
+                    temp["Week"] = pd.to_datetime(temp["Date"], errors="coerce").dt.isocalendar().week
+                    temp["Day"] = pd.to_datetime(temp["Date"], errors="coerce").dt.day_name()
+                    pt = pd.pivot_table(temp, index="Day", columns="Week", aggfunc="size", fill_value=0)
+                    st.plotly_chart(px.imshow(pt, title="Visits by Day and Week"), use_container_width=True)
 
+        elif chart_key == "table_view":
+            with st.expander("📋 Full Oracle Visit Table", expanded=False):
+                st.dataframe(df, use_container_width=True)
+
+            # (Add more charts, filters, summaries, etc. here!)
+        else:
+            st.warning("No team selected! Please go back and pick a dataset.")
+ 
 
 
 
@@ -557,6 +1727,31 @@ Welcome to the advanced reporting hub use the options below to explore all areas
 # --- NUMBER 6 ---#
 # --- SECTION: AREA SELECTION MAIN MENU ---
 if st.session_state.screen == "area_selection":
+
+    st.markdown(f"""
+    <div class="logo">
+        <img src='data:image/png;base64,{logo_base64}' />
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- TYPING INTRO TEXT ---
+    st.markdown("""
+    <style>
+    .adv-summary {
+        font-size: 20px;
+        font-weight: 400;
+        border-right: 2px solid rgba(255,255,255,0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        width: fit-content;
+        margin: 0 auto 30px;
+        animation: typing 6s steps(60, end) infinite, blink 0.75s step-end infinite;
+    }
+    </style>
+    <div class='adv-summary'>
+    Welcome to the advanced reporting hub use the options below to explore all areas
+    </div>
+    """, unsafe_allow_html=True)
     if st.button("⬅️ Back to User Guide & Overview"):
         st.session_state.screen = "instruction_guide"
         st.rerun()
@@ -611,13 +1806,6 @@ if st.session_state.screen == "area_selection":
         menu_button_with_tooltip("🏢 Sky Business", "Analyze Sky Business visit data and KPIs", "sky_business", key="btn8")
     with row3_cols[2]:
         menu_button_with_tooltip("📁 Sky Orbit File Uploader", "Upload files and query your data", "sky_orbit_file_upload", key="btn9")
-import requests
-
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
 
 
 if st.session_state.screen == "area_selection":
@@ -787,12 +1975,75 @@ if st.session_state.get("screen") == "sky_orbit_file_upload":
 
 
 
+
+
+
+
+
+
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import re
+import os
+
+import streamlit as st
+import pandas as pd
+import os
+
+# 1. SKY RETAIL PAGE — SHOW BUTTON HERE ONLY
+if st.session_state.screen == "sky_retail":
+    
+    if st.button("📁 View Sky Retail Files"):
+        st.session_state.screen = "sky_retail_files"
+        st.rerun()
+
+# 2. SKY RETAIL FILE VIEWER PAGE
+if st.session_state.screen == "sky_retail_files":
+    st.header("📂 Sky Retail File Viewer")
+
+    folder = "Sky Retail"
+    excel_files = [f for f in os.listdir(folder) if f.endswith('.xlsx')]
+
+    if not excel_files:
+        st.info("No Sky Retail files found in the folder.")
+    else:
+        selected_file = st.selectbox("Select a Sky Retail file to view:", excel_files)
+        if st.button("Open File"):
+            file_path = os.path.join(folder, selected_file)
+            df = pd.read_excel(file_path)
+            st.dataframe(df)
+
+            # --- File summary ---
+            df.columns = df.columns.str.strip().str.lower()
+            status_col = "store status"
+            stakeholder_col = "stakeholder"
+            total_open = (df[status_col].str.lower() == "open").sum()
+            total_closed = (df[status_col].str.lower() == "closed").sum()
+            total_currys = (df[stakeholder_col].str.lower() == "curry's").sum()
+            total_sky = (df[stakeholder_col].str.lower() == "sky retail").sum()
+            total_ee = (df[stakeholder_col].str.lower() == "ee store").sum()
+
+            st.markdown("### 📝 File Summary")
+            st.markdown(f"""
+            - **Total Open Stores:** {total_open}
+            - **Total Closed Stores:** {total_closed}
+            - **Total Currys Stores:** {total_currys}
+            - **Total Sky Retail Stores:** {total_sky}
+            - **Total EE Stores:** {total_ee}
+            """)
+
+    # Add a "Back" button!
+    if st.button("⬅️ Back to Sky Retail"):
+        st.session_state.screen = "sky_retail"
+        st.rerun()
+
+
+
+
 
 if st.session_state.screen == "sky_retail":
     st.title("Sky Retail")
@@ -911,6 +2162,17 @@ if st.session_state.screen == "sky_retail":
                 with col6:
                     pass  # Empty column for spacing
 
+                
+                st.markdown("**Monthly Visits (last 4 months shown)**")
+                from st_aggrid import AgGrid, GridOptionsBuilder
+
+                def show_aggrid(df, height=300):
+                    gb = GridOptionsBuilder.from_dataframe(df)
+                    gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=10)
+                    gb.configure_default_column(editable=False, filter=True, sortable=True)
+                    grid_options = gb.build()
+                    AgGrid(df, gridOptions=grid_options, height=height, fit_columns_on_grid_load=True)
+                
                 # Monthly Visits table
                 monthly_visits = (
                     df.groupby(df["Date"].dt.to_period("M").astype(str))
@@ -919,7 +2181,8 @@ if st.session_state.screen == "sky_retail":
                       .rename(columns={"Date": "Month"})
                 )
                 st.markdown("**Monthly Visits (last 4 months shown)**")
-                st.dataframe(monthly_visits.tail(4), use_container_width=True)
+                show_aggrid(monthly_visits.tail(4))
+
 
                 # Monthly Total Value table with £ formatting
                 monthly_value = (
@@ -930,7 +2193,7 @@ if st.session_state.screen == "sky_retail":
                 )
                 monthly_value["Total Value"] = monthly_value["Total Value"].map("£{0:,.0f}".format)
                 st.markdown("**Monthly Total Value (£) (last 4 months shown)**")
-                st.dataframe(monthly_value.tail(4), use_container_width=True)
+                show_aggrid(monthly_value.tail(4))
 
                 # Visits by Day of Week table ordered Monday to Sunday
                 df["DayOfWeek"] = df["Date"].dt.day_name()
@@ -943,7 +2206,7 @@ if st.session_state.screen == "sky_retail":
                 visits_by_day["DayOfWeek"] = pd.Categorical(visits_by_day["DayOfWeek"], categories=day_order, ordered=True)
                 visits_by_day = visits_by_day.sort_values("DayOfWeek")
                 st.markdown("**Visits by Day of Week**")
-                st.dataframe(visits_by_day, use_container_width=True)
+                show_aggrid(visits_by_day)
 
                 # Total Value by Day of Week with £ formatting
                 value_by_day = (
@@ -955,9 +2218,9 @@ if st.session_state.screen == "sky_retail":
                 value_by_day = value_by_day.sort_values("DayOfWeek")
                 value_by_day["Total Value"] = value_by_day["Total Value"].map("£{0:,.0f}".format)
                 st.markdown("**Total Value (£) by Day of Week**")
-                st.dataframe(value_by_day, use_container_width=True)
+                show_aggrid(value_by_day)
 
-
+                
 
 
 
@@ -3190,6 +4453,8 @@ file_map = {
     "Productivity Report": "Productivity Report.xlsx",
 }
 
+
+
 #------------------NEW BLOCK 17---------------------#
 
 import streamlit as st
@@ -3248,6 +4513,15 @@ if st.session_state.get("screen") == "operational_area":
     section = st.session_state.get("op_area_section", "engineer")
 
     # ---- ENGINEER SECTION ----
+    from st_aggrid import AgGrid, GridOptionsBuilder
+
+    def show_aggrid(df, height=300):
+        gb = GridOptionsBuilder.from_dataframe(df)
+        gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=10)
+        gb.configure_default_column(editable=False, filter=True, sortable=True)
+        grid_options = gb.build()
+        AgGrid(df, gridOptions=grid_options, height=height, fit_columns_on_grid_load=True)
+        
     if section == "engineer":
         st.title("Engineer Dashboard (All Oracle Data)")
         st.subheader("All Engineers & Visit Counts")
@@ -4260,25 +5534,7 @@ if st.session_state.get("screen") == "operational_area":
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
 
 
 
@@ -4286,15 +5542,31 @@ if st.session_state.get("screen") == "operational_area":
 
 # --- NUMBER 8 ---#
 # --- SECTION: DASHBOARD AREA – Dataset Grid Selection ---
+from streamlit_lottie import st_lottie
+import requests
+
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
 if st.session_state.screen == "dashboard":
 
-    # --- Back to Area Selection (Main Menu) ---
+    # Back to Area Selection (Main Menu)
     if st.button("⬅️ Back to Main Menu", use_container_width=True):
         st.session_state.screen = "area_selection"
         st.rerun()
 
     st.markdown("## 📁 Select a Dataset to Explore", unsafe_allow_html=True)
     st.markdown("Choose one of the available datasets below to enter its dashboard:")
+
+    # Show animation if no dataset selected yet
+    if st.session_state.get("selected_dataset") is None:
+        lottie_url = "https://assets9.lottiefiles.com/packages/lf20_jcikwtux.json"  # example loading animation
+        lottie_json = load_lottieurl(lottie_url)
+        if lottie_json:
+            st_lottie(lottie_json, height=300, width=300)
 
     dataset_buttons = {
         "AI Test SB Visits": "📘 AI Test SB Visits",
@@ -4321,6 +5593,7 @@ if st.session_state.screen == "dashboard":
         i += 1
 
 
+
 # --- NUMBER 9 ----------------------------------------------------------
 # --- SECTION: SIDEBAR FILTERS & DATA LOADING ---------------------------
 
@@ -4337,11 +5610,13 @@ else:
     # ------------------------------------------------------------------
 
     # ⛔ Only check for dataset if we're NOT on the suggestion screen
-    if st.session_state.get("screen") != "suggestions":
+  # Only check for dataset if we're NOT on suggestions or Instructions screens
+    if st.session_state.get("screen") not in ["suggestions", "instruction_guide"]:
         file_choice = st.session_state.get("selected_dataset")
         if file_choice is None:
             st.info("👈 Pick a dataset first, then filters will appear here.")
             st.stop()
+
 
 
  # 1️⃣ Load the file (only once thanks to @st.cache_data in load_file)
@@ -4431,7 +5706,21 @@ import base64
 if st.session_state.get("screen") == "dashboard_view":
 
     # Grab the filtered dataframe prepared in Block 8
-    filtered_data = st.session_state.get("filtered_data", pd.DataFrame())
+    selected_dataset = st.session_state.get("selected_dataset", None)
+    if selected_dataset is None:
+        st.info("Please select a dataset first.")
+        st.stop()
+
+    # Load the dataframe fresh for the selected dataset
+    file_path = file_map.get(selected_dataset)
+    df = load_file(file_path)
+    if df.empty:
+        st.warning(f"No data found for dataset: {selected_dataset}")
+        st.stop()
+
+    # Optionally, you can apply your existing sidebar filters here if needed
+
+    filtered_data = df.copy()
 
     # ------------- Page title -------------
     st.title("📊 Visit Intelligence Dashboard")
@@ -5447,9 +6736,12 @@ if (
         return df_oracle
 
     # Load data only here inside block 14
-    df_oracle = load_all_data()
+    with st.spinner("Loading Oracle data, please wait..."):
+        df_oracle = load_all_data()
+
     selected_dataset = st.session_state.get("selected_dataset")
 
+# Map full dataset name to team label used in df_oracle["Team"]
     dataset_to_team = {
         "VIP South Oracle Data": "VIP South",
         "VIP North Oracle Data": "VIP North",
@@ -5462,8 +6754,8 @@ if (
         df_oracle = df_oracle[df_oracle["Team"] == team_name]
 
 
+
     # Now you can safely use df_oracle below in Block 14 only
-	
 
     # ---------------- Load & Clean ----------------
     df = df_oracle.copy()
@@ -5805,14 +7097,15 @@ if (
 
 
 
-# --- NUMBER 16 ------------------------------------------------------------
-# --- SECTION: Operational AI Chat Assistant -------------------------------
-# Appears when the user clicks **🤖 Operational AI Area** on the main menu
+import datetime
+import os
+import pandas as pd
+import streamlit as st
 
 # ── 1. Horizontal uploader and chat input (inline layout) ─────
 if st.session_state.get("screen") == "ai":
 
-    # Inline CSS for horizontal layout
+    # Inject combined CSS for uploader layout and chat bubbles
     st.markdown(
         """
         <style>
@@ -5825,6 +7118,30 @@ if st.session_state.get("screen") == "ai":
         .upload-chat-row > div {
             flex: 1;
         }
+
+        /* Chat bubble styles */
+        .user-msg {
+            background-color: #4c6ef5;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px 20px 0 20px;
+            max-width: 70%;
+            margin-left: auto;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .assistant-msg {
+            background-color: #e9ecef;
+            color: #343a40;
+            padding: 12px 20px;
+            border-radius: 20px 20px 20px 0;
+            max-width: 70%;
+            margin-right: auto;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 400;
+        }
         </style>
         """,
         unsafe_allow_html=True
@@ -5832,13 +7149,9 @@ if st.session_state.get("screen") == "ai":
 
 
 
-# Ensure these keys always exist so later code never KeyErrors
-st.session_state.setdefault("user_df", None)
-st.session_state.setdefault("user_file_name", None)
-
 
 # Section 3 of Block 16 #
-if st.session_state.screen == "ai":
+if st.session_state.get("screen") == "ai":
     # ---------- Navigation ----------
     if st.button("⬅️ Back to Main Menu", use_container_width=True, key="back_ai_16"):
         st.session_state.screen = "area_selection"
@@ -5857,42 +7170,64 @@ if st.session_state.screen == "ai":
     # Button to clear chat screen
     if st.button("Clear Chat Screen"):
         st.session_state.ai_chat = []  # Clears visible chat messages only
-        st.rerun()        # Refresh the page to clear UI
+        st.rerun()  # Refresh the page to clear UI
 
-    # Then below this, render the chat messages as usual:
-    for msg in st.session_state.ai_chat:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"], unsafe_allow_html=True)
+    # Render chat messages from session state with timestamps
+    for msg in st.session_state.get("ai_chat", []):
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        timestamp = msg.get("timestamp", None)
+
+        if timestamp:
+            try:
+                ts_str = datetime.datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M")
+            except Exception:
+                ts_str = ""
+        else:
+            ts_str = ""
+
+        if role == "user":
+            st.markdown(f'''
+                <div class="user-msg">
+                    👤 {content}
+                    <div style="font-size: 0.7rem; color: #ccc; text-align: right;">{ts_str}</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        else:
+            st.markdown(f'''
+                <div class="assistant-msg">
+                    🤖 {content}
+                    <div style="font-size: 0.7rem; color: #aaa; text-align: left;">{ts_str}</div>
+                </div>
+            ''', unsafe_allow_html=True)
 
     # Show chat logs if toggled
     if st.session_state.get("show_logs", False):
         password = st.text_input("Enter admin password to view logs:", type="password")
-        if password == "AI Chat":  # Change this to your secret password
-            st.success("Access granted to chat logs 📊")
-            import os
-            import pandas as pd
-
-            log_file_path = os.path.join(os.getcwd(), "chat_logs.csv")
-            if os.path.exists(log_file_path):
-                logs_df = pd.read_csv(log_file_path, parse_dates=["timestamp"], on_bad_lines='skip')
-                if logs_df.empty:
-                    st.warning("No chat logs found!")
+        
+        if password:
+            if password == "AI Chat":  # Change to your secure password
+                st.success("Access granted to chat logs 📊")
+                log_file_path = os.path.join(os.getcwd(), "chat_logs.csv")
+                if os.path.exists(log_file_path):
+                    logs_df = pd.read_csv(log_file_path, parse_dates=["timestamp"], on_bad_lines='skip')
+                    if logs_df.empty:
+                        st.warning("No chat logs found!")
+                    else:
+                        st.dataframe(logs_df)
                 else:
-                    st.dataframe(logs_df)
+                    st.warning("No chat logs file found!")
             else:
-                st.warning("No chat logs file found!")
-        elif password:
-            st.error("Incorrect password. Access denied.")
+                st.error("Incorrect password. Access denied.")
 
 
 
-# Section 4 of Block 16
-import os
-import pandas as pd
-import streamlit as st
+
+# --- Section 4 of Block 16: Data Loading & Agent Setup ---
+
 from langchain_openai import ChatOpenAI
 from langchain.agents.agent_types import AgentType
-from langchain_experimental.agents import create_pandas_dataframe_agent  # make sure this is imported
+from langchain_experimental.agents import create_pandas_dataframe_agent
 
 @st.cache_data(show_spinner=False)
 def load_all_data():
@@ -5935,33 +7270,37 @@ def load_all_data():
 
     return df_oracle
 
-# Load Oracle data (only once per session)
-df_oracle = load_all_data()
+# Load Oracle data (cache-enabled)
+with st.spinner("Loading Oracle data, please wait..."):
+    df_oracle = load_all_data()
+
 
 if df_oracle.empty:
     st.warning("No Oracle data loaded.")
     st.stop()
 
-# Use uploaded file if exists, else default to df_oracle
+# Use uploaded file if available, else default to df_oracle
 user_df = st.session_state.get("user_df", None)
 default_df = user_df if user_df is not None else df_oracle
 
-# Setup LangChain LLM agent with streaming
-llm_stream = ChatOpenAI(
-    api_key=st.secrets["openai"]["api_key"],
-    model_name="gpt-4o-mini",
-    streaming=True,
-)
+# Setup LangChain streaming LLM agent once per session
+if "df_agent" not in st.session_state:
+    llm_stream = ChatOpenAI(
+        api_key=st.secrets["openai"]["api_key"],
+        model_name="gpt-4o-mini",
+        streaming=True,
+    )
+    st.session_state.df_agent = create_pandas_dataframe_agent(
+        llm=llm_stream,
+        df=default_df,
+        verbose=False,
+        agent_type=AgentType.OPENAI_FUNCTIONS,
+        allow_dangerous_code=True,
+    )
 
-df_agent = create_pandas_dataframe_agent(
-    llm=llm_stream,
-    df=default_df,
-    verbose=False,
-    agent_type=AgentType.OPENAI_FUNCTIONS,
-    allow_dangerous_code=True,
-)
+df_agent = st.session_state.df_agent
 
-# Optional debugging info (uncomment if needed)
+# Optional debugging info (uncomment to enable)
 # df_map = {"df_oracle": df_oracle}
 # if user_df is not None:
 #     df_map["uploaded"] = user_df
@@ -5978,25 +7317,23 @@ df_agent = create_pandas_dataframe_agent(
 
 
 
-# Section 5 of Block 16
 
-# (Imports already done at the top, no need to re-import)
-# from langchain.agents.agent_types import AgentType
-# from langchain_openai import ChatOpenAI
-# from openai import OpenAI
+# --- Section 5 of Block 16: Data Filtering Helper ---
 
 def filter_zero_values(df: pd.DataFrame, query: str) -> pd.DataFrame:
     qlc = query.lower()
-    
+
     # If user explicitly asks about zeros or similar, return full dataframe without filtering
     if any(keyword in qlc for keyword in ["0 entries", "zero counts", "show zero", "count zero", "how many zero"]):
         return df
 
     df_filtered = df.copy()
 
-    # Exclude invalid postcodes like "0", empty or nan values
+    # Exclude invalid postcodes like "0", empty, or nan values
     if "Postcode" in df_filtered.columns:
-        df_filtered = df_filtered[~df_filtered["Postcode"].astype(str).str.strip().isin(["0", "", "nan", "None"])]
+        df_filtered = df_filtered[
+            ~df_filtered["Postcode"].astype(str).str.strip().isin(["0", "", "nan", "None"])
+        ]
 
     # Columns to filter out zero or missing numeric values (customize as needed)
     numeric_cols = ["Visit Count", "Total Time", "Total Value", "Total Cost Inc Travel"]
@@ -6004,19 +7341,23 @@ def filter_zero_values(df: pd.DataFrame, query: str) -> pd.DataFrame:
 
     for col in numeric_cols:
         if col in df_filtered.columns:
-            df_filtered = df_filtered[~((df_filtered[col] == 0) | (df_filtered[col].isna()))]
+            df_filtered = df_filtered[
+                ~((df_filtered[col] == 0) | (df_filtered[col].isna()))
+            ]
 
     for col in time_cols:
         if col in df_filtered.columns:
-            # Filter rows where time duration is zero or formatted as '00:00'
-            df_filtered = df_filtered[~((df_filtered[col] == pd.Timedelta(0)) | (df_filtered[col].astype(str).str.startswith("00:00")))]
+            df_filtered = df_filtered[
+                ~((df_filtered[col] == pd.Timedelta(0)) | df_filtered[col].astype(str).str.startswith("00:00"))
+            ]
 
     return df_filtered
 
+
 # --- Section 6 of Block 16 -----------------------
 
+# Define aliases to map user-friendly terms to actual dataframe columns
 ALIASES = {
-    # Oracle column aliases
     "activate time": "Activate",
     "activate": "Activate",
     "deactivate time": "Deactivate",
@@ -6031,8 +7372,7 @@ ALIASES = {
     "stakeholder": "Sky Retail Stakeholder",
 }
 
-# --- Quick keyword map for common shorthand ----------------------
-
+# Quick keyword to canonical column mapping
 KEYWORDS = {
     "stakeholder": "Sky Retail Stakeholder",
     "engineer": "Name" if "Name" in df_oracle.columns else "Engineer",
@@ -6052,27 +7392,25 @@ def alias(text: str) -> str:
         t = t.replace(k, v)
     return t
 
-# --- Create the streaming OpenAI chat model ----------------------
-
+# Setup LangChain streaming OpenAI model
 llm_stream = ChatOpenAI(
     api_key=st.secrets["openai"]["api_key"],
     model_name="gpt-4o-mini",
     streaming=True,
 )
 
-# --- Build the pandas-agent on that dataframe --------------------
-
+# Create LangChain pandas dataframe agent
 df_agent = create_pandas_dataframe_agent(
     llm=llm_stream,
     df=default_df,
     verbose=False,
     agent_type=AgentType.OPENAI_FUNCTIONS,
-    allow_dangerous_code=True,  # required by recent langchain versions
+    allow_dangerous_code=True,
 )
 
-# --- Fallback non-LangChain streaming client --------------------
-
+# Fallback OpenAI client (non-LangChain streaming)
 fallback_client = OpenAI(api_key=st.secrets["openai"]["api_key"]).chat.completions
+
 
 
 
@@ -6100,14 +7438,81 @@ if "user_file_name" not in st.session_state:
 # ──────────────────────────────────────────────────────────────────────
 # 5⃣  CHAT HISTORY UI
 # ──────────────────────────────────────────────────────────────────────
+import datetime
+
+# Initialize chat state if not present
 if "ai_chat" not in st.session_state:
     st.session_state.ai_chat = []
 if "ai" not in st.session_state:
     st.session_state.ai = True
 
+# Inject CSS for chat bubbles (you can put this in your main CSS section too)
+st.markdown(
+    """
+    <style>
+    .user-msg {
+        background-color: #4c6ef5;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 20px 20px 0 20px;
+        max-width: 70%;
+        margin-left: auto;
+        margin-bottom: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .assistant-msg {
+        background-color: #e9ecef;
+        color: #343a40;
+        padding: 12px 20px;
+        border-radius: 20px 20px 20px 0;
+        max-width: 70%;
+        margin-right: auto;
+        margin-bottom: 10px;
+        font-size: 1rem;
+        font-weight: 400;
+    }
+    .timestamp {
+        font-size: 0.7rem;
+        color: #888;
+        margin-top: 4px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Render chat messages with timestamps and bubbles
 for msg in st.session_state.ai_chat:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"], unsafe_allow_html=True)
+    role = msg.get("role", "assistant")
+    content = msg.get("content", "")
+    timestamp = msg.get("timestamp", None)
+    if timestamp:
+        ts_str = datetime.datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M")
+    else:
+        ts_str = ""
+
+    if role == "user":
+        st.markdown(
+            f'''
+            <div class="user-msg">
+                👤 {content}
+                <div class="timestamp" style="text-align: right;">{ts_str}</div>
+            </div>
+            ''',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f'''
+            <div class="assistant-msg">
+                🤖 {content}
+                <div class="timestamp" style="text-align: left;">{ts_str}</div>
+            </div>
+            ''',
+            unsafe_allow_html=True,
+        )
+
 
 # ──────────────────────────────────────────────────────────────────────
 # 6⃣  CHART-TYPE PICKER (RULE-BASED)  ← ***FIXED***
@@ -6493,8 +7898,14 @@ if st.session_state.get("screen") == "ai":
     df_for_ai = filter_zero_values(df_for_ai_raw, user_q)
     default_df = df_for_ai
 
-    # Log user question
-    st.session_state.ai_chat.append({"role": "user", "content": user_q})
+    import datetime
+
+    # Log user question with timestamp
+    st.session_state.ai_chat.append({
+        "role": "user",
+        "content": user_q,
+        "timestamp": datetime.datetime.now().isoformat()
+    })
     with st.chat_message("user"):
         st.markdown(user_q)
 
@@ -6515,8 +7926,13 @@ if st.session_state.get("screen") == "ai":
             answer = "Sorry, unable to calculate total cost for that query."
         with st.chat_message("assistant"):
             st.markdown(answer)
-        st.session_state.ai_chat.append({"role": "assistant", "content": answer})
+        st.session_state.ai_chat.append({
+            "role": "assistant",
+            "content": answer,
+            "timestamp": datetime.datetime.now().isoformat()
+        })
         handled_manually = True
+
 
     elif "top postcodes by total value" in user_q.lower():
         filtered_df = filter_zero_values(default_df, user_q)
@@ -6687,6 +8103,57 @@ if st.session_state.get("screen") == "ai":
     render_value_forecast(user_q, df_for_ai)
 
 
+elif st.session_state.screen == "budget":
+    import pandas as pd  # move this to the top if you prefer
+
+    # — Budget Header —
+    st.markdown(
+        """
+        <div style="text-align:center; margin-top:2em;">
+          <span style="
+            font-size:3em; font-weight:bold; color:#62d2a2;
+            background:#f2f2f2; border-radius:20px;
+            padding:30px 60px; box-shadow:0 4px 24px #62d2a244;">
+            💷 Budget Remaining: <span style="color:#1d3557">£275,000</span>
+          </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # — Section breakdown cards —
+    sections = [
+        ("Sky Retail",   67000),
+        ("Sky Business", 51000),
+        ("Sky VIP",      42000),
+        ("Tier 2",       35000),
+    ]
+    pastel = ["#a0c4ff", "#b9fbc0", "#ffd6a5", "#ffd6e0"]
+    cols = st.columns(len(sections))
+    for i, (name, spent) in enumerate(sections):
+        with cols[i]:
+            st.markdown(f"""
+                <div style="
+                  background:{pastel[i]}; border-radius:15px;
+                  padding:20px; text-align:center;
+                  box-shadow:0 2px 12px {pastel[i]}77;">
+                  <span style="font-size:1.5em; font-weight:bold;">
+                    {name}
+                  </span><br>
+                  <span style="font-size:2em; color:#222;">
+                    £{spent:,.0f}
+                  </span>
+                </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # — Back button —
+    if st.button("⬅️ Back to Dashboard"):
+        st.session_state.screen = "dashboard"
+
+        
 
 
 
