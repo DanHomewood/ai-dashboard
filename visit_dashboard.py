@@ -644,18 +644,41 @@ if st.session_state.screen == "instruction_guide":
                             f'<div class="card-content">{sections[idx]["content"]}</div>', 
                             unsafe_allow_html=True
                         )
+    # ——— Darken Important Notes text ———
+st.markdown("""
+<style>
+.section-header {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2c2c2c !important;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+.important-notes {
+  color: #333333 !important;      /* deep charcoal */
+  font-weight: 500 !important;     /* medium weight */
+  line-height: 1.6 !important;
+  padding-left: 1rem;
+}
+.important-notes li {
+  margin-bottom: 0.5rem;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    # --- Important Notes Section (unchanged) ---
-    st.markdown('<div class="section-header">Important Notes</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <ul class="important-notes">
-    <li>All data and views refresh on app start and can be filtered dynamically.</li>
-    <li>Forecasts use simple linear trends based on recent months.</li>
-    <li>Some KPIs or tables depend on available columns—if data is missing, you’ll see warnings.</li>
-    <li>Uploading your own file replaces the default Oracle data for analysis.</li>
-    <li>Time-related metrics require valid time columns and are calculated carefully.</li>
-    </ul>
-    """, unsafe_allow_html=True)
+# ——— Important Notes Section ———
+st.markdown('<div class="section-header">Important Notes</div>', unsafe_allow_html=True)
+st.markdown("""
+<ul class="important-notes">
+  <li>All data and views refresh on app start and can be filtered dynamically.</li>
+  <li>Forecasts use simple linear trends based on recent months.</li>
+  <li>Some KPIs or tables depend on available columns—if data is missing, you’ll see warnings.</li>
+  <li>Uploading your own file replaces the default Oracle data for analysis.</li>
+  <li>Time-related metrics require valid time columns and are calculated carefully.</li>
+</ul>
+""", unsafe_allow_html=True)
+
+
 
 
 
