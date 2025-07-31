@@ -732,8 +732,7 @@ elif st.session_state.screen == "budget":
     if "override_alloc" not in st.session_state:
         st.session_state.override_alloc = False
 
-    import os
-    import pandas as pd
+
         # —————— ADMIN AUTH ——————
     ADMIN_PW = "Dan"  # change this to something safe!
     if "is_admin" not in st.session_state:
@@ -748,7 +747,6 @@ elif st.session_state.screen == "budget":
 
     # -- Local constants for this screen --
     TOTAL_BUDGET = 280_000
-    BUDGET_FILE  = "budgets.csv"
     EXPENSE_FILE = "expenses.csv"
 
     # -- Header & total budget --
@@ -761,18 +759,17 @@ elif st.session_state.screen == "budget":
 
     # -- Load or seed budgets --
     if "budgets_df" not in st.session_state:
-        if os.path.exists(BUDGET_FILE):
-            st.session_state.budgets_df = pd.read_csv(BUDGET_FILE, index_col=0)
-        else:
-            init = {
-                "Area": ["Sky Retail", "Sky Business", "Sky VIP", "Tier 2"],
-                "Allocated": [70000, 70000, 70000, 70000]
-            }
-            df_init = pd.DataFrame(init).set_index("Area")
-            df_init.to_csv(BUDGET_FILE)
-            st.session_state.budgets_df = df_init
+        with db.get_conn() as conn:
+            budgets_df = pd.read_sql(
+                "SELECT area AS Area, allocated AS Allocated FROM budgets",
+                conn,
+                index_col="Area"
+            )
+        st.session_state.budgets_df = budgets_df
+
     budgets_df = st.session_state.budgets_df.copy()
 
+    
     # -- Ensure the full expense CSV exists / load it --
     if not os.path.exists(EXPENSE_FILE):
         pd.DataFrame(columns=["Name","Date","Area","Description","Amount"])\
@@ -874,9 +871,17 @@ elif st.session_state.screen == "budget":
                 if c4.button("+", key=f"inc_{area}"):
                     alloc_df.at[area, "Allocated"] += 1_000; updated = True
             if updated:
-                st.session_state.budgets_df["Allocated"] = alloc_df["Allocated"]
-                st.session_state.budgets_df.to_csv(BUDGET_FILE)
+                # Persist each allocation change back into our SQLite table
+                with db.get_conn() as conn:
+                    for area, alloc in alloc_df["Allocated"].items():
+                        conn.execute(
+                            "UPDATE budgets SET allocated = ? WHERE area = ?",
+                            (int(alloc), area)
+                        )
+                # Refresh session state so the UI picks up the new values
+                st.session_state.budgets_df = alloc_df
                 st.rerun()
+
 
         # 2.2) Donut chart
         with st.expander("🍩 Allocation Breakdown", expanded=False):
