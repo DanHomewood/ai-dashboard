@@ -771,10 +771,21 @@ elif st.session_state.screen == "budget":
 
     
     # -- Ensure the full expense CSV exists / load it --
-    if not os.path.exists(EXPENSE_FILE):
-        pd.DataFrame(columns=["Name","Date","Area","Description","Amount"])\
-          .to_csv(EXPENSE_FILE, index=False)
-    full_exp = pd.read_csv(EXPENSE_FILE, parse_dates=["Date"])
+        # -- Load expenses from SQLite --
+    with db.get_conn() as conn:
+        full_exp = pd.read_sql(
+            "SELECT * FROM expenses",
+            conn,
+            parse_dates=["date"]
+        )
+    # Rename columns so downstream code is unchanged
+    full_exp = full_exp.rename(columns={
+        "name":        "Name",
+        "date":        "Date",
+        "area":        "Area",
+        "description": "Description",
+        "amount":      "Amount"
+    })
 
     # -- Initialize the "current" display log if needed --
     if "current_exp" not in st.session_state:
@@ -928,8 +939,7 @@ elif st.session_state.screen == "budget":
             if st.form_submit_button("Add Entry"):
                 new = {"Name": name, "Date": date, "Area": stakeholder,
                     "Description": desc, "Amount": amount}
-                full_exp = pd.concat([full_exp, pd.DataFrame([new])], ignore_index=True)
-                full_exp.to_csv(EXPENSE_FILE, index=False)
+                db.add_expense(new)
                 st.session_state.current_exp = pd.concat(
                     [st.session_state.current_exp, pd.DataFrame([new])], ignore_index=True
                 )
