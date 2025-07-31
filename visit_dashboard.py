@@ -25,6 +25,29 @@ from collections import defaultdict
 from langchain_community.chat_models import ChatOpenAI
 import pdfplumber
 from st_aggrid import AgGrid, GridOptionsBuilder
+st.markdown("""
+<style>
+/* make all Streamlit buttons dark with bright text */
+.stButton > button {
+  background-color: #1f77b4 !important;  /* your chosen color */
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 0.5em 1em !important;
+  font-weight: 600 !important;
+}
+
+/* optional: hover effect */
+.stButton > button:hover {
+  background-color: #1590e0 !important;
+}
+
+/* style the button container so they don’t look so “boxy” */
+.stButton {
+  margin: 0.5em 0.25em;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 
