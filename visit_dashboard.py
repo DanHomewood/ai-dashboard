@@ -25,29 +25,7 @@ from collections import defaultdict
 from langchain_community.chat_models import ChatOpenAI
 import pdfplumber
 from st_aggrid import AgGrid, GridOptionsBuilder
-st.markdown("""
-<style>
-/* make all Streamlit buttons dark with bright text */
-.stButton > button {
-  background-color: #1f77b4 !important;  /* your chosen color */
-  color: #ffffff !important;
-  border: none !important;
-  border-radius: 6px !important;
-  padding: 0.5em 1em !important;
-  font-weight: 600 !important;
-}
 
-/* optional: hover effect */
-.stButton > button:hover {
-  background-color: #1590e0 !important;
-}
-
-/* style the button container so they don’t look so “boxy” */
-.stButton {
-  margin: 0.5em 0.25em;
-}
-</style>
-""", unsafe_allow_html=True)
 
 
 
@@ -132,13 +110,13 @@ else:
 import streamlit as st
 from datetime import datetime as dt
 
-# --- DARK THEME + CUSTOM STYLES ---
+# --- LIGHT THEME + CUSTOM STYLES ---
 st.markdown("""
 <style>
-/* 🌑 DARK MODE THEME */
+/* 🌕 LIGHT MODE THEME */
 body, .main, .stApp {
-    background-color: #0e1117 !important;
-    color: #e0e0e0 !important;
+    background-color: #ffffff !important;
+    color: #1f1f1f !important;
     font-family: 'Segoe UI', 'Inter', sans-serif;
 }
 
@@ -146,17 +124,17 @@ body, .main, .stApp {
 .stButton > button {
     background: linear-gradient(to right, #007bff, #0051a2) !important;
     color: #ffffff !important;
-    border: none;
-    border-radius: 10px;
-    padding: 0.6rem 1.2rem;
-    font-weight: 600;
-    margin: 0.4rem;
-    box-shadow: 0 0 10px rgba(0,123,255,0.4);
-    transition: 0.3s ease-in-out;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1.2rem !important;
+    font-weight: 600 !important;
+    margin: 0.4rem !important;
+    box-shadow: 0 0 10px rgba(0,123,255,0.4) !important;
+    transition: 0.3s ease-in-out !important;
 }
 .stButton > button:hover {
     background: linear-gradient(to right, #3399ff, #0073e6) !important;
-    box-shadow: 0 0 16px rgba(0,123,255,0.6);
+    box-shadow: 0 0 16px rgba(0,123,255,0.6) !important;
 }
 
 /* 🖼️ FULL WIDTH LOGO */
@@ -174,23 +152,23 @@ body, .main, .stApp {
 
 /* 🧭 HEADINGS */
 h1, h2, h3, h4 {
-    color: #ffffff !important;
+    color: #1f1f1f !important;
     font-weight: 700;
     text-align: center;
     margin-bottom: 1rem;
 }
 
-/* 📦 TEXT + CONTAINERS */
+/* 📦 MARKDOWN & CONTAINERS */
 .stMarkdown, .stText, .stContainer {
     background-color: transparent !important;
-    color: #e0e0e0 !important;
+    color: #1f1f1f !important;
 }
 
 /* ✅ INFO BOX */
 .info-box {
-    background-color: #1f2937;
-    color: #d1d5db;
-    border-left: 4px solid #3b82f6;
+    background-color: #f0f4f8;
+    color: #1f1f1f;
+    border-left: 4px solid #007bff;
     padding: 0.8rem 1.2rem;
     border-radius: 8px;
     margin-top: 2rem;
@@ -205,7 +183,7 @@ h1, h2, h3, h4 {
   100% { width: 0 }
 }
 @keyframes blink {
-  50% { border-color: rgba(255,255,255,0.75); }
+  50% { border-color: rgba(0,0,0,0.75); }
 }
 .login-header-wrapper {
     display: flex;
@@ -217,24 +195,25 @@ h1, h2, h3, h4 {
     display: inline-block;
     font-size: 20px;
     font-weight: 500;
-    border-right: 2px solid rgba(255,255,255,0.75);
+    border-right: 2px solid rgba(0,0,0,0.75);
     white-space: nowrap;
     overflow: hidden;
     width: 32ch;
     animation: typing 6s steps(32, end) infinite, blink 0.75s step-end infinite;
-    color: white;
+    color: #1f1f1f;
     text-align: center;
 }
 
 /* 🧩 SIDEBAR + FOOTER */
 .stSidebar {
-    background-color: #15171e !important;
+    background-color: #f8f9fa !important;
 }
 footer, #MainMenu, header {
     visibility: hidden;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- LOGIN FUNCTION ---
 import streamlit as st
