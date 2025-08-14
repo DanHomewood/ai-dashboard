@@ -1,18 +1,3 @@
-streamlit
-pandas
-plotly
-openpyxl
-matplotlib
-seaborn
-streamlit as st
-pandas as pd
-calendar
-plotly.express as px
-matplotlib.pyplot as plt
-seaborn as sns
-plotly.graph_objects as go
-base64
-numpy as np
 # --- Streamlit core + extensions ---
 streamlit
 streamlit-lottie
@@ -49,6 +34,7 @@ opencv-python
 scikit-learn
 scipy
 statsmodels
+prophet
 
 # --- Web & scraping ---
 requests
@@ -67,4 +53,3 @@ langchain-openai
 langchain-community
 tiktoken
 
-mpl_toolkits.mplot3d import Axes3D
