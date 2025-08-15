@@ -1727,78 +1727,118 @@ def render_team_overview(team_name: str):
     df.columns = df.columns.str.strip()
     cols = set(df.columns)
 
-    # 2) Granularity
-    gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], index=0, horizontal=True)
-    vpv_ts = _value_per_visit_series(df, period=gran)
+	# 2) Month picker (replaces the Daily/Weekly/Monthly radio)
+	# ---------------------------------------------------------
+	# try to find a date column
+	date_candidates = [c for c in df.columns if ("date" in c.lower() or "time" in c.lower())]
+	best_col = None
+	best_non_null = -1
+	for c in date_candidates:
+	    dtc = pd.to_datetime(df[c], errors="coerce", dayfirst=True)
+	    non_null = dtc.notna().sum()
+	    if non_null > best_non_null:
+	        best_non_null = non_null
+	        best_col = c
+	
+	if best_col is None:
+	    st.warning("Could not detect a date column; showing original granularity control.")
+	    gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], index=0, horizontal=True)
+	    view_df = df.copy()
+	else:
+	    df["_dt"] = pd.to_datetime(df[best_col], errors="coerce", dayfirst=True)
+	    # list of available months (Period[M]), latest first
+	    months = pd.PeriodIndex(df["_dt"].dropna().dt.to_period("M")).sort_values()
+	    if months.empty:
+	        st.warning("No valid dates found; showing unfiltered data.")
+	        view_df = df.copy()
+	        gran = "Daily"
+	    else:
+	        # show last up to 12 months; newest first
+	        months = months.unique()
+	        months = months[-12:]  # keep last 12 if many
+	        labels = [m.to_timestamp().strftime("%b %Y") for m in months]
+	        default_idx = len(labels) - 1  # preselect latest
+	        sel_label = st.selectbox("Month", labels, index=default_idx)
+	        sel_period = months[labels.index(sel_label)]
+	
+	        # filter to the selected month and use daily granularity within it
+	        view_df = df[df["_dt"].dt.to_period("M") == sel_period].copy()
+	        gran = "Daily"
+	
+	# from this point on, use view_df instead of df
+	df = view_df
+	df.columns = df.columns.str.strip()
+	cols = set(df.columns)
+	
+	# 3) Core KPIs dict
+	k = team_kpis(df)
+	
+	# 4) Masks & base series
+	comp_m    = _status_mask(df, "Completed")
+	cancel_m  = _status_mask(df, "Cancelled")
+	notdone_m = _status_mask(df, "Not Done")
+	pend_m    = _status_mask(df, "Pending")
+	start_m   = _status_mask(df, "Started")
+	
+	visits_ts     = _series_by_period(df,           period=gran, reducer="count")
+	value_ts      = _series_by_period(df,           period=gran, reducer="sum_num",  col="Total Value") if "Total Value" in cols else [0]
+	comp_ts       = _series_by_period(df[comp_m],   period=gran, reducer="count")
+	cancel_ts     = _series_by_period(df[cancel_m], period=gran, reducer="count")
+	notdone_ts    = _series_by_period(df[notdone_m],period=gran, reducer="count")
+	pend_ts       = _series_by_period(df[pend_m],   period=gran, reducer="count")
+	start_ts      = _series_by_period(df[start_m],  period=gran, reducer="count")
+	active_eng_ts = _series_by_period(df,           period=gran, reducer="nunique", col="Name") if "Name" in cols else [0]
+	
+	# value per visit series (uses same gran within the month)
+	vpv_ts = _value_per_visit_series(df, period=gran)
+	
+	# avg working time & total time
+	if "Total Working Time" in cols:
+	    work_avg_ts = _series_by_period(df, period=gran, reducer="mean_time", col="Total Working Time")
+	    tw_name = "Total Working Time"
+	elif "Total working time" in cols:
+	    work_avg_ts = _series_by_period(df, period=gran, reducer="mean_time", col="Total working time")
+	    tw_name = "Total working time"
+	else:
+	    work_avg_ts = [0]; tw_name = None
+	
+	total_time_ts = _series_by_period(df, period=gran, reducer="sum_time", col="Total Time") if "Total Time" in cols else [0]
+	
+	# lunch avg minutes by period
+	if "Total Time" in cols:
+	    lunch_col = "Total Time"
+	elif "Total Working Time" in cols:
+	    lunch_col = "Total Working Time"
+	elif "Total working time" in cols:
+	    lunch_col = "Total working time"
+	else:
+	    lunch_col = None
+	
+	if "Visit Type" in cols and lunch_col:
+	    lunch_df = df[df["Visit Type"].astype(str).str.contains("Lunch", case=False, na=False)]
+	    if not lunch_df.empty:
+	        lunch_avg_ts = _series_by_period(lunch_df, period=gran, reducer="mean_time", col=lunch_col)
+	        if not any(pd.notna(lunch_avg_ts)):
+	            lunch_avg_ts = [0]
+	    else:
+	        lunch_avg_ts = [0]
+	else:
+	    lunch_avg_ts = [0]
+	
+	# Over/Under 10:25
+	if tw_name:
+	    tw = pd.to_timedelta(df[tw_name].astype(str), errors="coerce")
+	    valid = tw.notna() & (tw > pd.Timedelta(0))
+	    over_df  = df[valid & (tw > THRESHOLD_TWT)]
+	    under_df = df[valid & (tw <= THRESHOLD_TWT)]
+	    over_1025_ts  = _series_by_period(over_df,  period=gran, reducer="count")
+	    under_1025_ts = _series_by_period(under_df, period=gran, reducer="count")
+	else:
+	    over_1025_ts = under_1025_ts = [0]
+	
+	# Overtime
+	ot_title, ot_value, _, overtime_ts = overtime_from_df(df, period=gran)
 
-    # 3) Core KPIs dict
-    k = team_kpis(df)
-
-    # 4) Masks & base series
-    comp_m    = _status_mask(df, "Completed")
-    cancel_m  = _status_mask(df, "Cancelled")
-    notdone_m = _status_mask(df, "Not Done")
-    pend_m    = _status_mask(df, "Pending")
-    start_m   = _status_mask(df, "Started")
-
-    visits_ts      = _series_by_period(df, period=gran, reducer="count")
-    value_ts       = _series_by_period(df, period=gran, reducer="sum_num", col="Total Value") if "Total Value" in cols else [0]
-    comp_ts        = _series_by_period(df[comp_m],   period=gran, reducer="count")
-    cancel_ts      = _series_by_period(df[cancel_m], period=gran, reducer="count")
-    notdone_ts     = _series_by_period(df[notdone_m],period=gran, reducer="count")
-    pend_ts        = _series_by_period(df[pend_m],   period=gran, reducer="count")
-    start_ts       = _series_by_period(df[start_m],  period=gran, reducer="count")
-    active_eng_ts  = _series_by_period(df, period=gran, reducer="nunique", col="Name") if "Name" in cols else [0]
-
-    # avg working time & total time
-    if "Total Working Time" in cols:
-        work_avg_ts = _series_by_period(df, period=gran, reducer="mean_time", col="Total Working Time")
-        tw_name = "Total Working Time"
-    elif "Total working time" in cols:
-        work_avg_ts = _series_by_period(df, period=gran, reducer="mean_time", col="Total working time")
-        tw_name = "Total working time"
-    else:
-        work_avg_ts = [0]; tw_name = None
-
-    total_time_ts = _series_by_period(df, period=gran, reducer="sum_time", col="Total Time") if "Total Time" in cols else [0]
-
-    # lunch avg minutes by period  ✅ use Total Time if present
-    if "Total Time" in cols:
-        lunch_col = "Total Time"
-    elif "Total Working Time" in cols:
-        lunch_col = "Total Working Time"
-    elif "Total working time" in cols:
-        lunch_col = "Total working time"
-    else:
-        lunch_col = None
-
-    if "Visit Type" in cols and lunch_col:
-        lunch_df = df[df["Visit Type"].astype(str).str.contains("Lunch", case=False, na=False)]
-        if not lunch_df.empty:
-            # mean_time converts the timedelta to minutes for the sparkline
-            lunch_avg_ts = _series_by_period(lunch_df, period=gran, reducer="mean_time", col=lunch_col)
-            # guard against all-NaN -> empty line
-            if not any(pd.notna(lunch_avg_ts)):
-                lunch_avg_ts = [0]
-        else:
-            lunch_avg_ts = [0]
-    else:
-        lunch_avg_ts = [0]
-
-
-    # ---------- Over/Under 10:25 ----------
-    if tw_name:
-        tw = pd.to_timedelta(df[tw_name].astype(str), errors="coerce")
-        valid = tw.notna() & (tw > pd.Timedelta(0))               # ignore blanks & 00:00
-        over_df  = df[valid & (tw > THRESHOLD_TWT)]
-        under_df = df[valid & (tw <= THRESHOLD_TWT)]
-        over_1025_ts  = _series_by_period(over_df,  period=gran, reducer="count")
-        under_1025_ts = _series_by_period(under_df, period=gran, reducer="count")
-    else:
-        over_1025_ts = under_1025_ts = [0]
-
-    # ---------- Overtime (use unified helper; ignores blanks & zeros) ----------
-    ot_title, ot_value, _, overtime_ts = overtime_from_df(df, period=gran)
 
 
 
@@ -9052,6 +9092,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
