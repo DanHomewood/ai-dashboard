@@ -1610,35 +1610,47 @@ def _value_per_visit_series(df: pd.DataFrame, period="Daily"):
 
 
 
-# ---------- Card CSS (dark cards with white text) ----------
+# ---------- Card CSS (light cards with dark text) ----------
 st.markdown("""
 <style>
+/* layout/responsiveness */
 .kpi-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:16px; }
-
-/* Dark card so white text is readable */
-.kpi-card {
-  background:#151d2c;
-  border-radius:16px;
-  padding:14px 16px;
-  box-shadow:0 6px 20px rgba(0,0,0,0.25);
-  border:1px solid rgba(255,255,255,0.06);
-}
-
-/* Text colours for dark theme */
-.kpi-top   { font-size:.8rem;  color:#9ec6ff;  margin-bottom:8px; }
-.kpi-title { font-size:1.0rem; font-weight:700; color:#aad4ff;    margin-bottom:6px; }
-.kpi-value { font-size:2.0rem; font-weight:800; color:#ffffff;    line-height:1.1; }
-.kpi-sub   { font-size:.9rem;  color:#bcd4ee;   margin-top:4px; }
-.kpi-footer{ display:flex; justify-content:space-between; margin-top:8px; font-size:.85rem; color:#bcd4ee; }
-.kpi-up    { color:#54e49b; font-weight:700; }
-.kpi-down  { color:#ff8b8b; font-weight:700; }
-.kpi-bar   { height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-top:8px; }
-.kpi-bar > div { height:100%; background:linear-gradient(90deg,#00c6ff,#00e699); }
-
 @media (max-width:1100px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
 @media (max-width:700px) { .kpi-grid{grid-template-columns:1fr;} }
+
+/* light card */
+.kpi-card{
+  background:#ffffff;                 /* white card */
+  color:#111111;                      /* dark text */
+  border-radius:16px;
+  padding:14px 16px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.06);
+  border:1px solid #e5e7eb;           /* light grey border */
+}
+
+/* force everything inside the card to render dark text */
+.kpi-card, .kpi-card * { color:#111111 !important; }
+
+/* text styles */
+.kpi-top   { font-size:.8rem;  color:#6b7280 !important; margin-bottom:8px; }   /* helper text */
+.kpi-title { font-size:1.0rem; font-weight:700; color:#111111 !important; margin-bottom:6px; }
+.kpi-value { font-size:2.0rem; font-weight:800; color:#0f172a !important; line-height:1.1; }
+.kpi-sub   { font-size:.9rem;  color:#6b7280 !important; margin-top:4px; }
+.kpi-footer{ display:flex; justify-content:space-between; margin-top:8px; font-size:.85rem; color:#6b7280 !important; }
+
+/* deltas */
+.kpi-up   { color:#059669 !important; font-weight:700; }  /* green */
+.kpi-down { color:#dc2626 !important; font-weight:700; }  /* red */
+
+/* progress bar on light background */
+.kpi-bar { height:8px; background:#f1f5f9; border-radius:999px; overflow:hidden; margin-top:8px; }
+.kpi-bar > div { height:100%; background:linear-gradient(90deg,#3b82f6,#10b981); }
+
+/* optional: darker labels for radio group (Daily/Weekly/Monthly) */
+[data-baseweb="radio"] label { color:#111111 !important; }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ---------- Tiny sparkline helpers ----------
 def _sparkline(y_vals, color="#22c55e"):
@@ -9040,6 +9052,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
