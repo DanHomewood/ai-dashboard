@@ -52,4 +52,25 @@ langchain-experimental
 langchain-openai
 langchain-community
 tiktoken
+streamlit>=1.36
+requests>=2.31
+pandas>=2.2
+numpy>=1.26
+plotly>=5.22
+matplotlib>=3.8
+seaborn>=0.13
+PyPDF2>=3.0
+pdfplumber>=0.11
+Pillow>=10.3
+openpyxl>=3.1          # for read_excel
+streamlit-aggrid>=0.3.5
+streamlit-lottie>=0.0.5
+statsmodels>=0.14
+openai>=1.40
+langchain>=0.2
+langchain-community>=0.2
+langchain-experimental>=0.0.57
+tiktoken>=0.7
+tzdata>=2024.1         # ensures ZoneInfo has Europe/London on cloud
+
 
