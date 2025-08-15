@@ -1,30 +1,199 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import base64
-import re
-import datetime
+# ===== top of file (replace your lines 1–178 with this) =====
+from __future__ import annotations
+
+# --- core + libs you already use elsewhere in the app ---
 import os
+import re
+import time
+import uuid
+import base64
+import platform
+import pathlib
+from typing import Optional, Dict, Any
+
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (kept for compatibility)
 import plotly.express as px
 import plotly.graph_objects as go
-import time
 import PyPDF2
-import requests
+import pdfplumber
+
+import streamlit as st
+import streamlit.components.v1 as components
+from st_aggrid import AgGrid, GridOptionsBuilder
 from streamlit_lottie import st_lottie
-from datetime import datetime as dt
+
+import requests
+
+# dates/times
+from datetime import datetime, timezone
+from datetime import datetime as dt  # keep alias if you use dt elsewhere
+
+# openai / langchain (kept as in your app)
 from openai import OpenAI, OpenAIError
 from statsmodels.tsa.arima.model import ARIMA
 from langchain_experimental.agents import create_pandas_dataframe_agent
-#from langchain.chat_models import ChatOpenAI
-from langchain.agents.agent_types import AgentType 
+from langchain.agents.agent_types import AgentType
 from langchain.schema import HumanMessage, SystemMessage
 from collections import defaultdict
 from langchain_community.chat_models import ChatOpenAI
-import pdfplumber
-from st_aggrid import AgGrid, GridOptionsBuilder
+
+# ---------- UK timezone setup ----------
+try:
+    # Python 3.9+ stdlib
+    from zoneinfo import ZoneInfo
+    _UK_TZ = ZoneInfo("Europe/London")
+except Exception:
+    # If tz data is missing on Windows, fall back to UTC.
+    # (Optional: pip install tzdata)
+    _UK_TZ = timezone.utc
+
+# ---------- Teams webhook helpers ----------
+def _get_teams_webhook() -> Optional[str]:
+    """
+    Reads the Teams webhook from Streamlit secrets.
+    Supports either:
+      TEAMS_WEBHOOK_URL = "https://..."
+    or:
+      [teams]
+      webhook_url = "https://..."
+    """
+    s = st.secrets
+    # flat key
+    if "TEAMS_WEBHOOK_URL" in s:
+        return str(s["TEAMS_WEBHOOK_URL"]).strip()
+    # table key
+    if "teams" in s:
+        for k in ("webhook_url", "WEBHOOK_URL", "url", "URL"):
+            if k in s["teams"]:
+                return str(s["teams"][k]).strip()
+    return None
+
+def send_to_teams(
+    title: str,
+    text: str,
+    facts: Optional[Dict[str, Any]] = None,
+    button_text: Optional[str] = None,
+    button_url: Optional[str] = None,
+    color: str = "0078D4",
+) -> None:
+    """
+    Generic sender for Teams Incoming Webhook using MessageCard.
+    """
+    url = _get_teams_webhook()
+    if not url:
+        return
+
+    payload: Dict[str, Any] = {
+        "@type": "MessageCard",
+        "@context": "https://schema.org/extensions",
+        "summary": title,
+        "themeColor": color,
+        "title": title,
+        "text": text,
+    }
+
+    if facts:
+        payload.setdefault("sections", []).append({
+            "facts": [{"name": k, "value": str(v)} for k, v in facts.items()],
+            "markdown": True,
+        })
+
+    if button_text and button_url:
+        payload["potentialAction"] = [{
+            "@type": "OpenUri",
+            "name": button_text,
+            "targets": [{"os": "default", "uri": button_url}],
+        }]
+
+    # Raises if Teams rejects it (use try/except where you call it if desired)
+    requests.post(url, json=payload, timeout=10).raise_for_status()
+
+def send_login_card(
+    user_name: str,
+    user_team: Optional[str] = None,
+    tab_url: Optional[str] = None,
+) -> None:
+    """
+    Pretty login notification with UK local time + UTC, session id, and optional button.
+    """
+    url = _get_teams_webhook()
+    if not url:
+        return
+
+    # short, stable session id for the browser session
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())[:8]
+    session_id = st.session_state.session_id
+
+    now_utc = datetime.now(timezone.utc)
+    now_uk  = now_utc.astimezone(_UK_TZ)
+    uk_str  = now_uk.strftime("%A, %d %B %Y at %H:%M %Z")   # e.g., Friday, 15 August 2025 at 10:42 BST
+    utc_str = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+
+    facts = {
+        "User": user_name,
+        "Team": user_team or "—",
+        "Local time": uk_str,
+        "App": "Visit Dashboard",
+    }
+
+    payload: Dict[str, Any] = {
+        "@type": "MessageCard",
+        "@context": "https://schema.org/extensions",
+        "summary": f"Login — {user_name}",
+        "themeColor": "0078D4",
+        "title": "🔐 New login",
+        "text": "A user has signed in.",
+        "sections": [{
+            "activityTitle": f"**{user_name}**",
+            "activitySubtitle": "Visit Dashboard",
+            "facts": [{"name": k, "value": str(v)} for k, v in facts.items()],
+            "markdown": True
+        }]
+    }
+
+    if tab_url:
+        payload["potentialAction"] = [{
+            "@type": "OpenUri",
+            "name": "Open dashboard",
+            "targets": [{"os": "default", "uri": tab_url}],
+        }]
+
+    requests.post(url, json=payload, timeout=10).raise_for_status()
+
+# initialize once-per-session flag (prevents duplicate messages on refresh)
+if "login_notified" not in st.session_state:
+    st.session_state.login_notified = False
+
+# ---------- Optional debug sidebar (toggle on/off) ----------
+DEBUG_TEAMS = False  # set True temporarily if you need to test
+
+if DEBUG_TEAMS:
+    with st.sidebar:
+        st.markdown("**Debug**")
+        st.write("CWD:", os.getcwd())
+        st.write("Local secrets exists:", os.path.exists(os.path.join(os.getcwd(), ".streamlit", "secrets.toml")))
+        st.write("Home secrets exists:", os.path.exists(os.path.join(pathlib.Path.home(), ".streamlit", "secrets.toml")))
+        try:
+            st.write("Secrets keys:", list(st.secrets.keys()))
+        except Exception as e:
+            st.write("Secrets error:", str(e))
+        st.write("Webhook present:", bool(_get_teams_webhook()))
+        if st.button("Send Teams test"):
+            send_to_teams("✅ Test", "Manual test from sidebar")
+            st.success("Sent")
+# ===== end of replacement block =====
+
+
+
+
+
+
+
 import db
 db.init_db()
 
@@ -8295,6 +8464,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
