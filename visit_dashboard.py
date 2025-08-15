@@ -1524,28 +1524,75 @@ def _status_mask(df: pd.DataFrame, keyword: str) -> pd.Series:
         return pd.Series([False]*len(df))
     return df["Activity Status"].astype(str).str.contains(keyword, case=False, na=False)
 
-def _money_to_float(series: pd.Series) -> pd.Series:
-    """'£1,234.50', '(123.45)', '-', '—', '' -> float; blanks -> NaN."""
-    s = series.astype(str)
-    s = s.str.replace("\u00A0", " ", regex=False).str.strip()          # NBSP -> space
-    s = s.replace({"": np.nan, "None": np.nan, "nan": np.nan, "NaN": np.nan, "-": np.nan, "—": np.nan})
-    s = s.str.replace(r"\(([^)]+)\)", r"-\1", regex=True)              # (123.45) -> -123.45
-    s = s.str.replace(r"[£,\s]", "", regex=True)                       # strip currency, commas, spaces
+def _money_to_float(s):
+    """
+    Convert a money-like Series to float.
+    Accepts strings (e.g. '£12,345', '(1,234.50)') and numeric values.
+    Returns a pandas.Series[float].
+    """
+    import pandas as pd
+
+    if s is None:
+        return pd.Series(dtype="float64")
+    if not isinstance(s, pd.Series):
+        s = pd.Series(s)
+
+    # Already numeric? just coerce and return.
+    if pd.api.types.is_numeric_dtype(s):
+        return pd.to_numeric(s, errors="coerce")
+
+    # Ensure string dtype so .str works while keeping <NA>
+    s = s.astype("string")
+
+    # Normalise
+    s = s.str.strip()
+    s = s.str.replace("\u2212", "-", regex=False)                 # Unicode minus → ASCII
+    s = s.str.replace(r"\(([^)]+)\)", r"-\1", regex=True)         # (123.45) → -123.45
+    s = s.str.replace(r"[£$,]", "", regex=True)                   # remove £ $ ,
+    s = s.str.replace(r"[^\d\.\-]", "", regex=True)               # keep digits/.- only
+
     return pd.to_numeric(s, errors="coerce")
 
-def overtime_from_df(df: pd.DataFrame, period="Daily"):
-    """
-    Robustly read df['Overtime'] and return:
-      (title_str, display_value_str, total_float, series_list_for_sparkline)
 
-    - Works for HH:MM / HH:MM:SS / Excel time deltas (treated as HOURS),
-      £1,234.50 style money (treated as POUNDS), or plain numerics.
-    - Blanks/“—”/“-”/zeros are ignored in total and sparkline.
+def overtime_from_df(df, period="Daily"):
     """
-    if "Overtime" not in df.columns or df.empty:
-        return "Overtime total", "N/A", 0.0, [0]
+    Return: (title, formatted_total, source_col_or_None, timeseries_list)
+    Safe when the overtime column is missing or has no values for the month.
+    """
+    import pandas as pd
 
-    s = df["Overtime"].astype(str).str.replace("\u00A0", " ", regex=False).str.strip()
+    title = "Overtime total (£)"
+
+    # Find an overtime column by name (case-insensitive)
+    ot_col = None
+    for c in df.columns:
+        lc = c.lower()
+        if "overtime" in lc:
+            ot_col = c
+            break
+
+    # No overtime column at all → show N/A and flat 0 sparkline
+    if ot_col is None:
+        return title, "—", None, [0]
+
+    # Convert to float; works for strings or numerics
+    s = df[ot_col]
+    money = _money_to_float(s)
+
+    # If nothing usable in this month → N/A + flat 0 sparkline
+    if money.isna().all():
+        return title, "—", ot_col, [0]
+
+    # Build daily/weekly/monthly series on cleaned numeric values
+    ts_df = df.copy()
+    ts_df["__ot"] = money
+    ts = _series_by_period(ts_df[ts_df["__ot"].notna()], period=period, reducer="sum_num", col="__ot")
+
+    total = float(money.sum(skipna=True))
+    formatted = f"£{total:,.0f}"
+
+    return title, formatted, ot_col, ts
+
 
     # 1) Try HOURS first
     td  = pd.to_timedelta(s, errors="coerce")
@@ -9092,6 +9139,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
