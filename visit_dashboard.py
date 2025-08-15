@@ -40,6 +40,12 @@ from langchain.agents.agent_types import AgentType
 from langchain.schema import HumanMessage, SystemMessage
 from collections import defaultdict
 from langchain_community.chat_models import ChatOpenAI
+if st.sidebar.button("Send Teams test (cloud)"):
+    url = (st.secrets.get("TEAMS_WEBHOOK_URL")
+           or st.secrets.get("teams", {}).get("webhook_url"))
+    import requests
+    requests.post(url, json={"text": "✅ Cloud test ping"}, timeout=10).raise_for_status()
+    st.sidebar.success("Sent from Cloud")
 
 # ---------- UK timezone setup ----------
 try:
@@ -8464,6 +8470,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
