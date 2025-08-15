@@ -224,6 +224,9 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "ai_chat" not in st.session_state:
     st.session_state.ai_chat = []
+# ensure defaults exist on first run
+if "selected_team_charts" not in st.session_state:
+    st.session_state.selected_team_charts = []  # default empty selection
 
 
 # --- Load Lottie Animation ---
@@ -8470,6 +8473,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
