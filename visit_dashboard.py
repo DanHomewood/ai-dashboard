@@ -441,9 +441,11 @@ def load_lottie_url(url: str):
     except:
         return None
 
-# --- LOGIN SCREEN FUNCTION ---
-def login_screen_with_animation(logo_base64):
-    lottie = load_lottie_url("https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json")
+# --- LOGIN SCREEN (fires Teams once per successful submit) ---
+def login_screen_with_animation(logo_base64: str):
+    # if already logged in, don't show the login UI again
+    if st.session_state.get("authenticated"):
+        return
 
     # Full-width logo
     st.markdown(f"""
@@ -452,41 +454,50 @@ def login_screen_with_animation(logo_base64):
     </div>
     """, unsafe_allow_html=True)
 
-    # Animated login header
     st.markdown("""
     <div class='login-header-wrapper'>
-      <div class='login-header'>
-        🔐 Login to Visit Insights Dashboard
-      </div>
+      <div class='login-header'>🔐 Login to Visit Insights Dashboard</div>
     </div>
+    <p style='text-align:center;'>Please choose your name to continue.</p>
     """, unsafe_allow_html=True)
 
-    # Subheader
-    st.markdown("<p style='text-align:center;'>Please choose your name to continue.</p>", unsafe_allow_html=True)
+    name_list = list(users.keys())
 
-	# Name dropdown
-	selected_name = st.selectbox("Choose Your Name", ["-- Select --"] + name_list)
-	
-	if selected_name and selected_name != "-- Select --":
-	    if selected_name not in users:
-	        st.error("This user isn't configured.")
-	    else:
-	        password = st.text_input("Enter your password", type="password", key="user_pw")
-	
-	        if password:
-	            if password == users[selected_name]["password"]:
-	                # mark logged in
-	                st.session_state.authenticated = True
-	                st.session_state.username = selected_name
-	
-	                # SEND A CARD EVERY TIME (no throttle)
-	                send_login_card(
-	                    user_name=selected_name,
-	                    user_team=users.get(selected_name, {}).get("team"),
-	                    tab_url="https://teams.microsoft.com/..."  # optional button
-	                )
-	
-	                st.rerun()
+    # Use a form so we only act on explicit submit (prevents repeat sends)
+    with st.form("login_form", clear_on_submit=True):
+        selected_name = st.selectbox("Choose Your Name", ["-- Select --"] + name_list, key="login_name")
+        password = st.text_input("Enter your password", type="password", key="login_pw")
+        submitted = st.form_submit_button("Sign in")
+
+    if not submitted:
+        return  # wait for user to click Sign in
+
+    # --- submitted ---
+    if not selected_name or selected_name == "-- Select --":
+        st.warning("Please select your name.")
+        return
+
+    if selected_name not in users:
+        st.error("This user isn't configured.")
+        return
+
+    if password != users[selected_name]["password"]:
+        st.error("Incorrect password for this user.")
+        return
+
+    # Success: set auth, send card ONCE, then rerun into the app
+    st.session_state.authenticated = True
+    st.session_state.username = selected_name
+
+    # Teams notification (fires once per submit)
+    send_login_card(
+        user_name=selected_name,
+        user_team=users.get(selected_name, {}).get("team"),
+        tab_url=None  # or "https://teams.microsoft.com/..." if you want a button
+    )
+
+    st.rerun()
+
 	            else:
 	                st.error("Incorrect password for this user.")
 	else:
@@ -9214,6 +9225,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
