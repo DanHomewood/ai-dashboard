@@ -498,10 +498,10 @@ def login_screen_with_animation(logo_base64: str):
 
     st.rerun()
 
-	            else:
-	                st.error("Incorrect password for this user.")
-	else:
-	    st.info("Please select your name to proceed.")
+	    else:
+	        st.error("Incorrect password for this user.")
+else:
+	st.info("Please select your name to proceed.")
 
 
     # Optional animation
@@ -9225,6 +9225,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
