@@ -888,7 +888,7 @@ if st.session_state.screen == "instruction_guide":
     
     # 2️⃣ Navigation buttons (side by side + Budget)
     st.markdown("---")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         if st.button("🚀 Take me to the App"):
@@ -904,7 +904,12 @@ if st.session_state.screen == "instruction_guide":
         if st.button("💰 Go to Budget Page"):
             st.session_state.screen    = "budget"
             st.session_state.user_name = "Dan Homewood"  # or real login logic
-
+			
+    with col4:
+        if st.button("📊 Team KPI Overview"):
+            st.session_state.screen = "team_overview"
+            st.rerun()
+			
 elif st.session_state.screen == "budget":
     # 0) Initialize override flag
     if "override_alloc" not in st.session_state:
@@ -1171,40 +1176,6 @@ elif st.session_state.screen == "budget":
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      
-
-
-
-
 # ✅ Optimized Dataset Loading Block
 
 import pandas as pd
@@ -1311,7 +1282,603 @@ def weighted_avg(df, value_col, weight_col):
         return (df.loc[valid, value_col] * df.loc[valid, weight_col]).sum() / df.loc[valid, weight_col].sum()
     except Exception:
         return None
+# --- Your other functions above ---
 
+# ==================================
+# =========================
+# TEAM KPI OVERVIEW (CARDS)
+# =========================
+import pandas as pd, numpy as np
+from pathlib import Path
+import streamlit as st
+import plotly.graph_objects as go
+
+# ---------- Keep/assume these exist earlier ----------
+# combined_oracle_df  -> your combined Oracle dataframe
+
+# ---------- Utilities you already had (keep these) ----------
+DAY_ORDER = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+
+def _to_td(series):
+    s = pd.to_datetime(series.astype(str), errors="coerce") if str(series.dtype) == "datetime64[ns]" else pd.to_timedelta(series.astype(str), errors="coerce")
+    return s[~s.isna()]
+
+def hhmm(td: pd.Timedelta) -> str:
+    secs = int(td.total_seconds()); h = secs // 3600; m = (secs % 3600)//60
+    return f"{h:02}:{m:02}"
+
+def avg_hhmm(series) -> str:
+    t = _to_td(series)
+    return hhmm(t.mean()) if len(t) else "00:00"
+
+def sum_hhmm(series) -> str:
+    t = _to_td(series)
+    return hhmm(t.sum()) if len(t) else "00:00"
+
+def pct(n, d):
+    try: return (n/d*100.0) if d else 0.0
+    except: return 0.0
+
+def last_weeks_trend(df, count_col="__count__"):
+    if "Date" not in df.columns or df.empty: return 0.0
+    x = df.copy()
+    x["Date"] = pd.to_datetime(x["Date"], errors="coerce")
+    x = x.dropna(subset=["Date"])
+    if x.empty: return 0.0
+    x["WeekISO"] = x["Date"].dt.isocalendar().week.astype(int)
+    x["Year"]    = x["Date"].dt.year
+    w = (x.groupby(["Year","WeekISO"]).size().rename(count_col).reset_index())
+    if len(w) < 8: return 0.0
+    recent4 = w.sort_values(["Year","WeekISO"]).tail(4)[count_col].sum()
+    prior4  = w.sort_values(["Year","WeekISO"]).tail(8).head(4)[count_col].sum()
+    return pct(recent4 - prior4, prior4 if prior4 else recent4)
+
+def get_team_df(team_name: str) -> pd.DataFrame:
+    """Return a team dataframe. Prefer the combined DF, but if the Overtime
+    column is missing/empty there, fall back to the team Excel file."""
+    mapping = {
+        "VIP North": "VIP North Oracle Data.xlsx",
+        "VIP South": "VIP South Oracle Data.xlsx",
+        "Tier 2 North": "Tier 2 North Oracle Data.xlsx",
+        "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
+    }
+
+    # 1) Start from combined DF if available
+    if 'Team' in combined_oracle_df.columns:
+        df_team = combined_oracle_df[combined_oracle_df['Team'] == team_name].copy()
+        df_team.columns = df_team.columns.str.replace("\u00A0", " ", regex=False).str.strip()
+
+        # If Overtime is present and not entirely blank, use it
+        if 'Overtime' in df_team.columns and not df_team['Overtime'].astype(str).str.strip().eq("").all():
+            return df_team
+
+        # Otherwise, fall back to the team file (it has the column)
+        path = mapping.get(team_name)
+        if path and Path(path).exists():
+            df_file = pd.read_excel(path)
+            df_file.columns = df_file.columns.str.replace("\u00A0", " ", regex=False).str.strip()
+            df_file['Team'] = team_name
+            return df_file
+
+        # If no file, return what we have
+        return df_team
+
+    # 2) No combined DF: read team file
+    path = mapping.get(team_name)
+    if path and Path(path).exists():
+        df = pd.read_excel(path)
+        df.columns = df.columns.str.replace("\u00A0", " ", regex=False).str.strip()
+        df['Team'] = team_name
+        return df
+
+    return pd.DataFrame()
+
+
+def team_kpis(df: pd.DataFrame) -> dict:
+    cols = df.columns.str.strip()
+    df = df.copy(); df.columns = cols
+
+    total_visits = len(df)
+    status = df["Activity Status"].astype(str) if "Activity Status" in cols else pd.Series([], dtype=str)
+    completed = status.str.contains("Completed", case=False, na=False).sum() if not status.empty else 0
+    cancelled = status.str.contains("Cancelled", case=False, na=False).sum() if not status.empty else 0
+    not_done  = status.str.contains("Not Done",  case=False, na=False).sum() if not status.empty else 0
+    pending   = status.str.contains("Pending",   case=False, na=False).sum() if not status.empty else 0
+    started   = status.str.contains("Started",   case=False, na=False).sum() if not status.empty else 0
+
+    unique_engs = df["Name"].nunique() if "Name" in cols else 0
+
+    # handle column name variants
+    tw_col = "Total Working Time" if "Total Working Time" in cols else ("Total working time" if "Total working time" in cols else None)
+    ot_col = "Overtime" if "Overtime" in cols else None
+
+    total_value = pd.to_numeric(df.get("Total Value", pd.Series(dtype=float)), errors="coerce").sum() if "Total Value" in cols else np.nan
+
+    # time metrics
+    if tw_col:
+        tw = pd.to_timedelta(df[tw_col].astype(str), errors="coerce")
+        valid = tw.notna() & (tw > pd.Timedelta(0))  # ignore blanks & 00:00
+        avg_work  = hhmm(tw[valid].mean()) if valid.any() else "00:00"
+        total_time = hhmm(tw[valid].sum()) if valid.any() else "00:00"
+
+        over_mask  = valid & (tw > THRESHOLD_TWT)
+        under_mask = valid & (tw <= THRESHOLD_TWT)
+        over_1025_count  = int(over_mask.sum())
+        under_1025_count = int(under_mask.sum())
+        over_1025_rate   = pct(over_1025_count, valid.sum())
+        under_1025_rate  = pct(under_1025_count, valid.sum())
+    else:
+        avg_work = total_time = "00:00"
+        over_1025_count = under_1025_count = 0
+        over_1025_rate = under_1025_rate = 0.0
+
+
+    # lunch avg  ✅ use Total Time if present
+    lunch_col = None
+    if "Total Time" in cols:
+        lunch_col = "Total Time"
+    elif "Total Working Time" in cols:
+        lunch_col = "Total Working Time"
+    elif "Total working time" in cols:
+        lunch_col = "Total working time"
+
+    if "Visit Type" in cols and lunch_col:
+        lunch_df = df[df["Visit Type"].astype(str).str.contains("Lunch", case=False, na=False)]
+        td = pd.to_timedelta(lunch_df[lunch_col].astype(str), errors="coerce")
+        td = td[td.notna() & (td > pd.Timedelta(0))]  # ignore blanks/zeros
+        avg_lunch = hhmm(td.mean()) if len(td) else "00:00"
+    else:
+        avg_lunch = "00:00"
+
+
+    # overtime total (works for HH:MM, £, or numeric; ignores blanks & zeros)
+    overtime_total = np.nan
+    if ot_col:
+        raw = df[ot_col].astype(str).str.replace("\u00A0", " ", regex=False).str.strip()
+
+        # Try HOURS first (HH:MM(:SS) / Excel time)
+        td  = pd.to_timedelta(raw, errors="coerce")
+        hrs = td.dt.total_seconds() / 3600.0
+
+        if hrs.notna().any():
+            num = pd.to_numeric(hrs, errors="coerce")             # hours as float
+            kind = "hours"
+        else:
+            # Try MONEY (£1,234.50)
+            cleaned = raw.str.replace(r"\(([^)]+)\)", r"-\1", regex=True) \
+                        .str.replace(r"[£,\s]", "", regex=True)
+            money = pd.to_numeric(cleaned, errors="coerce")
+            if money.notna().any():
+                num = money                                       # pounds as float
+                kind = "money"
+            else:
+                # Fallback: plain numeric -> treat as hours
+                plain = pd.to_numeric(raw, errors="coerce")
+                num = plain
+                kind = "hours"
+
+        valid = num.notna() & (num != 0)
+        overtime_total = float(num[valid].sum()) if valid.any() else 0.0
+
+
+    comp_rate    = pct(completed,  total_visits)
+    cancel_rate  = pct(cancelled,  total_visits)
+    notdone_rate = pct(not_done,   total_visits)
+    trend_visits = last_weeks_trend(df)
+
+    return dict(
+        total_visits=total_visits,
+        completed=completed, cancelled=cancelled, not_done=not_done,
+        pending=pending, started=started,
+        unique_engs=unique_engs,
+        total_value=total_value,
+        avg_work=avg_work, total_time=total_time, avg_lunch=avg_lunch,
+        comp_rate=comp_rate, cancel_rate=cancel_rate, notdone_rate=notdone_rate,
+        over_1025_count=over_1025_count, under_1025_count=under_1025_count,
+        over_1025_rate=over_1025_rate,   under_1025_rate=under_1025_rate,
+        overtime_total=overtime_total,
+        trend_visits=trend_visits
+    )
+
+# ===== Helpers (single source of truth) =====
+import numpy as np
+import pandas as pd
+
+THRESHOLD_TWT = pd.to_timedelta("10:25:00")
+
+def _period_key(dt_series: pd.Series, period: str):
+    if period == "Weekly":
+        return dt_series.dt.to_period("W").apply(lambda p: p.start_time.date())
+    if period == "Monthly":
+        return dt_series.dt.to_period("M").apply(lambda p: p.start_time.date())
+    return dt_series.dt.date
+
+def _series_by_period(df: pd.DataFrame, period="Daily", reducer="count", col=None):
+    if "Date" not in df.columns or df.empty:
+        return [0]
+    x = df.copy()
+    x["Date"] = pd.to_datetime(x["Date"], errors="coerce")
+    x = x.dropna(subset=["Date"])
+    if x.empty:
+        return [0]
+    key = _period_key(x["Date"], period)
+
+    if reducer == "count":
+        s = x.groupby(key).size()
+    elif reducer == "nunique" and col:
+        s = x.groupby(key)[col].nunique()
+    elif reducer == "sum_time" and col:
+        td = pd.to_timedelta(x[col].astype(str), errors="coerce")
+        s = pd.Series(td.values, index=key).groupby(level=0).sum().dt.total_seconds() / 3600.0  # hours
+    elif reducer == "mean_time" and col:
+        td = pd.to_timedelta(x[col].astype(str), errors="coerce")
+        s = pd.Series(td.values, index=key).groupby(level=0).mean().dt.total_seconds() / 60.0   # minutes
+    elif reducer == "sum_num" and col:
+        s = pd.to_numeric(x[col], errors="coerce").groupby(key).sum()
+    else:
+        s = x.groupby(key).size()
+    return s.tail(30).to_list()
+
+def _status_mask(df: pd.DataFrame, keyword: str) -> pd.Series:
+    if "Activity Status" not in df.columns or df.empty:
+        return pd.Series([False]*len(df))
+    return df["Activity Status"].astype(str).str.contains(keyword, case=False, na=False)
+
+def _money_to_float(series: pd.Series) -> pd.Series:
+    """'£1,234.50', '(123.45)', '-', '—', '' -> float; blanks -> NaN."""
+    s = series.astype(str)
+    s = s.str.replace("\u00A0", " ", regex=False).str.strip()          # NBSP -> space
+    s = s.replace({"": np.nan, "None": np.nan, "nan": np.nan, "NaN": np.nan, "-": np.nan, "—": np.nan})
+    s = s.str.replace(r"\(([^)]+)\)", r"-\1", regex=True)              # (123.45) -> -123.45
+    s = s.str.replace(r"[£,\s]", "", regex=True)                       # strip currency, commas, spaces
+    return pd.to_numeric(s, errors="coerce")
+
+def overtime_from_df(df: pd.DataFrame, period="Daily"):
+    """
+    Robustly read df['Overtime'] and return:
+      (title_str, display_value_str, total_float, series_list_for_sparkline)
+
+    - Works for HH:MM / HH:MM:SS / Excel time deltas (treated as HOURS),
+      £1,234.50 style money (treated as POUNDS), or plain numerics.
+    - Blanks/“—”/“-”/zeros are ignored in total and sparkline.
+    """
+    if "Overtime" not in df.columns or df.empty:
+        return "Overtime total", "N/A", 0.0, [0]
+
+    s = df["Overtime"].astype(str).str.replace("\u00A0", " ", regex=False).str.strip()
+
+    # 1) Try HOURS first
+    td  = pd.to_timedelta(s, errors="coerce")
+    hrs = td.dt.total_seconds() / 3600.0
+    if hrs.notna().any():
+        num   = pd.to_numeric(hrs, errors="coerce")            # hours float
+        valid = num.notna() & (num != 0)
+        total = float(num[valid].sum()) if valid.any() else 0.0
+        tmp = df.loc[valid, ["Date"]].copy()
+        tmp["_OT_NUM"] = num[valid]
+        ts  = _series_by_period(tmp, period=period, reducer="sum_num", col="_OT_NUM") if not tmp.empty else [0]
+        return "Overtime total (hours)", (f"{total:.1f}h" if total else "0.0h"), total, ts
+
+    # 2) Try MONEY
+    money = _money_to_float(s)
+    if money.notna().any():
+        num   = money
+        valid = num.notna() & (num != 0)
+        total = float(num[valid].sum()) if valid.any() else 0.0
+        tmp = df.loc[valid, ["Date"]].copy()
+        tmp["_OT_NUM"] = num[valid]
+        ts  = _series_by_period(tmp, period=period, reducer="sum_num", col="_OT_NUM") if not tmp.empty else [0]
+        return "Overtime total (£)", (f"£{total:,.0f}" if total else "£0"), total, ts
+
+    # 3) Fallback: plain numeric -> treat as HOURS
+    plain = pd.to_numeric(s, errors="coerce")
+    if plain.notna().any():
+        num   = plain
+        valid = num.notna() & (num != 0)
+        total = float(num[valid].sum()) if valid.any() else 0.0
+        tmp = df.loc[valid, ["Date"]].copy()
+        tmp["_OT_NUM"] = num[valid]
+        ts  = _series_by_period(tmp, period=period, reducer="sum_num", col="_OT_NUM") if not tmp.empty else [0]
+        return "Overtime total (hours)", (f"{total:.1f}h" if total else "0.0h"), total, ts
+
+    # Nothing parseable
+    return "Overtime total", "N/A", 0.0, [0]
+
+def _value_per_visit_series(df: pd.DataFrame, period="Daily"):
+    """Average Total Value per visit by period (last ~30 points)."""
+    if df.empty or "Date" not in df.columns or "Total Value" not in df.columns:
+        return [0]
+
+    x = df.copy()
+    x["Date"] = pd.to_datetime(x["Date"], errors="coerce")
+    x = x.dropna(subset=["Date"])
+    if x.empty:
+        return [0]
+
+    key = _period_key(x["Date"], period)
+
+    # Sum of value per period
+    val = pd.to_numeric(x["Total Value"], errors="coerce")
+    sum_val = pd.Series(val.values, index=key).groupby(level=0).sum()
+
+    # Count of visits per period
+    cnt = x.groupby(key).size()
+
+    # Average value per visit per period
+    avg = (sum_val / cnt).replace([np.inf, -np.inf], np.nan).fillna(0)
+    return avg.tail(30).to_list()
+
+
+
+# ---------- Card CSS (dark cards with white text) ----------
+st.markdown("""
+<style>
+.kpi-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:16px; }
+
+/* Dark card so white text is readable */
+.kpi-card {
+  background:#151d2c;
+  border-radius:16px;
+  padding:14px 16px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  border:1px solid rgba(255,255,255,0.06);
+}
+
+/* Text colours for dark theme */
+.kpi-top   { font-size:.8rem;  color:#9ec6ff;  margin-bottom:8px; }
+.kpi-title { font-size:1.0rem; font-weight:700; color:#aad4ff;    margin-bottom:6px; }
+.kpi-value { font-size:2.0rem; font-weight:800; color:#ffffff;    line-height:1.1; }
+.kpi-sub   { font-size:.9rem;  color:#bcd4ee;   margin-top:4px; }
+.kpi-footer{ display:flex; justify-content:space-between; margin-top:8px; font-size:.85rem; color:#bcd4ee; }
+.kpi-up    { color:#54e49b; font-weight:700; }
+.kpi-down  { color:#ff8b8b; font-weight:700; }
+.kpi-bar   { height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-top:8px; }
+.kpi-bar > div { height:100%; background:linear-gradient(90deg,#00c6ff,#00e699); }
+
+@media (max-width:1100px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:700px) { .kpi-grid{grid-template-columns:1fr;} }
+</style>
+""", unsafe_allow_html=True)
+
+# ---------- Tiny sparkline helpers ----------
+def _sparkline(y_vals, color="#22c55e"):
+    if not y_vals: 
+        y_vals = [0]
+    fig = go.Figure(go.Scatter(y=y_vals, mode="lines", line=dict(width=2), hoverinfo="skip"))
+    fig.update_layout(
+        margin=dict(l=0,r=0,t=0,b=0),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        height=60
+    )
+    if color:
+        fig.data[0].line.color = color
+    return fig
+
+def _series_by_day(df, col=None, reducer="count"):
+    if "Date" not in df.columns or df.empty:
+        return [0]
+    x = df.copy()
+    x["Date"] = pd.to_datetime(x["Date"], errors="coerce")
+    x = x.dropna(subset=["Date"])
+    if x.empty:
+        return [0]
+    g = x.groupby(x["Date"].dt.date)
+    if reducer == "sum" and col:
+        s = pd.to_numeric(x[col], errors="coerce").groupby(x["Date"].dt.date).sum()
+    else:
+        s = g.size()
+    return s.tail(30).to_list()
+
+def _minutes(series_td):
+    s = pd.to_timedelta(series_td.astype(str), errors="coerce").dropna()
+    if s.empty:
+        return [0]
+    return (s.dt.total_seconds() / 60.0).tolist()
+
+# ---------- Card renderer (TOP-LEVEL) ----------
+def card(title, value, sub="", trend=None, bar_pct=None, spark=None, color=None, source=""):
+    st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+    st.markdown('<div class="kpi-top">Month to date</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="kpi-title">{title}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="kpi-value">{value}</div>', unsafe_allow_html=True)
+    if sub:
+        st.markdown(f'<div class="kpi-sub">{sub}</div>', unsafe_allow_html=True)
+    if bar_pct is not None:
+        w = max(0, min(int(bar_pct), 100))
+        st.markdown(f'<div class="kpi-bar"><div style="width:{w}%"></div></div>', unsafe_allow_html=True)
+    if spark is not None:
+        st.plotly_chart(_sparkline(spark, color=color), use_container_width=True, config={"displayModeBar": False})
+    left = ""
+    if trend is not None:
+        cls = "kpi-up" if trend >= 0 else "kpi-down"
+        arrow = "▲" if trend >= 0 else "▼"
+        left = f'<span class="{cls}">{arrow} {trend:+.1f}%</span>'
+    st.markdown(f'<div class="kpi-footer">{left}<span>{source}</span></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------- Single definition ONLY ----------
+def render_team_overview(team_name: str):
+    import numpy as np
+    st.markdown(f"## Performance overview — {team_name}")
+    # (we'll fill the rest of this function in your next section)
+
+
+    # 1) Data
+    df = get_team_df(team_name)
+    if df.empty:
+        st.warning("No data found for this team.")
+        return
+
+    # normalise columns and build a local 'cols' set
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+    cols = set(df.columns)
+
+    # 2) Granularity
+    gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], index=0, horizontal=True)
+    vpv_ts = _value_per_visit_series(df, period=gran)
+
+    # 3) Core KPIs dict
+    k = team_kpis(df)
+
+    # 4) Masks & base series
+    comp_m    = _status_mask(df, "Completed")
+    cancel_m  = _status_mask(df, "Cancelled")
+    notdone_m = _status_mask(df, "Not Done")
+    pend_m    = _status_mask(df, "Pending")
+    start_m   = _status_mask(df, "Started")
+
+    visits_ts      = _series_by_period(df, period=gran, reducer="count")
+    value_ts       = _series_by_period(df, period=gran, reducer="sum_num", col="Total Value") if "Total Value" in cols else [0]
+    comp_ts        = _series_by_period(df[comp_m],   period=gran, reducer="count")
+    cancel_ts      = _series_by_period(df[cancel_m], period=gran, reducer="count")
+    notdone_ts     = _series_by_period(df[notdone_m],period=gran, reducer="count")
+    pend_ts        = _series_by_period(df[pend_m],   period=gran, reducer="count")
+    start_ts       = _series_by_period(df[start_m],  period=gran, reducer="count")
+    active_eng_ts  = _series_by_period(df, period=gran, reducer="nunique", col="Name") if "Name" in cols else [0]
+
+    # avg working time & total time
+    if "Total Working Time" in cols:
+        work_avg_ts = _series_by_period(df, period=gran, reducer="mean_time", col="Total Working Time")
+        tw_name = "Total Working Time"
+    elif "Total working time" in cols:
+        work_avg_ts = _series_by_period(df, period=gran, reducer="mean_time", col="Total working time")
+        tw_name = "Total working time"
+    else:
+        work_avg_ts = [0]; tw_name = None
+
+    total_time_ts = _series_by_period(df, period=gran, reducer="sum_time", col="Total Time") if "Total Time" in cols else [0]
+
+    # lunch avg minutes by period  ✅ use Total Time if present
+    if "Total Time" in cols:
+        lunch_col = "Total Time"
+    elif "Total Working Time" in cols:
+        lunch_col = "Total Working Time"
+    elif "Total working time" in cols:
+        lunch_col = "Total working time"
+    else:
+        lunch_col = None
+
+    if "Visit Type" in cols and lunch_col:
+        lunch_df = df[df["Visit Type"].astype(str).str.contains("Lunch", case=False, na=False)]
+        if not lunch_df.empty:
+            # mean_time converts the timedelta to minutes for the sparkline
+            lunch_avg_ts = _series_by_period(lunch_df, period=gran, reducer="mean_time", col=lunch_col)
+            # guard against all-NaN -> empty line
+            if not any(pd.notna(lunch_avg_ts)):
+                lunch_avg_ts = [0]
+        else:
+            lunch_avg_ts = [0]
+    else:
+        lunch_avg_ts = [0]
+
+
+    # ---------- Over/Under 10:25 ----------
+    if tw_name:
+        tw = pd.to_timedelta(df[tw_name].astype(str), errors="coerce")
+        valid = tw.notna() & (tw > pd.Timedelta(0))               # ignore blanks & 00:00
+        over_df  = df[valid & (tw > THRESHOLD_TWT)]
+        under_df = df[valid & (tw <= THRESHOLD_TWT)]
+        over_1025_ts  = _series_by_period(over_df,  period=gran, reducer="count")
+        under_1025_ts = _series_by_period(under_df, period=gran, reducer="count")
+    else:
+        over_1025_ts = under_1025_ts = [0]
+
+    # ---------- Overtime (use unified helper; ignores blanks & zeros) ----------
+    ot_title, ot_value, _, overtime_ts = overtime_from_df(df, period=gran)
+
+
+
+    # ===== 4 × 4 CARDS =====
+
+    # Row 1
+    r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+    with r1c1:
+        card("Total Value (£)", f"£{k['total_value']:,.0f}" if not np.isnan(k['total_value']) else "N/A",
+             "Sum of 'Total Value'", trend=None, spark=value_ts, color="#16a34a", source="Oracle")
+    with r1c2:
+        card("Completed (%)", f"{k['comp_rate']:.1f}%",
+             f"{k['completed']:,} of {k['total_visits']:,}",
+             bar_pct=k['comp_rate'], trend=k['trend_visits'], spark=comp_ts, color="#06b6d4", source="Oracle")
+    with r1c3:
+        card("Visits", f"{k['total_visits']:,}", "All visits",
+             trend=k['trend_visits'], spark=visits_ts, color="#ef4444", source="Oracle")
+    with r1c4:
+        card("Active engineers", f"{k['unique_engs']:,}", "Unique per period",
+             trend=None, spark=active_eng_ts, color="#22c55e", source="")
+
+    # Row 2
+    r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+    with r2c1:
+        card("Avg time per visit", k['avg_work'], "HH:MM",
+             trend=None, spark=work_avg_ts, color="#22c55e", source="(avg minutes)")
+    with r2c2:
+        card("Cancelled (%)", f"{k['cancel_rate']:.1f}%", f"{k['cancelled']:,} cases",
+             bar_pct=k['cancel_rate'], trend=None, spark=cancel_ts, color="#ef4444", source="")
+    with r2c3:
+        card("Not Done (%)", f"{k['notdone_rate']:.1f}%", f"{k['not_done']:,} cases",
+             bar_pct=k['notdone_rate'], trend=None, spark=notdone_ts, color="#ef4444", source="")
+    with r2c4:
+        card("Total time", k['total_time'], "HH:MM total",
+             trend=None, spark=total_time_ts, color="#06b6d4", source="(hours per period)")
+
+    # Row 3
+    r3c1, r3c2, r3c3, r3c4 = st.columns(4)
+    with r3c1:
+        card("Lunch avg", k['avg_lunch'], "Avg of 'Lunch' visits",
+             trend=None, spark=lunch_avg_ts, color="#22c55e", source="(avg minutes)")
+    with r3c2:
+        card("Pending (count)", f"{int(np.sum(pend_ts) if len(pend_ts)>0 else 0):,}", "",
+             trend=None, spark=pend_ts, color="#f59e0b", source="")
+        
+    with r3c3: card("Started (count)", f"{int(np.sum(start_ts) if len(start_ts)>0 else 0):,}", "", trend=None, spark=start_ts, color="#3b82f6", source="")
+
+    with r3c4:
+        val_per_visit = (k['total_value'] / k['total_visits']) if (k['total_visits'] and not np.isnan(k['total_value'])) else np.nan
+        card(
+            "Value per visit",
+            f"£{val_per_visit:,.0f}" if val_per_visit == val_per_visit else "N/A",
+            "(avg per period)",
+            trend=None,
+            spark=vpv_ts,
+            color="#8b5cf6",  # a nice purple for variety
+            source=""
+        )
+
+
+    # Row 4
+    r4c1, r4c2, r4c3, r4c4 = st.columns(4)
+    with r4c1:
+        card("Over 10:25 (count)", f"{k['over_1025_count']:,}",
+             "Total Working Time > 10:25", trend=None, spark=over_1025_ts, color="#f43f5e", source="")
+    with r4c2:
+        card("Under 10:25 (count)", f"{k['under_1025_count']:,}",
+             "Total Working Time ≤ 10:25", trend=None, spark=under_1025_ts, color="#22c55e", source="")
+    with r4c3:
+        card(ot_title, ot_value, "",
+            trend=None, spark=overtime_ts, color="#f59e0b", source="sum per period")
+    with r4c4:
+        card("—", "—", "", trend=None, spark=None, source="")
+
+
+
+
+# ---------- Screen entry (called when user clicks the button on Instructions) ----------
+if st.session_state.get("screen") == "team_overview":
+    t1, t2 = st.columns([2, 1])
+    with t1:
+        team = st.selectbox(
+            "Choose team",
+            ["VIP North","VIP South","Tier 2 North","Tier 2 South"],
+            key="team_overview_select_v2"  # unique key
+        )
+    with t2:
+        if st.button("⬅ Back"):
+            st.session_state.screen = "instruction_guide"
+            st.rerun()
+
+    render_team_overview(team)
 
 if  st.session_state.screen == "quick_summary":
     st.title("🔎 Quick Overview Summary")
@@ -8473,6 +9040,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
