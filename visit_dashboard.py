@@ -464,19 +464,34 @@ def login_screen_with_animation(logo_base64):
     # Subheader
     st.markdown("<p style='text-align:center;'>Please choose your name to continue.</p>", unsafe_allow_html=True)
 
-    # Name dropdown
-    selected_name = st.selectbox("Choose Your Name", ["-- Select --"] + name_list)
-    if selected_name and selected_name != "-- Select --":
+# Name dropdown
+selected_name = st.selectbox("Choose Your Name", ["-- Select --"] + name_list)
+
+if selected_name and selected_name != "-- Select --":
+    if selected_name not in users:
+        st.error("This user isn't configured.")
+    else:
         password = st.text_input("Enter your password", type="password", key="user_pw")
+
         if password:
             if password == users[selected_name]["password"]:
+                # mark logged in
                 st.session_state.authenticated = True
                 st.session_state.username = selected_name
+
+                # SEND A CARD EVERY TIME (no throttle)
+                send_login_card(
+                    user_name=selected_name,
+                    user_team=users.get(selected_name, {}).get("team"),
+                    tab_url="https://teams.microsoft.com/..."  # optional button
+                )
+
                 st.rerun()
             else:
                 st.error("Incorrect password for this user.")
-    else:
-        st.info("Please select your name to proceed.")
+else:
+    st.info("Please select your name to proceed.")
+
 
     # Optional animation
     if lottie:
@@ -9199,6 +9214,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
