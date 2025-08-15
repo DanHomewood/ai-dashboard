@@ -1823,7 +1823,7 @@ def render_team_overview(team_name: str):
     # Row 2
     r2c1, r2c2, r2c3, r2c4 = st.columns(4)
     with r2c1:
-        card("Avg time per visit", k['avg_work'], "HH:MM",
+        card("Avg Working Time", k['avg_work'], "HH:MM",
              trend=None, spark=work_avg_ts, color="#22c55e", source="(avg minutes)")
     with r2c2:
         card("Cancelled (%)", f"{k['cancel_rate']:.1f}%", f"{k['cancelled']:,} cases",
@@ -9052,6 +9052,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
