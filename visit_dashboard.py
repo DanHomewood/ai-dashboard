@@ -5407,7 +5407,17 @@ if st.session_state.get("screen") == "operational_area":
     if col4.button("Activity Status"):
         st.session_state["op_area_section"] = "activity_status"
         st.rerun()
+		
+    # ——— Second row: 4 cols ———
+	
+    row2 = st.columns(4)
+    if row2[0].button("MEWP Hires", key="op_btn_mewp"):
+        st.session_state["op_area_section"] = "mewp_hires"
+        st.rerun()
 
+    if row2[1].button("💷 Budget", key="op_btn_budget"):
+        st.session_state.screen = "budget"
+        st.rerun()
     section = st.session_state.get("op_area_section", "engineer")
 
     # ---- ENGINEER SECTION ----
@@ -5522,7 +5532,57 @@ if st.session_state.get("screen") == "operational_area":
             if "Name" in df_all.columns and "Team" in df_all.columns:
                 team_table = pd.crosstab(df_all["Name"], df_all["Team"])
                 st.dataframe(team_table)
+    import os
+    import base64
+    import streamlit as st
+    import streamlit.components.v1 as components
+    import os
+    import fitz  # PyMuPDF
+    import streamlit as st
 
+    # … inside your operational_area block …
+
+    if section == "mewp_hires":
+        st.title("📄 MEWP Hire Receipts")
+
+        folder = os.path.join(os.getcwd(), "Mewp Hires")
+        pdf_files = sorted(
+            f for f in os.listdir(folder)
+            if f.lower().endswith(".pdf")
+        )
+
+        if not pdf_files:
+            st.info("No MEWP hire receipts found.")
+        else:
+            for idx, pdf in enumerate(pdf_files):
+                pdf_path = os.path.join(folder, pdf)
+
+                # Create a closed expander per file
+                with st.expander(pdf, expanded=False):
+                    # Open PDF
+                    doc = fitz.open(pdf_path)
+
+                    # Render each page as an image
+                    for page_number in range(len(doc)):
+                        page = doc[page_number]
+                        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                        img_data = pix.tobytes("png")
+                        st.image(
+                            img_data,
+                            caption=f"Page {page_number+1}",
+                            use_container_width=True
+                        )
+
+                    # Download button inside the expander
+                    with open(pdf_path, "rb") as f:
+                        raw = f.read()
+                    st.download_button(
+                        label="Download receipt",
+                        data=raw,
+                        file_name=pdf,
+                        mime="application/pdf",
+                        key=f"dl_mewp_{idx}"
+                    )
 
 
 
@@ -9139,6 +9199,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
