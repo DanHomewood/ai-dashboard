@@ -443,11 +443,10 @@ def load_lottie_url(url: str):
 
 # --- LOGIN SCREEN (fires Teams once per successful submit) ---
 def login_screen_with_animation(logo_base64: str):
-    # if already logged in, don't show the login UI again
+    # If already logged in, do not render login UI again
     if st.session_state.get("authenticated"):
         return
 
-    # Full-width logo
     st.markdown(f"""
     <div class="logo">
         <img src='data:image/png;base64,{logo_base64}' />
@@ -463,16 +462,20 @@ def login_screen_with_animation(logo_base64: str):
 
     name_list = list(users.keys())
 
-    # Use a form so we only act on explicit submit (prevents repeat sends)
+    # Use a form so we only act on explicit submit
     with st.form("login_form", clear_on_submit=True):
-        selected_name = st.selectbox("Choose Your Name", ["-- Select --"] + name_list, key="login_name")
-        password = st.text_input("Enter your password", type="password", key="login_pw")
+        selected_name = st.selectbox("Choose Your Name",
+                                     ["-- Select --"] + name_list,
+                                     key="login_name")
+        password = st.text_input("Enter your password",
+                                 type="password",
+                                 key="login_pw")
         submitted = st.form_submit_button("Sign in")
 
     if not submitted:
-        return  # wait for user to click Sign in
+        return  # wait for button click
 
-    # --- submitted ---
+    # ---- validate
     if not selected_name or selected_name == "-- Select --":
         st.warning("Please select your name.")
         return
@@ -485,23 +488,18 @@ def login_screen_with_animation(logo_base64: str):
         st.error("Incorrect password for this user.")
         return
 
-    # Success: set auth, send card ONCE, then rerun into the app
+    # ---- success
     st.session_state.authenticated = True
     st.session_state.username = selected_name
 
-    # Teams notification (fires once per submit)
     send_login_card(
         user_name=selected_name,
         user_team=users.get(selected_name, {}).get("team"),
-        tab_url=None  # or "https://teams.microsoft.com/..." if you want a button
+        tab_url=None  # or your Teams link
     )
 
     st.rerun()
 
-	    else:
-	        st.error("Incorrect password for this user.")
-else:
-	st.info("Please select your name to proceed.")
 
 
     # Optional animation
@@ -9225,6 +9223,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
