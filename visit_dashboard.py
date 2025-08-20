@@ -7892,190 +7892,190 @@ st.markdown(
     """
 )
 
-    # Section 3 of Block 14: Oracle Team Visit Data (All Regions)
+# Section 3 of Block 14: Oracle Team Visit Data (All Regions)
 
-    # Copy and clean filtered_data into df_oracle for detailed analysis
-    df_oracle = filtered_data.copy()
-    df_oracle.columns = df_oracle.columns.str.strip()
-    columns_to_clean = [col for col in df_oracle.columns if col != "Activity Status"]
+# Copy and clean filtered_data into df_oracle for detailed analysis
+df_oracle = filtered_data.copy()
+df_oracle.columns = df_oracle.columns.str.strip()
+columns_to_clean = [col for col in df_oracle.columns if col != "Activity Status"]
 
-    df_oracle[columns_to_clean] = df_oracle[columns_to_clean].replace(
-        ["", " ", "00:00", "00:00:00", 0, "0", None], pd.NA
-    )
-    df_oracle.dropna(how="all", inplace=True)
+df_oracle[columns_to_clean] = df_oracle[columns_to_clean].replace(
+	["", " ", "00:00", "00:00:00", 0, "0", None], pd.NA
+)
+df_oracle.dropna(how="all", inplace=True)
 
-    # Parse date columns
-    if "Date" in df_oracle.columns:
-        df_oracle["Date"] = pd.to_datetime(df_oracle["Date"], errors="coerce")
-        df_oracle["Week"] = df_oracle["Date"].dt.isocalendar().week
-        df_oracle["Month"] = df_oracle["Date"].dt.strftime("%B")
+# Parse date columns
+if "Date" in df_oracle.columns:
+	df_oracle["Date"] = pd.to_datetime(df_oracle["Date"], errors="coerce")
+	df_oracle["Week"] = df_oracle["Date"].dt.isocalendar().week
+	df_oracle["Month"] = df_oracle["Date"].dt.strftime("%B")
 
-    # Load full raw Oracle data for completion breakdown (adjust loading method if needed)
-    vip_south_df = load_file("VIP South Oracle Data.xlsx")
-    vip_north_df = load_file("VIP North Oracle Data.xlsx")
-    tier2_south_df = load_file("Tier 2 South Oracle Data.xlsx")
-    tier2_north_df = load_file("Tier 2 North Oracle Data.xlsx")
+# Load full raw Oracle data for completion breakdown (adjust loading method if needed)
+vip_south_df = load_file("VIP South Oracle Data.xlsx")
+vip_north_df = load_file("VIP North Oracle Data.xlsx")
+tier2_south_df = load_file("Tier 2 South Oracle Data.xlsx")
+tier2_north_df = load_file("Tier 2 North Oracle Data.xlsx")
 
-    df_all = pd.concat([vip_south_df, vip_north_df, tier2_south_df, tier2_north_df], ignore_index=True)
+df_all = pd.concat([vip_south_df, vip_north_df, tier2_south_df, tier2_north_df], ignore_index=True)
 
-    # Normalize status column
-    status = (
-        df_all["Activity Status"]
-            .astype(str)
-            .str.strip()
-            .str.casefold()
-    )
+# Normalize status column
+status = (
+	df_all["Activity Status"]
+		.astype(str)
+		.str.strip()
+		.str.casefold()
+)
 
-    # Count status values
-    vc = status.value_counts()
+# Count status values
+vc = status.value_counts()
 
-    completed  = vc.get("completed", 0)
-    not_done   = vc.get("not done", 0)
-    cancelled  = status.str.contains("cancel", na=False).sum()
+completed  = vc.get("completed", 0)
+not_done   = vc.get("not done", 0)
+cancelled  = status.str.contains("cancel", na=False).sum()
 
-    known      = completed + cancelled + not_done
-    total      = int(vc.sum())
-    other      = total - known
+known      = completed + cancelled + not_done
+total      = int(vc.sum())
+other      = total - known
 
-    # Calculate metrics
-    completion_rate_pct       = (completed / known * 100) if known else 0
-    completion_vs_failed_ratio = (completed / (cancelled + not_done)) if (cancelled + not_done) > 0 else float("inf")
+# Calculate metrics
+completion_rate_pct       = (completed / known * 100) if known else 0
+completion_vs_failed_ratio = (completed / (cancelled + not_done)) if (cancelled + not_done) > 0 else float("inf")
 
-    # Display Activity Completion Breakdown
-    with st.expander("🧩 Activity Completion Breakdown", expanded=False):
-        st.markdown(f"""
-        ✅ **Completed**: {completed:,} ({completed / total:.1%})  
-        ❌ **Cancelled**: {cancelled:,} ({cancelled / total:.1%})  
-        🚫 **Not Done**:  {not_done:,} ({not_done / total:.1%})  
-        ❓ **Other/Unknown**: {other:,} ({other / total:.1%})
-        """)
+# Display Activity Completion Breakdown
+with st.expander("🧩 Activity Completion Breakdown", expanded=False):
+	st.markdown(f"""
+	✅ **Completed**: {completed:,} ({completed / total:.1%})  
+	❌ **Cancelled**: {cancelled:,} ({cancelled / total:.1%})  
+	🚫 **Not Done**:  {not_done:,} ({not_done / total:.1%})  
+	❓ **Other/Unknown**: {other:,} ({other / total:.1%})
+	""")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
-        col2.metric("🔁 Completed : Failed", f"{completion_vs_failed_ratio:.1f} ×")
-        col3.markdown(
-            f"🔁 **{completion_vs_failed_ratio:.1f}** visits completed for every **1** cancelled or not done visit"
-        )
+	col1, col2, col3 = st.columns(3)
+	col1.metric("✔ Completion Rate", f"{completion_rate_pct:.1f}%")
+	col2.metric("🔁 Completed : Failed", f"{completion_vs_failed_ratio:.1f} ×")
+	col3.markdown(
+		f"🔁 **{completion_vs_failed_ratio:.1f}** visits completed for every **1** cancelled or not done visit"
+	)
 
-        st.bar_chart(vc)
+	st.bar_chart(vc)
 
-    # Optional Debug Output (commented)
-    # with st.expander("📊 Unique statuses in data", expanded=False):
-    #     st.dataframe(
-    #         pd.DataFrame(vc).reset_index().rename(
-    #             columns={"index": "Activity Status", 0: "Count"}
-    #         )
-    #     )
+# Optional Debug Output (commented)
+# with st.expander("📊 Unique statuses in data", expanded=False):
+#     st.dataframe(
+#         pd.DataFrame(vc).reset_index().rename(
+#             columns={"index": "Activity Status", 0: "Count"}
+#         )
+#     )
 
-    # --- KPIs ---
-    with st.expander("📋 Summary KPIs", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Visits", len(df_oracle))
-        col2.metric("Unique Engineers", df_oracle["Name"].nunique())
-        col3.metric("Visit Types", df_oracle["Visit Type"].nunique())
-        col4.metric("Total Value (£)", f"£{df_oracle['Total Value'].dropna().sum():,.2f}")
+# --- KPIs ---
+with st.expander("📋 Summary KPIs", expanded=True):
+	col1, col2, col3, col4 = st.columns(4)
+	col1.metric("Total Visits", len(df_oracle))
+	col2.metric("Unique Engineers", df_oracle["Name"].nunique())
+	col3.metric("Visit Types", df_oracle["Visit Type"].nunique())
+	col4.metric("Total Value (£)", f"£{df_oracle['Total Value'].dropna().sum():,.2f}")
 
-    # --- Top Visit Types ---
-    if "Visit Type" in df_oracle.columns:
-        with st.expander("📊 Top Visit Types"):
-            top_vt = df_oracle["Visit Type"].value_counts().head(10).reset_index()
-            top_vt.columns = ["Visit Type", "Count"]
-            st.plotly_chart(px.bar(top_vt, x="Visit Type", y="Count", color="Visit Type",
-                                   title="Top Visit Types by Volume"), use_container_width=True)
+# --- Top Visit Types ---
+if "Visit Type" in df_oracle.columns:
+	with st.expander("📊 Top Visit Types"):
+		top_vt = df_oracle["Visit Type"].value_counts().head(10).reset_index()
+		top_vt.columns = ["Visit Type", "Count"]
+		st.plotly_chart(px.bar(top_vt, x="Visit Type", y="Count", color="Visit Type",
+							   title="Top Visit Types by Volume"), use_container_width=True)
 
-    # --- Top Engineers ---
-    if "Name" in df_oracle.columns:
-        with st.expander("👨 Top Engineers by Visits"):
-            eng_top = df_oracle["Name"].value_counts().head(10).reset_index()
-            eng_top.columns = ["Engineer", "Visits"]
-            st.plotly_chart(px.bar(eng_top, x="Engineer", y="Visits", color="Engineer",
-                                   title="Top Engineers by Visit Count"), use_container_width=True)
+# --- Top Engineers ---
+if "Name" in df_oracle.columns:
+	with st.expander("👨 Top Engineers by Visits"):
+		eng_top = df_oracle["Name"].value_counts().head(10).reset_index()
+		eng_top.columns = ["Engineer", "Visits"]
+		st.plotly_chart(px.bar(eng_top, x="Engineer", y="Visits", color="Engineer",
+							   title="Top Engineers by Visit Count"), use_container_width=True)
 
-    # --- Weekly Trends ---
-    if "Week" in df_oracle.columns:
-        with st.expander("📈 Weekly Visit Trends"):
-            weekly = df_oracle.groupby("Week").size().reset_index(name="Visits")
-            st.plotly_chart(px.line(weekly, x="Week", y="Visits", title="Visits Over Weeks"),
-                            use_container_width=True)
+# --- Weekly Trends ---
+if "Week" in df_oracle.columns:
+	with st.expander("📈 Weekly Visit Trends"):
+		weekly = df_oracle.groupby("Week").size().reset_index(name="Visits")
+		st.plotly_chart(px.line(weekly, x="Week", y="Visits", title="Visits Over Weeks"),
+						use_container_width=True)
 
-    # --- Monthly Value Breakdown ---
-    if "Month" in df_oracle.columns and "Total Value" in df_oracle.columns:
-        with st.expander("💰 Total Value by Month"):
-            monthly_val = df_oracle.groupby("Month")["Total Value"].sum().reset_index()
-            st.plotly_chart(px.bar(monthly_val, x="Month", y="Total Value", color="Month",
-                                   title="Total Value by Month"), use_container_width=True)
+# --- Monthly Value Breakdown ---
+if "Month" in df_oracle.columns and "Total Value" in df_oracle.columns:
+	with st.expander("💰 Total Value by Month"):
+		monthly_val = df_oracle.groupby("Month")["Total Value"].sum().reset_index()
+		st.plotly_chart(px.bar(monthly_val, x="Month", y="Total Value", color="Month",
+							   title="Total Value by Month"), use_container_width=True)
 
-    # --- Sunburst Charts ---
-    sunburst_configs = [
-        ("🌞 Visit Activity Sunburst", ["Visit Type", "Activity Status"], "Visit Type & Activity Status Distribution"),
-        ("📍 Sunburst: Visit Type to Postcode", ["Visit Type", "Postcode"], "Visit Type → Postcode Distribution"),
-        ("🔀 Sunburst: Engineer → Visit Type → Week", ["Name", "Visit Type", "Week"], "Engineer > Visit Type > Week Breakdown"),
-        ("🌀 Sunburst: Visit Type → Week", ["Visit Type", "Week"], "Visit Count by Visit Type and Week"),
-        ("🧩 Sunburst: Engineer → Postcode", ["Name", "Postcode"], "Engineer > Postcode Mapping"),
-        ("🗓️ Sunburst: Visit Type → Month", ["Visit Type", "Month"], "Visit Type Distribution by Month"),
-        ("📅 Sunburst: Visit Type → Date", ["Visit Type", "Date"], "Visit Type Breakdown by Exact Date"),
-        ("📋 Sunburst: Visit Type → Day", ["Visit Type", "Day"], "Visit Type by Day of Week"),
-        ("📑 Sunburst: Stakeholder → Visit Type", ["Sky Retail Stakeholder", "Visit Type"], "Stakeholder to Visit Type Breakdown")
-    ]
+# --- Sunburst Charts ---
+sunburst_configs = [
+	("🌞 Visit Activity Sunburst", ["Visit Type", "Activity Status"], "Visit Type & Activity Status Distribution"),
+	("📍 Sunburst: Visit Type to Postcode", ["Visit Type", "Postcode"], "Visit Type → Postcode Distribution"),
+	("🔀 Sunburst: Engineer → Visit Type → Week", ["Name", "Visit Type", "Week"], "Engineer > Visit Type > Week Breakdown"),
+	("🌀 Sunburst: Visit Type → Week", ["Visit Type", "Week"], "Visit Count by Visit Type and Week"),
+	("🧩 Sunburst: Engineer → Postcode", ["Name", "Postcode"], "Engineer > Postcode Mapping"),
+	("🗓️ Sunburst: Visit Type → Month", ["Visit Type", "Month"], "Visit Type Distribution by Month"),
+	("📅 Sunburst: Visit Type → Date", ["Visit Type", "Date"], "Visit Type Breakdown by Exact Date"),
+	("📋 Sunburst: Visit Type → Day", ["Visit Type", "Day"], "Visit Type by Day of Week"),
+	("📑 Sunburst: Stakeholder → Visit Type", ["Sky Retail Stakeholder", "Visit Type"], "Stakeholder to Visit Type Breakdown")
+]
 
-    for label, cols, title in sunburst_configs:
-        if set(cols).issubset(df_oracle.columns):
-            with st.expander(label):
-                sb = df_oracle.groupby(cols).size().reset_index(name="Count")
-                fig = px.sunburst(sb, path=cols, values="Count", title=title)
-                st.plotly_chart(fig, use_container_width=True)
+for label, cols, title in sunburst_configs:
+	if set(cols).issubset(df_oracle.columns):
+		with st.expander(label):
+			sb = df_oracle.groupby(cols).size().reset_index(name="Count")
+			fig = px.sunburst(sb, path=cols, values="Count", title=title)
+			st.plotly_chart(fig, use_container_width=True)
 
-    # --- Stacked Bar: Visit Type by Month ---
-    if {"Visit Type", "Month"}.issubset(df_oracle.columns):
-        with st.expander("📊 Stacked Bar: Visit Type by Month"):
-            bar_df = df_oracle.groupby(["Month", "Visit Type"]).size().reset_index(name="Visits")
-            fig = px.bar(bar_df, x="Month", y="Visits", color="Visit Type", title="Monthly Visit Counts by Visit Type",
-                         text_auto=True)
-            st.plotly_chart(fig, use_container_width=True)
+# --- Stacked Bar: Visit Type by Month ---
+if {"Visit Type", "Month"}.issubset(df_oracle.columns):
+	with st.expander("📊 Stacked Bar: Visit Type by Month"):
+		bar_df = df_oracle.groupby(["Month", "Visit Type"]).size().reset_index(name="Visits")
+		fig = px.bar(bar_df, x="Month", y="Visits", color="Visit Type", title="Monthly Visit Counts by Visit Type",
+					 text_auto=True)
+		st.plotly_chart(fig, use_container_width=True)
 
-    # --- Parallel Categories: Engineer → Visit Type → Postcode ---
-    if {"Name", "Visit Type", "Postcode"}.issubset(df_oracle.columns):
-        with st.expander("🔗 Parallel Categories: Engineer → Visit Type → Postcode"):
-            pc_df = df_oracle[["Name", "Visit Type", "Postcode"]].dropna().astype(str)
-            fig = px.parallel_categories(pc_df, dimensions=["Name", "Visit Type", "Postcode"],
-                                         color_continuous_scale=px.colors.sequential.Inferno,
-                                         title="Engineer to Visit Type to Postcode Flow")
-            st.plotly_chart(fig, use_container_width=True)
+# --- Parallel Categories: Engineer → Visit Type → Postcode ---
+if {"Name", "Visit Type", "Postcode"}.issubset(df_oracle.columns):
+	with st.expander("🔗 Parallel Categories: Engineer → Visit Type → Postcode"):
+		pc_df = df_oracle[["Name", "Visit Type", "Postcode"]].dropna().astype(str)
+		fig = px.parallel_categories(pc_df, dimensions=["Name", "Visit Type", "Postcode"],
+									 color_continuous_scale=px.colors.sequential.Inferno,
+									 title="Engineer to Visit Type to Postcode Flow")
+		st.plotly_chart(fig, use_container_width=True)
 
-    # --- Drilldown Treemap: Stakeholder → Visit Type → Month ---
-    if {"Sky Retail Stakeholder", "Visit Type", "Month", "Total Value"}.issubset(df_oracle.columns):
-        with st.expander("🌲 Drilldown Treemap: Stakeholder → Visit Type → Month"):
-            tree_df = df_oracle.groupby(["Sky Retail Stakeholder", "Visit Type", "Month"])["Total Value"].sum().reset_index()
-            fig = px.treemap(tree_df, path=["Sky Retail Stakeholder", "Visit Type", "Month"],
-                             values="Total Value", title="Value Drilldown by Stakeholder → Visit Type → Month")
-            st.plotly_chart(fig, use_container_width=True)
+# --- Drilldown Treemap: Stakeholder → Visit Type → Month ---
+if {"Sky Retail Stakeholder", "Visit Type", "Month", "Total Value"}.issubset(df_oracle.columns):
+	with st.expander("🌲 Drilldown Treemap: Stakeholder → Visit Type → Month"):
+		tree_df = df_oracle.groupby(["Sky Retail Stakeholder", "Visit Type", "Month"])["Total Value"].sum().reset_index()
+		fig = px.treemap(tree_df, path=["Sky Retail Stakeholder", "Visit Type", "Month"],
+						 values="Total Value", title="Value Drilldown by Stakeholder → Visit Type → Month")
+		st.plotly_chart(fig, use_container_width=True)
 
-    # --- Heatmap: Visit Type vs Week ---
-    if {"Visit Type", "Week"}.issubset(df_oracle.columns):
-        with st.expander("🌡️ Visit Type vs Week Heatmap"):
-            heat_df = pd.pivot_table(df_oracle, index="Visit Type", columns="Week", aggfunc="size", fill_value=0)
-            st.plotly_chart(px.imshow(heat_df, aspect="auto", title="Visit Heatmap: Types by Week"),
-                            use_container_width=True)
+# --- Heatmap: Visit Type vs Week ---
+if {"Visit Type", "Week"}.issubset(df_oracle.columns):
+	with st.expander("🌡️ Visit Type vs Week Heatmap"):
+		heat_df = pd.pivot_table(df_oracle, index="Visit Type", columns="Week", aggfunc="size", fill_value=0)
+		st.plotly_chart(px.imshow(heat_df, aspect="auto", title="Visit Heatmap: Types by Week"),
+						use_container_width=True)
 
-    # --- Treemap: Visit Type by Value ---
-    if {"Visit Type", "Total Value"}.issubset(df_oracle.columns):
-        with st.expander("🌳 Treemap: Visit Type by Total Value"):
-            tm = df_oracle.groupby("Visit Type")["Total Value"].sum().reset_index()
-            fig = px.treemap(tm, path=["Visit Type"], values="Total Value",
-                             title="Total Value by Visit Type")
-            st.plotly_chart(fig, use_container_width=True)
+# --- Treemap: Visit Type by Value ---
+if {"Visit Type", "Total Value"}.issubset(df_oracle.columns):
+	with st.expander("🌳 Treemap: Visit Type by Total Value"):
+		tm = df_oracle.groupby("Visit Type")["Total Value"].sum().reset_index()
+		fig = px.treemap(tm, path=["Visit Type"], values="Total Value",
+						 title="Total Value by Visit Type")
+		st.plotly_chart(fig, use_container_width=True)
 
-    # --- Pie Chart: Visit Type Share ---
-    if "Visit Type" in df_oracle.columns:
-        with st.expander("🥧 Visit Type Share (Pie)"):
-            pie = df_oracle["Visit Type"].value_counts().reset_index()
-            pie.columns = ["Visit Type", "Count"]
-            fig = px.pie(pie, names="Visit Type", values="Count", title="Visit Type Distribution")
-            st.plotly_chart(fig, use_container_width=True)
+# --- Pie Chart: Visit Type Share ---
+if "Visit Type" in df_oracle.columns:
+	with st.expander("🥧 Visit Type Share (Pie)"):
+		pie = df_oracle["Visit Type"].value_counts().reset_index()
+		pie.columns = ["Visit Type", "Count"]
+		fig = px.pie(pie, names="Visit Type", values="Count", title="Visit Type Distribution")
+		st.plotly_chart(fig, use_container_width=True)
 
-    # --- Table View ---
-    with st.expander("📋 Full Oracle Visit Table", expanded=False):
-        st.dataframe(df_oracle, use_container_width=True)
+# --- Table View ---
+with st.expander("📋 Full Oracle Visit Table", expanded=False):
+	st.dataframe(df_oracle, use_container_width=True)
 
 
 
@@ -9226,6 +9226,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
