@@ -7855,10 +7855,10 @@ if (
     else:
         common_type = "N/A"
 
-    # ----------- Advanced Summary output ----------
-	st.subheader("📊 Oracle Team Visit Overview")
-	df = df.loc[:, ~df.columns.duplicated()]   # remove duplicate columns
-	st.dataframe(df.head())
+# ----------- Advanced Summary output ----------
+st.subheader("📊 Oracle Team Visit Overview")
+df = df.loc[:, ~df.columns.duplicated()]   # remove duplicate columns
+st.dataframe(df.head())
 
 
     
@@ -9227,6 +9227,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
