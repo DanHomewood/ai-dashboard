@@ -7856,42 +7856,41 @@ if (
         common_type = "N/A"
 
 	# ----------- Advanced Summary output ----------
-	st.subheader("📊 Oracle Team Visit Overview")
-	df = df.loc[:, ~df.columns.duplicated()]   # remove duplicate columns
-	st.dataframe(df.head())
+st.subheader("📊 Oracle Team Visit Overview")
 
+# Clean duplicates before showing
+df = df.loc[:, ~df.columns.duplicated()]   
+st.dataframe(df.head())
 
-    
+st.markdown(
+    f"""
+    <div style='background:#1f2937;padding:16px 20px;border-radius:10px;color:#e0e0e0;font-size:1.03em;line-height:1.6em'>
+    <b>Advanced Summary:</b><br><br>
+    Across <b>{len(df):,}</b> rows, engineers completed <b>{len(data_no_lunch):,}</b> visits (excluding lunch),
+    generating <b>{total_value}</b> in total value and averaging <b>{avg_value}</b> per visit.<br>
+    The most common visit type was <b>{common_type}</b>.<br><br>
+    Shifts typically started at <b>{avg_activate_time}</b> and ended by <b>{avg_deactivate_time}</b>.<br>
+    Average lunch duration was <b>{avg_lunch_str}</b>.<br><br>
+    Data covers <b>{earliest}</b> to <b>{latest}</b>.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    st.markdown(
-        f"""
-        <div style='background:#1f2937;padding:16px 20px;border-radius:10px;color:#e0e0e0;font-size:1.03em;line-height:1.6em'>
-        <b>Advanced Summary:</b><br><br>
-        Across <b>{len(df):,}</b> rows, engineers completed <b>{len(data_no_lunch):,}</b> visits (excluding lunch),
-        generating <b>{total_value}</b> in total value and averaging <b>{avg_value}</b> per visit.<br>
-        The most common visit type was <b>{common_type}</b>.<br><br>
-        Shifts typically started at <b>{avg_activate_time}</b> and ended by <b>{avg_deactivate_time}</b>.<br>
-        Average lunch duration was <b>{avg_lunch_str}</b>.<br><br>
-        Data covers <b>{earliest}</b> to <b>{latest}</b>.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # -------------- Bullet list -------------------
-    st.markdown(
-        f"""
-        - **Total Rows:** {len(df):,}
-        - **Unique Engineers:** {df['Engineer'].nunique() if 'Engineer' in df.columns else 'N/A'}
-        - **Unique Visit Types:** {df['Visit Type'].nunique() if 'Visit Type' in df.columns else 'N/A'}
-        - **Date Range:** {earliest} → {latest}
-        - **Total Value:** {total_value}
-        - **Average Value per Visit:** {avg_value}
-        - **Average Activate Time:** {avg_activate_time}
-        - **Average Deactivate Time:** {avg_deactivate_time}
-        - **Most Common Visit Type:** {common_type}
-        """
-    )
+# -------------- Bullet list -------------------
+st.markdown(
+    f"""
+    - **Total Rows:** {len(df):,}
+    - **Unique Engineers:** {df['Engineer'].nunique() if 'Engineer' in df.columns else 'N/A'}
+    - **Unique Visit Types:** {df['Visit Type'].nunique() if 'Visit Type' in df.columns else 'N/A'}
+    - **Date Range:** {earliest} → {latest}
+    - **Total Value:** {total_value}
+    - **Average Value per Visit:** {avg_value}
+    - **Average Activate Time:** {avg_activate_time}
+    - **Average Deactivate Time:** {avg_deactivate_time}
+    - **Most Common Visit Type:** {common_type}
+    """
+)
 
     # Section 3 of Block 14: Oracle Team Visit Data (All Regions)
 
@@ -9227,6 +9226,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
