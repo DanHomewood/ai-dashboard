@@ -7857,11 +7857,11 @@ if (
 
     # ----------- Advanced Summary output ----------
     st.subheader("📊 Oracle Team Visit Overview")
-		# right before st.dataframe(df.head())
-		df = df.loc[:, ~df.columns.duplicated()]
+	# right before st.dataframe(df.head())
+	df = df.loc[:, ~df.columns.duplicated()]
 	st.dataframe(df.head())
 
-    st.dataframe(df.head())
+    
 
     st.markdown(
         f"""
@@ -9227,6 +9227,7 @@ elif st.session_state.screen == "budget":
 
 
         
+
 
 
 
