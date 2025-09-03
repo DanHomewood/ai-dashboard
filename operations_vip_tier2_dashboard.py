@@ -2817,12 +2817,7 @@ highlands_df = combined_oracle_df[
 def load_excel(path):
     return pd.read_excel(path)
 
-try:
-    sky_business_df = load_excel("AI Test SB Visits.xlsx")
-    sky_business_df.columns = sky_business_df.columns.str.strip()
-except Exception as e:
-    st.warning(f"⚠️ Could not load Sky Business file: {e}")
-    sky_business_df = pd.DataFrame()
+
 
 try:
     call_log_df = load_excel("Call Log Data.xlsx")
@@ -6636,6 +6631,59 @@ if st.session_state.get("screen") == "sky_retail":
             with st.expander(f"🔎 Show Raw Data for {stakeholder}", expanded=False):
                 st.dataframe(df.dropna(axis=1, how="all"), use_container_width=True)
 
+# ---- SKY BUSINESS: shared normaliser + patterns + counters ----
+import unicodedata
+import pandas as pd
+
+def sb__strip_accents(text: str) -> str:
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
+
+def sb__normalise(series: pd.Series) -> pd.Series:
+    s = series.astype(str).map(sb__strip_accents).str.lower()
+    return (
+        s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unusual dashes → hyphen
+         .str.replace(r"[^a-z0-9]+", " ", regex=True)         # drop punctuation, collapse spaces
+         .str.replace(r"\s+", " ", regex=True)
+         .str.strip()
+    )
+
+def sb__all_text(df: pd.DataFrame) -> pd.Series:
+    """Concatenate ALL object columns into one searchable string."""
+    if df.empty:
+        return pd.Series([], dtype=str)
+    cols = df.select_dtypes(include="object").columns
+    if not len(cols):
+        return pd.Series([""] * len(df), index=df.index)
+    return df[cols].fillna("").agg(" ".join, axis=1)
+
+# ONE source of truth for the patterns your SLA tiles use
+SB_SLA_PATTERNS = {
+    "nero_all":  r"\bcaf+\w*\s*nero\b",                    # cafe/caffe/caffè nero
+    "nero_2h":   r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b",
+    "nero_next": r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b",
+    "nero_4h":   r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b",
+    "sla_8h":    r"\b8\s*hour\s*sla\b",
+}
+
+def sb__build_masks(norm_text: pd.Series) -> dict[str, pd.Series]:
+    """Return a dict of boolean masks keyed by pattern name."""
+    if norm_text.empty:
+        return {k: pd.Series(False, index=norm_text.index) for k in SB_SLA_PATTERNS}
+    return {k: norm_text.str.contains(pat, na=False) for k, pat in SB_SLA_PATTERNS.items()}
+
+def sb__count_totals(df: pd.DataFrame) -> dict[str, int]:
+    """Counts for current filtered df, using the shared rules."""
+    norm = sb__normalise(sb__all_text(df))
+    masks = sb__build_masks(norm)
+    return {k: int(v.sum()) for k, v in masks.items()}
+
+def sb__series_by_month(df: pd.DataFrame, mask: pd.Series, month_col: str) -> pd.Series:
+    """Monthly counts for sparkline on filtered base df."""
+    if df.empty or mask.sum() == 0:
+        return pd.Series([], dtype=int)
+    return (df.loc[mask]
+            .groupby(month_col).size()
+            .sort_index())
 
 # ==============================
 # EXECUTIVE OVERVIEW (Mark Wilson)
