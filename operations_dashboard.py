@@ -7652,6 +7652,31 @@ if st.session_state.screen == "operational_area":
     
 
 
+# === Invoices: screen renderer ===
+def render_invoices_screen():
+    import streamlit as st
+    import pandas as pd
+
+    st.title("📄 Invoices")
+
+    try:
+        inv = load_invoices()  # your loader already handles multiple paths and uploads
+    except Exception as e:
+        st.error(f"Could not load invoices: {e}")
+        return
+
+    if inv is None or (isinstance(inv, pd.DataFrame) and inv.empty):
+        st.info("No invoices to show yet.")
+        return
+
+    # Normalised preview
+    st.dataframe(inv, use_container_width=True)
+
+    # (Optional) tiny summary
+    with st.expander("Summary", expanded=False):
+        st.write(f"Rows: {len(inv):,}")
+        st.write(f"Columns: {len(inv.columns)}")
+        st.write("Columns:", list(inv.columns))
    
 
 
@@ -10940,6 +10965,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
