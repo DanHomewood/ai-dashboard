@@ -9473,8 +9473,40 @@ if st.session_state.screen == "operational_area":
         return float(s.sum())
 
     TOTAL_BUDGET = 280_000  # keep your number
+    # --- HOTFIX: robust saved-allocation sum; no other helpers required ---
+    def _safe_saved_alloc_sum() -> float:
+        import pandas as pd
+        bud = st.session_state.get("budgets_df", pd.DataFrame())
+        if bud is None or bud.empty:
+            return 0.0
 
-    alloc_used  = _saved_alloc_sum()
+        # pick a column by common variants or fuzzy match
+        def _pick(df, candidates):
+            low = {c.lower(): c for c in df.columns}
+            for k in candidates:
+                if k.lower() in low:
+                    return low[k.lower()]
+            # fuzzy fallback
+            for c in df.columns:
+                for k in candidates:
+                    if k.lower() in c.lower():
+                        return c
+            return None
+
+        team_col  = _pick(bud, ["Team","Stakeholder","Area","Department","Group"]) or bud.columns[0]
+        alloc_col = _pick(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
+        if not alloc_col:
+            return 0.0
+
+        x = bud[[team_col, alloc_col]].copy()
+        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
+        # one row per team (latest wins)
+        x = x.dropna(subset=[team_col]).drop_duplicates(subset=[team_col], keep="last")
+        return float(x[alloc_col].sum())
+
+
+
+    alloc_used = _safe_saved_alloc_sum()
     spent_used  = _total_spent_master()
     budget_rem  = max(TOTAL_BUDGET - alloc_used - spent_used, 0.0)
 
