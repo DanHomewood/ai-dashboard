@@ -9530,47 +9530,120 @@ if st.session_state.screen == "operational_area":
 
 
         # ---- TAB 2: +/- allocators (with +/- buttons, live preview, save) ----
-        import matplotlib.pyplot as plt
+        # ---- TAB 2: +/- allocators (polished + grand totals + progress bars + export) ----
+        import plotly.express as px
+        import pandas as pd
+        from pathlib import Path
+
+        # === CONFIG: where expenses live ===
+        EXP_MASTER = Path("Expenses/expenses_master.parquet")  # adjust if you keep it elsewhere
+
+        def _read_master_safe() -> pd.DataFrame:
+            if EXP_MASTER.exists():
+                try:
+                    df = pd.read_parquet(EXP_MASTER)
+                except Exception:
+                    # Fallback if pyarrow not available or file corrupt
+                    try:
+                        df = pd.read_csv(EXP_MASTER.with_suffix(".csv"))
+                    except Exception:
+                        df = pd.DataFrame()
+            else:
+                df = pd.DataFrame()
+            return df
+
+        def _find_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
+            if df.empty:
+                return None
+            cols = {c.lower(): c for c in df.columns}
+            for c in candidates:
+                if c.lower() in cols:
+                    return cols[c.lower()]
+            return None
+
+        def get_spend_by_team(teams: list[str]) -> pd.Series:
+            """
+            Robustly sum expenses per team across common column names.
+            Looks for team-like and amount-like columns; returns a Series indexed by 'teams'.
+            """
+            df = _read_master_safe()
+            if df.empty:
+                return pd.Series([0.0]*len(teams), index=teams, dtype=float)
+
+            team_col = _find_col(df, ["Stakeholder","Team","Department","Cost Centre","Category"])
+            amt_col  = _find_col(df, ["Amount","Value","Total","Net","Cost"])
+
+            if team_col is None or amt_col is None:
+                return pd.Series([0.0]*len(teams), index=teams, dtype=float)
+
+            # clean
+            s = df[[team_col, amt_col]].copy()
+            s[amt_col] = pd.to_numeric(s[amt_col], errors="coerce").fillna(0.0)
+            s[team_col] = s[team_col].astype(str).str.strip()
+
+            # Case-insensitive map to your canonical team names
+            norm_map = {t.lower(): t for t in teams}
+            s["_team_norm"] = s[team_col].str.lower().map(lambda x: norm_map.get(x, None))
+
+            by = s.dropna(subset=["_team_norm"]).groupby("_team_norm", dropna=True)[amt_col].sum()
+            # Ensure all teams present
+            out = pd.Series(0.0, index=teams, dtype=float)
+            out.update(by)
+            return out
 
         with tab_adj:
-            # Stakeholders list (order fixed)
+            # ——— Styles (safe to include multiple times) ———
+            st.markdown("""
+            <style>
+            .budget-pill {
+                background: linear-gradient(135deg,#0ea5e9,#2563eb);
+                color:#fff; padding:12px 18px; border-radius:16px;
+                font-weight:700; display:inline-block; min-width:140px; text-align:center;
+                box-shadow: 0 6px 18px rgba(37,99,235,.18);
+            }
+            .muted { color:#6b7280; }
+            .card { border: 1px solid rgba(148,163,184,.25); padding: 12px 14px; border-radius: 12px; }
+            .tight { padding-bottom: .35rem; }
+            </style>
+            """, unsafe_allow_html=True)
+
+            # Stakeholders order (fixed)
             STAKEHOLDERS = [
                 "VIP North", "VIP South",
                 "Tier 2 North", "Tier 2 South",
                 "Sky Business", "Sky Retail",
             ]
-            STEP = 1_000  # £ step for +/- buttons
+            STEP = 1_000  # £ step
 
-            # Seed a working copy in session_state from budgets_df (keeps edits local until Save)
+            # Seed working copy in session_state (keeps edits local until Save)
             if "alloc_working" not in st.session_state:
-                # start from file values; if any missing stakeholder, default to 0
                 base = budgets_df["Allocated"].reindex(STAKEHOLDERS).fillna(0).astype(float)
                 st.session_state.alloc_working = base
 
-            # KPIs (from working values)
+            # KPIs from working values
             work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
             total_alloc_now = float(work.sum())
             headroom = float(TOTAL_BUDGET - total_alloc_now)
 
-            kc1, kc2 = st.columns(2)
-            kc1.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
-            kc2.metric("Headroom vs Total Budget", f"£{headroom:,.0f}")
+            k1, k2 = st.columns(2)
+            k1.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
+            k2.metric("Headroom vs Total Budget", f"£{headroom:,.0f}")
 
-            # 2.1) Allocation controls (buttons + live value)
+            # ============== Editor (unchanged behaviour, tidier layout) ==============
             with st.expander("🔧 Adjust Quarterly Allocations", expanded=True):
                 st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
-                for name in STAKEHOLDERS:
-                    col1, col2, col3 = st.columns([2,1,1])
-                    col1.markdown(f"**{name}**")
 
-                    # Row controls
-                    with col2:
-                        bcols = st.columns([1,2,1])
-                        if bcols[0].button("−", key=f"dec_{name}"):
+                for name in STAKEHOLDERS:
+                    c1, c2, c3 = st.columns([1.4, 1.3, 1.0])
+                    with c1:
+                        st.markdown(f"<div class='tight'><strong>{name}</strong></div>", unsafe_allow_html=True)
+
+                    with c2:
+                        b1, bmid, b3 = st.columns([0.3, 1.0, 0.3])
+                        if b1.button("−", key=f"dec_{name}"):
                             st.session_state.alloc_working[name] = max(0.0, work[name] - STEP)
-                            work = st.session_state.alloc_working  # refresh local ref
-                        # show current value as a number_input so you can type too
-                        new_val = bcols[1].number_input(
+                            work = st.session_state.alloc_working
+                        new_val = bmid.number_input(
                             label=f"{name}_val",
                             value=float(work[name]),
                             step=float(STEP),
@@ -9582,46 +9655,97 @@ if st.session_state.screen == "operational_area":
                         if new_val != work[name]:
                             st.session_state.alloc_working[name] = float(new_val)
                             work = st.session_state.alloc_working
-                        if bcols[2].button("+", key=f"inc_{name}"):
+                        if b3.button("+", key=f"inc_{name}"):
                             st.session_state.alloc_working[name] = work[name] + STEP
                             work = st.session_state.alloc_working
 
-                    # pretty inline display on the right
-                    col3.markdown(f"**£{st.session_state.alloc_working[name]:,.0f}**")
+                    with c3:
+                        st.markdown(
+                            f"<div class='budget-pill'>£{st.session_state.alloc_working[name]:,.0f}</div>",
+                            unsafe_allow_html=True
+                        )
 
-                # Save (writes to budgets.csv and updates in-memory budgets_df)
-                if st.button("💾 Save changes"):
-                    out_df = (
-                        st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
-                        .rename("Allocated").reset_index().rename(columns={"index": "Stakeholder"})
+                st.divider()
+                sleft, smid, sright = st.columns([1,1,1])
+                with sleft:
+                    if st.button("💾 Save changes", use_container_width=True):
+                        out_df = (
+                            st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
+                            .rename("Allocated").reset_index().rename(columns={"index": "Stakeholder"})
+                        )
+                        out_df.to_csv(BUDGET_FILE, index=False)
+                        st.session_state.budgets_df = out_df.set_index("Stakeholder")  # live update
+                        st.success("Allocations saved to budgets.csv")
+                        work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
+                        total_alloc_now = float(work.sum())
+                        headroom = float(TOTAL_BUDGET - total_alloc_now)
+
+            # ============== Spend vs Budget (per team) ==============
+            st.subheader("📊 Spend vs Budget")
+            spent = get_spend_by_team(STAKEHOLDERS)  # sums from master expenses
+            alloc = work.copy()
+
+            # Grand totals
+            grand_alloc = float(alloc.sum())
+            grand_spent = float(spent.sum())
+            grand_remain = grand_alloc - grand_spent
+
+            g1, g2, g3 = st.columns(3)
+            g1.metric("Grand Total Budget", f"£{grand_alloc:,.0f}")
+            g2.metric("Grand Total Spent", f"£{grand_spent:,.0f}")
+            g3.metric("Grand Remaining", f"£{max(grand_remain,0):,.0f}")
+
+            st.caption("Bars show % of each team’s budget spent. If a team has no budget yet, the bar stays at 0% until you allocate.")
+
+            # Cards with progress bars (2 columns)
+            for i in range(0, len(STAKEHOLDERS), 2):
+                row = STAKEHOLDERS[i:i+2]
+                cols = st.columns(len(row))
+                for team, col in zip(row, cols):
+                    with col:
+                        b = float(alloc.get(team, 0.0))
+                        s = float(spent.get(team, 0.0))
+                        pct = (s / b) if b > 0 else 0.0
+                        pct = max(0.0, min(1.0, pct))
+                        remaining = b - s
+
+                        with st.container(border=True):
+                            st.markdown(f"**{team}**")
+                            cA, cB, cC = st.columns([1,1,1])
+                            cA.metric("Budget", f"£{b:,.0f}")
+                            cB.metric("Spent",  f"£{s:,.0f}")
+                            cC.metric("Left",   f"£{max(remaining,0):,.0f}")
+                            st.progress(pct, text=f"{(pct*100):.0f}% of budget used")
+
+            # ============== Donut Breakdown ==============
+            with st.expander("🍩 Allocation Breakdown", expanded=False):
+                if alloc.sum() > 0:
+                    fig = px.pie(
+                        values=alloc.values,
+                        names=alloc.index.tolist(),
+                        hole=0.6
                     )
-                    out_df.to_csv(BUDGET_FILE, index=False)
-                    # update the live budgets_df used elsewhere (no rerun needed for this tab)
-                    st.session_state.budgets_df = out_df.set_index("Stakeholder")
-                    st.success("Allocations saved to budgets.csv")
-                    # refresh local copies
-                    work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
-                    total_alloc_now = float(work.sum())
-                    headroom = float(TOTAL_BUDGET - total_alloc_now)
+                    fig.update_traces(textinfo="percent+label")
+                    fig.update_layout(showlegend=True, margin=dict(t=10,b=10,l=10,r=10), height=300)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.caption("No allocations to show yet.")
 
-                import plotly.express as px
+            # ============== Export tidy CSV (Budget vs Spent) ==============
+            tidy = pd.DataFrame({
+                "Stakeholder": STAKEHOLDERS,
+                "Allocated": [float(alloc.get(t,0.0)) for t in STAKEHOLDERS],
+                "Spent":     [float(spent.get(t,0.0)) for t in STAKEHOLDERS],
+            })
+            tidy["Remaining"] = tidy["Allocated"] - tidy["Spent"]
+            st.download_button(
+                "⬇️ Export Budget vs Spent (CSV)",
+                data=tidy.to_csv(index=False).encode("utf-8"),
+                file_name="budget_vs_spent.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
-                with st.expander("🍩 Allocation Breakdown", expanded=False):
-                    if work.sum() > 0:
-                        fig = px.pie(
-                            values=work.values,
-                            names=STAKEHOLDERS,
-                            hole=0.6,  # makes it a donut
-                        )
-                        fig.update_traces(textinfo="percent+label")
-                        fig.update_layout(
-                            showlegend=True,
-                            margin=dict(t=10, b=10, l=10, r=10),
-                            height=300  # keeps it compact
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.caption("No allocations to show yet.")
 
 
     # ---- TAB 1: Read-only summary ----
