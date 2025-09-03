@@ -1552,46 +1552,49 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
-div.block-container{max-width:1100px;margin:0 auto;}
-.stTabs [data-baseweb="tab-list"]{gap:.25rem}
-button[kind="secondary"]{margin:2px 4px}
+/* ========== LAYOUT ========== */
+div.block-container{
+  max-width: 1100px;        /* one source of truth */
+  margin: 0 auto;           /* center the page */
+  padding-top: .5rem;
+  padding-bottom: 1rem;
+}
+
+/* Headings + separators */
+h2, h3 { margin: .25rem 0 .5rem 0 !important; }
+hr { margin: .6rem 0 !important; opacity:.25; }
+
+/* Tabs spacing */
+.stTabs [data-baseweb="tab-list"]{ gap:.25rem !important; }
+
+/* ========== COMPONENTS ========== */
+.kpi{
+  border:1px solid rgba(148,163,184,.25);
+  border-radius:12px;
+  padding:10px 14px;
+  background:rgba(2,6,23,.02);
+}
+.kpi h3{ font-size:.9rem; font-weight:600; margin:0 0 .25rem 0; }
+.kpi .val{ font-size:1.6rem; font-weight:800; line-height:1; margin:0; }
+
+.budget-pill{
+  background:linear-gradient(135deg,#0ea5e9,#2563eb);
+  color:#fff; padding:10px 16px; border-radius:14px;
+  font-weight:700; display:inline-block; min-width:120px; text-align:center;
+  box-shadow:0 8px 22px rgba(37,99,235,.16);
+}
+.small{ color:#64748b; font-size:.9rem; }
+.rowpad{ padding:.25rem 0; }
+
+/* Number inputs and buttons alignment in allocation rows */
+div[data-testid="stNumberInput"]{ width:100%; }          /* make the number box fill its column */
+.stButton>button[kind="secondary"]{ margin:2px 4px; }    /* +/- buttons not cramped */
+
+/* Keep default sections tight */
+section.main > div { padding-top:.25rem; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-/* compact, centered content */
-div.block-container{
-  max-width: 1200px;   /* tweak 1000–1280 if you like */
-  padding-top: 0.75rem;
-  padding-bottom: 1.5rem;
-  margin: 0 auto;      /* center */
-}
-</style>
-""", unsafe_allow_html=True)
-# --- Global compact layout + utility classes ---
-st.markdown("""
-<style>
-/* Center the page and cap width */
-div.block-container{max-width:1100px;margin:0 auto;padding-top:.5rem;padding-bottom:1rem;}
-/* Headings + spacing */
-h2, h3 { margin: .25rem 0 .5rem 0 !important; }
-hr { margin: .6rem 0 !important; opacity:.25; }
-/* Tighten tab header spacing */
-.css-13ejsyy, .stTabs [data-baseweb="tab-list"] { gap: .25rem !important; }
-/* KPI band */
-.kpi {border:1px solid rgba(148,163,184,.25); border-radius:12px; padding:10px 14px; background:rgba(2,6,23,.02);}
-.kpi h3 {font-size:0.9rem; font-weight:600; margin:0 0 .25rem 0;}
-.kpi .val {font-size:1.6rem; font-weight:800; line-height:1; margin:0;}
-/* Budget pill */
-.budget-pill {background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;padding:10px 16px;border-radius:14px;
-  font-weight:700; display:inline-block; min-width:120px; text-align:center; box-shadow:0 8px 22px rgba(37,99,235,.16);}
-.small {color:#64748b; font-size:.9rem;}
-.rowpad {padding:.25rem 0;}
-/* Tighter columns default */
-section.main > div {padding-top:.25rem;}
-</style>
-""", unsafe_allow_html=True)
 
 
 # --- Global display defaults ---
@@ -9352,7 +9355,7 @@ if st.session_state.screen == "operational_area":
     # === Tabs (Summary / Adjust / Expenses) – keep your existing tab names ===
     tab_sum, tab_adj, tab_exp = st.tabs(["Budget Summary", "Adjust Allocations", "Expenses"])
 
-    # ---------------- Adjust Allocations (polished grid) ----------------
+
 # ---------------- Adjust Allocations (polished grid) ----------------
     with tab_adj:
         STAKEHOLDERS = ["VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"]
@@ -9423,12 +9426,17 @@ if st.session_state.screen == "operational_area":
     # ---- TAB 1: Read-only summary ----
     with tab_sum:
         # existing KPIs...
-        spent_num = pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum()
-        remaining_pct = (remaining / TOTAL_BUDGET * 100) if TOTAL_BUDGET else 0
+        # calculate from the same dataframe you display in the detailed table
+        alloc_sum = float(pd.to_numeric(summary_df["Allocated"], errors="coerce").fillna(0).sum())
+        spent_sum = float(pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum())
+        remaining = max(alloc_sum - spent_sum, 0.0)
+        remaining_pct = (remaining / alloc_sum * 100.0) if alloc_sum else 0.0
+
         c1, c2, c3 = st.columns(3)
-        c1.metric("💷 Spent so far", f"£{spent_num:,.0f}")
+        c1.metric("💷 Spent so far",      f"£{spent_sum:,.0f}")
         c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
-        c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
+        c3.metric("📈 % Remaining",      f"{remaining_pct:.1f}%")
+
             # 2.3) Detailed budget table (interactive)
         with st.expander("📋 Detailed Budget Table", expanded=True):
             # --- ALWAYS use the Expenses master mapped to teams (not the CSV) ---
