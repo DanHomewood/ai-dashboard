@@ -3250,22 +3250,9 @@ def team_kpis(df: pd.DataFrame) -> dict:
                 under_1025_count=under_1025_count, over_1025_rate=over_1025_rate, under_1025_rate=under_1025_rate,
                 overtime_total=overtime_total, trend_visits=trend_visits)
 
-# === Invoices: loader tuned to your Excel ===
-@st.cache_data(show_spinner=False)
-def load_invoices(path: str | Path = "Invoices.xlsx") -> pd.DataFrame:
-    p = Path(path)
-    if not p.exists():
-        st.warning("⚠️ Invoices.xlsx not found in app folder.")
-        return pd.DataFrame()
-
-    try:
-        df = pd.read_excel(p)  # Sheet1 in your file
-    except Exception as e:
-        st.error(f"Failed to read Invoices.xlsx: {e}")
-        return pd.DataFrame()
-
-    # Normalise headers
+def shape_invoices_columns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+    # Normalise headers
     df.columns = (
         df.columns.astype(str)
         .str.replace("\u00A0", " ", regex=False)  # non-breaking space
@@ -3282,7 +3269,6 @@ def load_invoices(path: str | Path = "Invoices.xlsx") -> pd.DataFrame:
             errors="coerce",
         )
 
-    # Map your actual columns to canonical working columns
     col = lambda name: name if name in df.columns else None
 
     # Rechargeable
@@ -3325,7 +3311,6 @@ def load_invoices(path: str | Path = "Invoices.xlsx") -> pd.DataFrame:
 
     # Time on site (Excel time-of-day used as duration)
     if col("Time On-Site"):
-        # Keep original; also provide minutes for optional metrics
         try:
             t = pd.to_datetime(df["Time On-Site"], errors="coerce")
             df["TimeOnSite_minutes"] = (t.dt.hour * 60 + t.dt.minute).astype("Int64")
@@ -3333,14 +3318,7 @@ def load_invoices(path: str | Path = "Invoices.xlsx") -> pd.DataFrame:
             df["TimeOnSite_minutes"] = pd.NA
 
     return df
-# === Invoices: screen renderer (shows your real columns) ===
-def render_invoices_screen():
-    st.title("📄 Invoices")
 
-    inv = load_invoices()
-    if inv.empty:
-        st.info("No invoices to show yet.")
-        return
 
     # -------- Filters (match your file)
     f1, f2, f3, f4 = st.columns([1.3, 1, 1, 1])
@@ -11004,6 +10982,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
