@@ -383,6 +383,7 @@ def load_sky_business(path: str | Path = "Sky Business.xlsx") -> pd.DataFrame:
         df = pd.read_excel(p, sheet_name=0)
 
     # normalise headers
+    df = df.copy()
     df.columns = (
         df.columns.astype(str)
           .str.replace("\u00A0", " ", regex=False)
@@ -398,24 +399,34 @@ def load_sky_business(path: str | Path = "Sky Business.xlsx") -> pd.DataFrame:
     c_job  = pick("Job Type", "JobType", "Type")
     c_sla  = pick("SLA", "Sla", "S L A")
     c_slot = pick("Preferred time slot", "Prefered time slot", "Preferred Time Slot", "Preferred slot")
-    c_date = pick("Date", "Requested Date", "Requested date", "Created Date")
+    # ✅ include SBDate FIRST so we don’t lose it
+    c_date = pick("SBDate", "Visit Date", "Date", "Requested Date", "Requested date", "Created Date")
 
-    out = pd.DataFrame()
+    out = pd.DataFrame(index=df.index)
     if c_job:  out["JobType"]  = df[c_job].astype(str).str.strip()
     if c_sla:  out["SLA"]      = df[c_sla].astype(str).str.strip()
     if c_slot: out["PrefSlot"] = df[c_slot].astype(str).str.strip()
 
-    # date (SBDate) used for filters + monthly grouping
+    # robust SBDate parsing (UK style first, then Excel serials)
     if c_date:
-        out["SBDate"] = pd.to_datetime(df[c_date], errors="coerce")
+        raw = df[c_date]
+        sbdate = pd.to_datetime(raw, errors="coerce", dayfirst=True)
+        if sbdate.notna().sum() == 0:
+            serial = pd.to_numeric(raw, errors="coerce")
+            sbdate = pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce")
+        if sbdate.notna().sum() == 0:
+            sbdate = pd.to_datetime(raw, errors="coerce")  # final generic try
+        out["SBDate"] = sbdate
     else:
         out["SBDate"] = pd.NaT
 
+    # tidy empties
     for c in ["JobType", "SLA", "PrefSlot"]:
         if c in out.columns:
             out[c] = out[c].replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
 
     return out
+
 
 
 # —— neat cards & grids for Sky Business ——
