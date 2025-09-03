@@ -2219,8 +2219,7 @@ users = {
 
 # ===== SECTION 6: Styling + Single Login (with named users & passwords) =====
 
-# ===== Light theme to match your old app =====
-# ===== Light theme to match your old app =====
+# ---- LIGHT THEME (matches your old app look, full width, responsive) ----
 LIGHT_CSS = """
 /* App background + base typography */
 html, body, .stApp {
@@ -2229,51 +2228,61 @@ html, body, .stApp {
   font-family: 'Inter','Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* Replace the old line with this */
+/* Make the main area full width with nice side gutters */
 .block-container {
   max-width: 100%;
-  padding: 0 24px;            /* nice side gutters on large screens */
+  padding: 0 24px;
 }
 
-
-/* Hide Streamlit default decoration gap at top */
+/* Hide Streamlit's default top gap */
 header[data-testid="stHeader"] { background: transparent; }
 
-/* --- Uniform 'card buttons' --- */
+/* ---------- Uniform 'menu tiles' (buttons) ---------- */
 .menu-row { margin-top: 8px; }
-.stButton { margin: 6px 8px !important; }            /* consistent gaps */
+.stButton { margin: 6px 8px !important; } /* consistent gaps */
 .stButton > button {
-  min-width: 200px;               /* keeps text on one line for short labels */
-  height: 72px;                   /* same height for all */
+  min-width: 200px;
+  height: 72px;
   border-radius: 18px;
   padding: .6rem 1rem;
-  white-space: normal;            /* allow wrap if needed */
+  white-space: normal;
   line-height: 1.15;
   word-break: keep-all;
-}
-
-/* Buttons */
-.stButton > button {
   background: linear-gradient(90deg,#0ea5e9,#2563eb) !important;
-  color:#fff !important; border:0; border-radius:12px; padding:.65rem 1.2rem;
-  font-weight:700; box-shadow:0 6px 18px rgba(2,32,71,.18);
+  color:#fff !important; border:0;
+  box-shadow:0 6px 18px rgba(2,32,71,.18);
+  font-weight:700;
 }
-.stButton > button:hover { filter:brightness(1.06); box-shadow:0 10px 24px rgba(2,32,71,.22); }
+.stButton > button:hover {
+  filter:brightness(1.06);
+  box-shadow:0 10px 24px rgba(2,32,71,.22);
+}
 
-/* Login hero (logo + strapline) */
+/* Responsive sizing for tiles so zooming doesn't break rows */
+@media (max-width: 1280px) {
+  .stButton > button { min-width: 170px; height: 64px; }
+}
+@media (max-width: 992px) {
+  .stButton > button { min-width: 150px; height: 60px; }
+}
+@media (max-width: 640px) {
+  .stButton > button { min-width: 100%; height: auto; }
+}
+
+/* ---------- Login hero (logo + strapline) ---------- */
 .logo { display:flex; justify-content:center; margin:12px 0 4px 0; }
 .logo img { max-width: 560px; width: 100%; height:auto; }
 .login-header-wrapper { display:flex; justify-content:center; margin:8px 0 12px; }
 .login-header { font-size:20px; font-weight:700; color:#111827; }
 
-/* Centered white card like the old app */
+/* Centered white login card */
 .login-card {
   max-width: 860px; margin: 8px auto 0 auto;
   background:#fff; border:1px solid #e6e8eb; border-radius:16px;
   padding:20px 22px; box-shadow:0 18px 40px rgba(2,32,71,.06);
 }
 
-/* Inputs look lighter */
+/* Inputs: light fields */
 div[data-baseweb="select"] > div { background:#f8fafc; border-radius:10px; }
 .stTextInput > div > div > input { background:#f8fafc; border-radius:10px; }
 .stPassword > div > div > input { background:#f8fafc; border-radius:10px; }
@@ -2281,28 +2290,26 @@ div[data-baseweb="select"] > div { background:#f8fafc; border-radius:10px; }
 /* Headings */
 h1,h2,h3,h4 { color:#0f172a !important; font-weight:800; }
 
-/* Sidebar on light */
+/* Sidebar */
 section[data-testid="stSidebar"] { background:#ffffff !important; border-right:1px solid #eef1f5; }
-"""
 
-LIGHT_CSS += """
-/* Dark KPI pill: keep white text inside the dark rounded card */
+/* ---------- KPI 'pill' cards: WHITE background + DARK text ---------- */
 .kpi-pill {
-  background:#0f172a;               /* deep navy (same as old app) */
-  color:#f8fafc !important;
+  background:#ffffff !important;
+  color:#0f172a !important;
   border-radius:24px;
   padding:18px 20px;
-  box-shadow:0 14px 28px rgba(2,32,71,.18);
-  border:1px solid rgba(255,255,255,.04);
+  border:1px solid #e6e8eb;
+  box-shadow:0 14px 28px rgba(2,32,71,.10);
 }
-
-/* Ensure *everything* inside renders white */
+/* Ensure all text inside is dark */
 .kpi-pill h1, .kpi-pill h2, .kpi-pill h3, .kpi-pill h4,
 .kpi-pill p, .kpi-pill li, .kpi-pill strong, .kpi-pill span, .kpi-pill em {
-  color:#f8fafc !important;
+  color:#0f172a !important;
 }
+.kpi-pill strong { font-weight:800; }
 
-/* Optional: lighten the Expander header on light theme but keep tidy */
+/* ---------- Expander styling (light) ---------- */
 div[data-testid="stExpander"] {
   background:#ffffff; border:1px solid #e6e8eb; border-radius:12px;
 }
@@ -2311,8 +2318,9 @@ div[data-testid="stExpander"] > div[role="button"] {
 }
 """
 
-# Use this new CSS instead of the previous dark bundle
-#inject_css(LIGHT_CSS)
+# Inject the light theme (make sure any earlier dark injection is removed/commented out)
+inject_css(LIGHT_CSS)
+
 
 
 
