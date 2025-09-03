@@ -7288,8 +7288,28 @@ def render_exec_overview(embed: bool = False):
                 st.info("No date column (need SBDate/Date/Visit Date).")
                 st.stop()
 
-            sb["SBDate"] = pd.to_datetime(sb[date_col], errors="coerce")
+            # --- show the raw values before parsing
+            st.caption(f"RAW • {date_col} dtype={sb[date_col].dtype}")
+            st.write(sb[[date_col]].head(10))
+
+            # --- try UK-style day-first first; fall back to Excel serials if needed
+            sb["SBDate"] = pd.to_datetime(sb[date_col], errors="coerce", dayfirst=True)
+
+            # if still all NaT, try interpreting as Excel serial numbers
+            if sb["SBDate"].notna().sum() == 0:
+                # sometimes read_excel leaves numeric serials as float/int
+                serial = pd.to_numeric(sb[date_col], errors="coerce")
+                sb["SBDate"] = pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce")
+
+            # show what we got after parsing (BEFORE dropna)
+            st.caption(
+                f"PARSE • SBDate not-na={sb['SBDate'].notna().sum()} / total={len(sb)} "
+                f"• examples={sb['SBDate'].dropna().head(3).tolist()}"
+            )
+
+            # now drop rows without a valid date
             sb = sb.dropna(subset=["SBDate"])
+
 
             # ---------- Year / Month selectors ----------
             years  = sb["SBDate"].dt.year.sort_values().unique().tolist()
