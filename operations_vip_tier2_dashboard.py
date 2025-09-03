@@ -7353,18 +7353,23 @@ def render_exec_overview(embed: bool = False):
             base_norm = _normalise(_merge_text(spark_base))  if not spark_base.empty else pd.Series([], dtype=str)
 
             # 5) Masks for totals / sparklines
-            def _masks(norm: pd.Series):
-                if norm.empty:
-                    return tuple(pd.Series(False, index=norm.index) for _ in range(5))
-                m_all_nero  = norm.str.contains(r"\bcaf+\w*\s*nero\b", na=False)
-                m_2h        = norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
-                m_next      = norm.str.contains(r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b", na=False)
-                m_4h        = norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
-                m_8h        = norm.str.contains(r"\b8\s*hour\s*sla\b", na=False)
-                return m_all_nero, m_2h, m_next, m_4h, m_8h
+            def masks_for(df: pd.Series):
+                if df.empty:
+                    return (
+                        pd.Series(False, index=df.index),
+                        pd.Series(False, index=df.index),
+                        pd.Series(False, index=df.index),
+                        pd.Series(False, index=df.index),
+                    )
 
-            cur_masks  = _masks(cur_norm)
-            base_masks = _masks(base_norm)
+                m_all_nero  = df.str.contains("caffe nero", case=False, na=False)
+                m_nero_2h   = m_all_nero & df.str.contains(r"(2[- ]?hour|2\s*hr)", case=False, na=False)
+                m_nero_next = m_all_nero & df.str.contains(r"next\s*day", case=False, na=False)
+                m_nero_4h   = m_all_nero & df.str.contains(r"(4[- ]?hour|4\s*hr)", case=False, na=False)
+                m_8h        = df.str.contains(r"8[- ]?hour", case=False, na=False)
+
+                return m_all_nero, m_nero_2h, m_nero_next, m_nero_4h, m_8h
+
 
             # 6) Sparkline + MoM
             def spark_and_mom(mask_on_base: pd.Series):
