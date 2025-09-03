@@ -5,7 +5,15 @@ streamlit-aggrid
 streamlit-option-menu
 streamlit-pdf-viewer
 streamlit-modal
-
+streamlit>=1.33
+pandas>=2.2
+numpy>=1.26
+plotly>=5.20
+pyarrow>=15
+openpyxl>=3.1
+pdfplumber>=0.11
+pypdf>=4.2
+requests>=2.31
 # --- Charts & visualizations ---
 matplotlib
 seaborn
@@ -72,6 +80,7 @@ langchain-community>=0.2
 langchain-experimental>=0.0.57
 tiktoken>=0.7
 tzdata>=2024.1         # ensures ZoneInfo has Europe/London on cloud
+
 
 
 
