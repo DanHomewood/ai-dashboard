@@ -20,6 +20,33 @@ import pdfplumber
 from pypdf import PdfReader
 from rapidfuzz import fuzz
 from dateutil import parser as dateparser
+# Robust import for fuzzy matching
+try:
+    from rapidfuzz import fuzz, process
+except ModuleNotFoundError:
+    # Fallback to Python stdlib so the app still runs
+    from difflib import SequenceMatcher
+
+    class _Fuzz:
+        @staticmethod
+        def ratio(a, b):
+            # return 0–100 to match rapidfuzz.fuzz.ratio semantics
+            return int(SequenceMatcher(None, str(a), str(b)).ratio() * 100)
+
+    class _Process:
+        @staticmethod
+        def extractOne(query, choices, scorer=None):
+            scorer = scorer or _Fuzz().ratio
+            best_choice, best_score, best_idx = None, -1, None
+            for idx, choice in enumerate(choices):
+                s = scorer(query, choice)
+                if s > best_score:
+                    best_choice, best_score, best_idx = choice, s, idx
+            # mimic rapidfuzz return: (choice, score, index)
+            return (best_choice, best_score, best_idx)
+
+    fuzz = _Fuzz()
+    process = _Process()
 
 # --- Timezone: UK (fallback to UTC if tz data missing) ---
 try:
@@ -10893,6 +10920,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
