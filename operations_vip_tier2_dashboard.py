@@ -9474,11 +9474,18 @@ if st.session_state.screen == "operational_area":
 
     TOTAL_BUDGET = 280_000  # keep your number
     # --- HOTFIX: robust saved-allocation sum; no other helpers required ---
-    def _safe_saved_alloc_sum() -> float:
-        import pandas as pd
-        bud = st.session_state.get("budgets_df", pd.DataFrame())
-        if bud is None or bud.empty:
+    def _saved_alloc_sum() -> float:
+        bud = st.session_state.get("budgets_df", pd.DataFrame()).copy()
+        if bud.empty: return 0.0
+        team_col  = _pick_col(bud, ["Team","Stakeholder","Area","Department","Group"])
+        alloc_col = _pick_col(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
+        if not team_col or not alloc_col: 
             return 0.0
+        x = bud[[team_col, alloc_col]].dropna(subset=[team_col]).copy()
+        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
+        x = x.drop_duplicates(subset=[team_col], keep="last")
+        return float(x[alloc_col].sum())
+
 
         # pick a column by common variants or fuzzy match
         def _pick(df, candidates):
