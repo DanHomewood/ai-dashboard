@@ -9570,23 +9570,24 @@ if st.session_state.screen == "operational_area":
     st.markdown("## 💷 Budget (Operations)")
 
     # --- KPI bar (one row, two cards) ---
-    c1, c2 = st.columns([1,1])
-    with c1:
-        with st.container():  # card
-            st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
-                        f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
-    with c2:
-        # derive current headroom from saved budgets (not the working copy)
-        def _alloc_from_budgets(bud):
-            col_team = "Team" if "Team" in bud.columns else ("Stakeholder" if "Stakeholder" in bud.columns else None)
-            col_alloc = "Allocated" if "Allocated" in bud.columns else ("QuarterlyBudget" if "QuarterlyBudget" in bud.columns else None)
-            if not col_team or not col_alloc: return 0.0
-            return float(pd.to_numeric(bud[col_alloc], errors="coerce").fillna(0).sum())
-        saved_alloc_sum = _alloc_from_budgets(st.session_state.get("budgets_df", budgets_df.reset_index()))
-        headroom_now = float(TOTAL_BUDGET - saved_alloc_sum)
-        with st.container():
-            st.markdown("<div class='kpi'><h3>Budget Remaining</h3>"
-                        f"<div class='val'>£{headroom_now:,.0f}</div></div>", unsafe_allow_html=True)
+    if False:
+        c1, c2 = st.columns([1,1])
+        with c1:
+            with st.container():  # card
+                st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
+                            f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
+        with c2:
+            # derive current headroom from saved budgets (not the working copy)
+            def _alloc_from_budgets(bud):
+                col_team = "Team" if "Team" in bud.columns else ("Stakeholder" if "Stakeholder" in bud.columns else None)
+                col_alloc = "Allocated" if "Allocated" in bud.columns else ("QuarterlyBudget" if "QuarterlyBudget" in bud.columns else None)
+                if not col_team or not col_alloc: return 0.0
+                return float(pd.to_numeric(bud[col_alloc], errors="coerce").fillna(0).sum())
+            saved_alloc_sum = _alloc_from_budgets(st.session_state.get("budgets_df", budgets_df.reset_index()))
+            headroom_now = float(TOTAL_BUDGET - saved_alloc_sum)
+            with st.container():
+                st.markdown("<div class='kpi'><h3>Budget Remaining</h3>"
+                            f"<div class='val'>£{headroom_now:,.0f}</div></div>", unsafe_allow_html=True)
 
 
     st.markdown("<hr/>", unsafe_allow_html=True)
