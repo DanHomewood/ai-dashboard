@@ -7270,6 +7270,9 @@ def render_exec_overview(embed: bool = False):
             cur_sla   = normalise_sla(cur_text)
             base_sla  = normalise_sla(base_text)
 
+            cur_masks  = masks_for(cur_sla)
+            base_masks = masks_for(base_sla)
+
 
             # Build masks for cur (totals) and spark_base (series)
             def masks_for(df_norm: pd.Series):
@@ -7303,6 +7306,8 @@ def render_exec_overview(embed: bool = False):
             cur_sla   = normalise_sla(cur_text)
             base_sla  = normalise_sla(base_text)
 
+            cur_masks  = masks_for(cur_sla)
+            base_masks = masks_for(base_sla)
 
             # Helper: spark + MoM for a mask on spark_base
             def spark_and_mom(mask_on_base: pd.Series):
