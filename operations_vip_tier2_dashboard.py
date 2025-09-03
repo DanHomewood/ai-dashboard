@@ -9570,12 +9570,6 @@ if st.session_state.screen == "operational_area":
         with st.container():  # card
             st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
                         f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
-    # --- KPI bar (one row, two cards) ---
-    c1, c2 = st.columns([1,1])
-    with c1:
-        with st.container():  # card
-            st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
-                        f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
     with c2:
         # derive current headroom from saved budgets (not the working copy)
         def _alloc_from_budgets(bud):
