@@ -9398,29 +9398,38 @@ if st.session_state.screen == "operational_area":
         # SIMPLE rows: Label | [-]  [value]  [+] | £readout
         with st.expander("🛠️ Adjust Quarterly Allocations", expanded=True):
             st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
+
             for team in STAKEHOLDERS:
-                col_label, col_controls, col_amount = st.columns([1.2, 1.8, 1.0], gap="small")
-                with col_label:
+                # SIMPLE: Label | − | [number] | +
+                label_col, minus_col, input_col, plus_col = st.columns([1.6, 0.15, 0.9, 0.15])
+
+                with label_col:
                     st.markdown(f"**{team}**")
-                with col_controls:
-                    minus, num, plus = st.columns([0.2, 0.6, 0.2], gap="small")
-                    if minus.button("−", key=f"dec_{team}"):
-                        st.session_state.alloc_working[team] = max(0.0, work[team] - STEP)
-                        work = st.session_state.alloc_working
-                    new_val = num.number_input(
-                        f"{team}_val", value=float(work[team]), min_value=0.0,
-                        step=float(STEP), format="%.0f", label_visibility="collapsed", key=f"in_{team}"
+
+                with minus_col:
+                    if st.button("−", key=f"dec_{team}"):
+                        st.session_state.alloc_working[team] = max(0.0, float(st.session_state.alloc_working[team]) - STEP)
+
+                with input_col:
+                    val = st.number_input(
+                        f"{team}_val",
+                        value=float(st.session_state.alloc_working[team]),
+                        min_value=0.0,
+                        step=float(STEP),
+                        format="%.0f",
+                        label_visibility="collapsed",
+                        key=f"in_{team}",
                     )
-                    if new_val != work[team]:
-                        st.session_state.alloc_working[team] = float(new_val)
-                        work = st.session_state.alloc_working
-                    if plus.button("+", key=f"inc_{team}"):
-                        st.session_state.alloc_working[team] = work[team] + STEP
-                        work = st.session_state.alloc_working
-                with col_amount:
-                    st.markdown(f"<div class='budget-pill'>£{float(work[team]):,.0f}</div>", unsafe_allow_html=True)
+                    # keep state in sync if typed
+                    if val != float(st.session_state.alloc_working[team]):
+                        st.session_state.alloc_working[team] = float(val)
+
+                with plus_col:
+                    if st.button("+", key=f"inc_{team}"):
+                        st.session_state.alloc_working[team] = float(st.session_state.alloc_working[team]) + STEP
 
             st.divider()
+
             if st.button("💾 Save changes", use_container_width=True):
                 out = (
                     st.session_state.alloc_working
