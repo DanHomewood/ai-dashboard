@@ -1552,48 +1552,11 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
-/* ========== LAYOUT ========== */
-div.block-container{
-  max-width: 1100px;        /* one source of truth */
-  margin: 0 auto;           /* center the page */
-  padding-top: .5rem;
-  padding-bottom: 1rem;
-}
-
-/* Headings + separators */
-h2, h3 { margin: .25rem 0 .5rem 0 !important; }
-hr { margin: .6rem 0 !important; opacity:.25; }
-
-/* Tabs spacing */
-.stTabs [data-baseweb="tab-list"]{ gap:.25rem !important; }
-
-/* ========== COMPONENTS ========== */
-.kpi{
-  border:1px solid rgba(148,163,184,.25);
-  border-radius:12px;
-  padding:10px 14px;
-  background:rgba(2,6,23,.02);
-}
-.kpi h3{ font-size:.9rem; font-weight:600; margin:0 0 .25rem 0; }
-.kpi .val{ font-size:1.6rem; font-weight:800; line-height:1; margin:0; }
-
-.budget-pill{
-  background:linear-gradient(135deg,#0ea5e9,#2563eb);
-  color:#fff; padding:10px 16px; border-radius:14px;
-  font-weight:700; display:inline-block; min-width:120px; text-align:center;
-  box-shadow:0 8px 22px rgba(37,99,235,.16);
-}
-.small{ color:#64748b; font-size:.9rem; }
-.rowpad{ padding:.25rem 0; }
-
-/* Number inputs and buttons alignment in allocation rows */
-div[data-testid="stNumberInput"]{ width:100%; }          /* make the number box fill its column */
-.stButton>button[kind="secondary"]{ margin:2px 4px; }    /* +/- buttons not cramped */
-
-/* Keep default sections tight */
-section.main > div { padding-top:.25rem; }
+div.block-container{max-width:1100px;margin:0 auto;padding-top:.5rem;padding-bottom:1rem;}
+.stTabs [data-baseweb="tab-list"]{gap:.25rem}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
