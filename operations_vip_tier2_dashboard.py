@@ -9520,9 +9520,19 @@ if st.session_state.screen == "operational_area":
     # === KPIs (Total Budget / Budget Remaining) ===
     def _saved_alloc_sum() -> float:
         bud = st.session_state.get("budgets_df", pd.DataFrame()).copy()
-        if bud.empty: return 0.0
-        saved = _dedup_by_team(bud)
-        return float(saved["Allocated"].sum()) if not saved.empty else 0.0
+        if bud.empty:
+            return 0.0
+        team_col  = _pick_col(bud, ["Team","Stakeholder","Area","Department","Group"])
+        alloc_col = _pick_col(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
+        if not team_col or not alloc_col:
+            return 0.0
+        x = bud[[team_col, alloc_col]].dropna(subset=[team_col]).copy()
+        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
+        x = x.drop_duplicates(subset=[team_col], keep="last")
+        return float(x[alloc_col].sum())
+    
+
+     
 
     def _total_spent_master() -> float:
         try:
