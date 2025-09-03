@@ -2229,8 +2229,12 @@ html, body, .stApp {
   font-family: 'Inter','Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* Tighten the main container a little on large screens */
-.block-container { max-width: 980px; }
+/* Replace the old line with this */
+.block-container {
+  max-width: 100%;
+  padding: 0 24px;            /* nice side gutters on large screens */
+}
+
 
 /* Hide Streamlit default decoration gap at top */
 header[data-testid="stHeader"] { background: transparent; }
@@ -2308,7 +2312,7 @@ div[data-testid="stExpander"] > div[role="button"] {
 """
 
 # Use this new CSS instead of the previous dark bundle
-inject_css(LIGHT_CSS)
+#inject_css(LIGHT_CSS)
 
 
 
