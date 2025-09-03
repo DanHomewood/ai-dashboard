@@ -2818,7 +2818,7 @@ def load_excel(path):
     return pd.read_excel(path)
 
 try:
-    sky_business_df = load_excel("Sky Business.xlsx")
+    sky_business_df = load_excel("AI Test SB Visits.xlsx")
     sky_business_df.columns = sky_business_df.columns.str.strip()
 except Exception as e:
     st.warning(f"⚠️ Could not load Sky Business file: {e}")
@@ -3036,57 +3036,19 @@ def safe_numeric(df, cols):
     return df
 
 # ---------- Card CSS ----------
-# ---------- Card CSS (WHITE) ----------
 st.markdown("""
 <style>
-/* Base white KPI card */
-.kpi-card {
-  background:#ffffff !important;
-  color:#0f172a !important;
-  border-radius:16px;
-  padding:16px 18px;
-  border:1px solid #e6e8eb;
-  box-shadow:0 14px 28px rgba(2,32,71,.10);
-}
-
-/* Typography inside the card */
-.kpi-top   { font-size:.85rem; color:#475569 !important; margin-bottom:8px; }
-.kpi-title { font-size:1.25rem; font-weight:800; color:#0f172a !important; margin-bottom:8px; }
-.kpi-value { font-size:2.0rem; font-weight:800; color:#0f172a !important; line-height:1.1; }
-.kpi-sub   { font-size:.95rem; color:#334155 !important; margin-top:6px; }
-
-/* Footer row + deltas */
-.kpi-footer { display:flex; justify-content:space-between; margin-top:10px; font-size:.9rem; color:#334155 !important; }
-.kpi-up   { color:#16a34a !important; font-weight:700; }
-.kpi-down { color:#dc2626 !important; font-weight:700; }
-
-/* Progress bar */
-.kpi-bar { height:8px; background:#eef2f7; border-radius:999px; overflow:hidden; margin-top:10px; }
-.kpi-bar > div { height:100%; background:linear-gradient(90deg,#0ea5e9,#2563eb); }
+.kpi-card { background:#151d2c; border-radius:16px; padding:14px 16px; box-shadow:0 6px 20px rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); }
+.kpi-top { font-size:.8rem; color:#9ec6ff; margin-bottom:8px; }
+.kpi-title { font-size:1.0rem; font-weight:700; color:#aad4ff; margin-bottom:6px; }
+.kpi-value { font-size:2.0rem; font-weight:800; color:#ffffff; line-height:1.1; }
+.kpi-sub { font-size:.9rem; color:#bcd4ee; margin-top:4px; }
+.kpi-footer{ display:flex; justify-content:space-between; margin-top:8px; font-size:.85rem; color:#bcd4ee; }
+.kpi-up { color:#54e49b; font-weight:700; } .kpi-down { color:#ff8b8b; font-weight:700; }
+.kpi-bar { height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-top:8px; }
+.kpi-bar > div { height:100%; background:linear-gradient(90deg,#00c6ff,#00e699); }
 </style>
 """, unsafe_allow_html=True)
-st.markdown("""
-<style>
-/* Dark KPI card + force white text inside */
-.kpi-card {
-  background:#0f172a !important;      /* dark box */
-  color:#f8fafc !important;           /* default text color */
-  border-radius:16px;
-  padding:16px 18px;
-  border:1px solid rgba(255,255,255,.06);
-  box-shadow:0 14px 28px rgba(2,32,71,.18);
-}
-/* Make EVERYTHING inside the card white (wins against other styles) */
-.kpi-card *, 
-.kpi-card h1, .kpi-card h2, .kpi-card h3, .kpi-card h4,
-.kpi-card p, .kpi-card li, .kpi-card strong, .kpi-card span, .kpi-card em {
-  color:#f8fafc !important;
-}
-.kpi-card a { color:#93c5fd !important; }          /* links readable */
-.kpi-card .muted { color:#cbd5e1 !important; }     /* optional muted */
-</style>
-""", unsafe_allow_html=True)
-
 
 
 
@@ -4064,24 +4026,16 @@ def render_team_engineers_page():
     background:#10161d; border:1px solid #263445; border-radius:18px;
     padding:16px 18px; box-shadow:0 8px 18px rgba(0,0,0,.25);
     min-height: 210px;
-    color:#f8fafc !important;                    /* <-- make default text white */
     }
-    /* Force all descendants to white so bullets/headings also show */
-    .engineer-card *, .engineer-card h1, .engineer-card h2, .engineer-card h3, .engineer-card h4,
-    .engineer-card p, .engineer-card li, .engineer-card strong, .engineer-card span, .engineer-card em {
-    color:#f8fafc !important;
-    }
-
     .engineer-card h4{
-    margin:0 0 6px 0; font-weight:700; color:#e6f0ff !important; /* heading a bit brighter */
+    margin:0 0 6px 0; font-weight:700;
     }
     .engineer-card .eyebrow{
-    color:#9fb3c8 !important; font-size:.8rem; margin-bottom:6px;
+    color:#9fb3c8; font-size:.8rem; margin-bottom:6px;
     }
     .engineer-card ul{ list-style:none; padding-left:0; margin:0; }
     .engineer-card li{ margin: 3px 0; }
     .engineer-kpi b{ font-weight:700; }
-
     </style>
     """, unsafe_allow_html=True)
     import base64
@@ -6636,59 +6590,6 @@ if st.session_state.get("screen") == "sky_retail":
             with st.expander(f"🔎 Show Raw Data for {stakeholder}", expanded=False):
                 st.dataframe(df.dropna(axis=1, how="all"), use_container_width=True)
 
-# ---- SKY BUSINESS: shared normaliser + patterns + counters ----
-import unicodedata
-import pandas as pd
-
-def sb__strip_accents(text: str) -> str:
-    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
-
-def sb__normalise(series: pd.Series) -> pd.Series:
-    s = series.astype(str).map(sb__strip_accents).str.lower()
-    return (
-        s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unusual dashes → hyphen
-         .str.replace(r"[^a-z0-9]+", " ", regex=True)         # drop punctuation, collapse spaces
-         .str.replace(r"\s+", " ", regex=True)
-         .str.strip()
-    )
-
-def sb__all_text(df: pd.DataFrame) -> pd.Series:
-    """Concatenate ALL object columns into one searchable string."""
-    if df.empty:
-        return pd.Series([], dtype=str)
-    cols = df.select_dtypes(include="object").columns
-    if not len(cols):
-        return pd.Series([""] * len(df), index=df.index)
-    return df[cols].fillna("").agg(" ".join, axis=1)
-
-# ONE source of truth for the patterns your SLA tiles use
-SB_SLA_PATTERNS = {
-    "nero_all":  r"\bcaf+\w*\s*nero\b",                    # cafe/caffe/caffè nero
-    "nero_2h":   r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b",
-    "nero_next": r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b",
-    "nero_4h":   r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b",
-    "sla_8h":    r"\b8\s*hour\s*sla\b",
-}
-
-def sb__build_masks(norm_text: pd.Series) -> dict[str, pd.Series]:
-    """Return a dict of boolean masks keyed by pattern name."""
-    if norm_text.empty:
-        return {k: pd.Series(False, index=norm_text.index) for k in SB_SLA_PATTERNS}
-    return {k: norm_text.str.contains(pat, na=False) for k, pat in SB_SLA_PATTERNS.items()}
-
-def sb__count_totals(df: pd.DataFrame) -> dict[str, int]:
-    """Counts for current filtered df, using the shared rules."""
-    norm = sb__normalise(sb__all_text(df))
-    masks = sb__build_masks(norm)
-    return {k: int(v.sum()) for k, v in masks.items()}
-
-def sb__series_by_month(df: pd.DataFrame, mask: pd.Series, month_col: str) -> pd.Series:
-    """Monthly counts for sparkline on filtered base df."""
-    if df.empty or mask.sum() == 0:
-        return pd.Series([], dtype=int)
-    return (df.loc[mask]
-            .groupby(month_col).size()
-            .sort_index())
 
 # ==============================
 # EXECUTIVE OVERVIEW (Mark Wilson)
@@ -7250,8 +7151,6 @@ def render_exec_overview(embed: bool = False):
         # Default granularity for sparklines if not already set elsewhere
         if "gran" not in locals():
             gran = "M"   # "M" = monthly, "W" = weekly, "D" = daily
-
-
     # === Exec: Sky Business (Caffe Nero) snapshot ===
     with st.expander("🏢 Sky Business", expanded=False):
         import pandas as pd
@@ -7386,10 +7285,6 @@ def render_exec_overview(embed: bool = False):
                 start_lbl = spark_base["Month"].min().strftime("%b %Y")
                 end_lbl   = (end_month or spark_base["Month"].max()).strftime("%b %Y")
                 st.caption(f"Window: {start_lbl} – {end_lbl}")
-
-
-
-
 
 
 
