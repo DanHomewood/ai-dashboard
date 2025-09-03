@@ -7258,6 +7258,13 @@ def render_exec_overview(embed: bool = False):
 
         # 1) Load the SAME file the SB page uses
         sb = load_sky_business()  # reads "Sky Business.xlsx"
+        from pathlib import Path
+        st.caption(f"LOAD • rows={len(sb)} • cols={list(sb.columns) if len(sb)>0 else []}")
+
+        p = Path("Sky Business.xlsx")
+        st.caption(f"FILE • exists={p.exists()} • cwd={Path.cwd()}")
+        import os
+        st.caption(f"DIR • {os.listdir(Path.cwd())[:10]}")
 
         if sb.empty:
             st.info("No Sky Business data available (Sky Business.xlsx missing or empty).")
