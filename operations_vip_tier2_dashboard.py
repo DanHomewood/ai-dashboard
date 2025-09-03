@@ -39,6 +39,108 @@ import plotly.graph_objects as go
 from pathlib import Path
 import pandas as pd
 import streamlit as st
+import streamlit as st
+
+# --- LIGHT THEME + CUSTOM STYLES ---
+st.markdown("""
+<style>
+/* 🌕 LIGHT MODE THEME */
+body, .main, .stApp {
+    background-color: #ffffff !important;
+    color: #1f1f1f !important;
+    font-family: 'Segoe UI', 'Inter', sans-serif;
+}
+/* 🔵 BLUE BUTTON STYLE */
+.stButton > button {
+    background: linear-gradient(to right, #007bff, #0051a2) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1.2rem !important;
+    font-weight: 600 !important;
+    margin: 0.4rem !important;
+    box-shadow: 0 0 10px rgba(0,123,255,0.4) !important;
+    transition: 0.3s ease-in-out !important;
+}
+.stButton > button:hover {
+    background: linear-gradient(to right, #3399ff, #0073e6) !important;
+    box-shadow: 0 0 16px rgba(0,123,255,0.6) !important;
+}
+/* 🖼️ FULL WIDTH LOGO */
+.logo {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0 1rem 0;
+}
+.logo img {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+}
+/* 🧭 HEADINGS */
+h1, h2, h3, h4 {
+    color: #1f1f1f !important;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+/* 📦 MARKDOWN & CONTAINERS */
+.stMarkdown, .stText, .stContainer {
+    background-color: transparent !important;
+    color: #1f1f1f !important;
+}
+/* ✅ INFO BOX */
+.info-box {
+    background-color: #f0f4f8;
+    color: #1f1f1f;
+    border-left: 4px solid #007bff;
+    padding: 0.8rem 1.2rem;
+    border-radius: 8px;
+    margin-top: 2rem;
+    font-size: 0.95rem;
+    text-align: center;
+}
+/* 🌀 TYPING ANIMATION */
+@keyframes typing {
+    0% { width: 0 }
+    40%, 60% { width: 100% }
+    100% { width: 0 }
+}
+@keyframes blink {
+    50% { border-color: rgba(0,0,0,0.75); }
+}
+.login-header-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.login-header {
+    display: inline-block;
+    font-size: 20px;
+    font-weight: 500;
+    border-right: 2px solid rgba(0,0,0,0.75);
+    white-space: nowrap;
+    overflow: hidden;
+    width: 32ch;
+    animation: typing 6s steps(32, end) infinite, blink 0.75s step-end infinite;
+    color: #1f1f1f;
+    text-align: center;
+}
+/* 🧩 SIDEBAR + FOOTER */
+.stSidebar {
+    background-color: #f8f9fa !important;
+}
+footer, #MainMenu, header {
+    visibility: hidden;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Your app content starts here
+st.title("Welcome to My App")
+st.button("Click Me")
 
 EXP_MASTER = Path("Expenses/expenses_master.parquet")
 
@@ -10885,5 +10987,6 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
