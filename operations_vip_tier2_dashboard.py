@@ -2014,6 +2014,9 @@ FILES: Dict[str, str] = {
     "Tier 2 South": "Tier 2 South Oracle Data.xlsx",
 }
 budgets_df = load_budgets_df()
+# ← place this RIGHT AFTER load_budgets_df()
+budgets_df = load_budgets_df()
+st.session_state.setdefault("budgets_df", budgets_df)
 
 
 def _normalize_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -9336,18 +9339,30 @@ if st.session_state.screen == "operational_area":
         with st.container():  # card
             st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
                         f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
-    with c2:
-        # derive current headroom from saved budgets (not the working copy)
-        def _alloc_from_budgets(bud):
-            col_team = "Team" if "Team" in bud.columns else ("Stakeholder" if "Stakeholder" in bud.columns else None)
-            col_alloc = "Allocated" if "Allocated" in bud.columns else ("QuarterlyBudget" if "QuarterlyBudget" in bud.columns else None)
-            if not col_team or not col_alloc: return 0.0
-            return float(pd.to_numeric(bud[col_alloc], errors="coerce").fillna(0).sum())
-        saved_alloc_sum = _alloc_from_budgets(st.session_state.get("budgets_df", budgets_df.reset_index()))
-        headroom_now = float(TOTAL_BUDGET - saved_alloc_sum)
-        with st.container():
-            st.markdown("<div class='kpi'><h3>Budget Remaining</h3>"
-                        f"<div class='val'>£{headroom_now:,.0f}</div></div>", unsafe_allow_html=True)
+        with c2:
+            bud = st.session_state.get("budgets_df", pd.DataFrame())
+
+            # pick the allocation column robustly
+            cand = [c for c in ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"] if c in bud.columns]
+            alloc_col = cand[0] if cand else None
+
+            if alloc_col and "Team" in bud.columns:
+                saved_alloc_sum = pd.to_numeric(
+                    bud.drop_duplicates(subset=["Team"])[alloc_col],
+                    errors="coerce"
+                ).fillna(0).sum()
+            else:
+                saved_alloc_sum = 0.0
+
+            headroom_now = float(TOTAL_BUDGET) - float(saved_alloc_sum)
+
+            with st.container():
+                st.markdown(
+                    "<div class='kpi'><h3>Budget Remaining</h3>"
+                    f"<div class='val'>£{headroom_now:,.0f}</div></div>",
+                    unsafe_allow_html=True
+                )
+
 
 
     st.markdown("<hr/>", unsafe_allow_html=True)
@@ -9358,67 +9373,91 @@ if st.session_state.screen == "operational_area":
 
 # ---------------- Adjust Allocations (polished grid) ----------------
     with tab_adj:
-        STAKEHOLDERS = ["VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"]
+        # order of teams you want to show
+        STAKEHOLDERS = [
+            "VIP North", "VIP South",
+            "Tier 2 North", "Tier 2 South",
+            "Sky Business", "Sky Retail",
+        ]
         STEP = 1_000
 
-        # Seed working copy once (dedupe by team)
-        team_col = "Team" if "Team" in budgets_df.columns else (
-            "Stakeholder" if "Stakeholder" in budgets_df.columns else budgets_df.columns[0]
-        )
-        bud = budgets_df.drop_duplicates(subset=[team_col]).set_index(team_col)
-
+        # ---- seed working copy once (from the budgets file) ----
         if "alloc_working" not in st.session_state:
-            if "Allocated" in bud.columns:
-                base = bud["Allocated"].reindex(STAKEHOLDERS).fillna(0).astype(float)
-            elif "QuarterlyBudget" in bud.columns:
-                base = bud["QuarterlyBudget"].reindex(STAKEHOLDERS).fillna(0).astype(float)
-            else:
-                base = pd.Series(0.0, index=STAKEHOLDERS)
+            bud = st.session_state.get("budgets_df", pd.DataFrame()).copy()
+
+            # normalise & dedupe by Team
+            if not bud.empty:
+                if "Team" not in bud.columns:
+                    # try to rename a variant to Team
+                    for alt in ("Stakeholder","Area","Department","Group"):
+                        if alt in bud.columns:
+                            bud.rename(columns={alt:"Team"}, inplace=True)
+                            break
+            base = pd.Series(0.0, index=STAKEHOLDERS, dtype=float)
+            if not bud.empty and "Team" in bud.columns:
+                cand = [c for c in ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"] if c in bud.columns]
+                alloc_col = cand[0] if cand else None
+                if alloc_col:
+                    tmp = (
+                        bud[["Team", alloc_col]]
+                        .dropna(subset=["Team"])
+                        .drop_duplicates(subset=["Team"], keep="last")
+                        .set_index("Team")[alloc_col]
+                    )
+                    tmp = pd.to_numeric(tmp, errors="coerce").fillna(0.0)
+                    base.update(tmp.reindex(STAKEHOLDERS).fillna(0.0))
             st.session_state.alloc_working = base
 
+        # a local view to read/update
+        work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0.0).astype(float)
 
-
-        work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
+        # KPIs above the editor
         total_alloc_now = float(work.sum())
-        headroom_live = float(TOTAL_BUDGET - total_alloc_now)
+        headroom = float(TOTAL_BUDGET) - total_alloc_now
+        k1, k2 = st.columns(2)
+        k1.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
+        k2.metric("Headroom vs Total", f"£{headroom:,.0f}")
 
-        kc1, kc2 = st.columns(2)
-        kc1.markdown(f"**Total Allocated**<br><span class='val'>£{total_alloc_now:,.0f}</span>", unsafe_allow_html=True)
-        kc2.markdown(f"**Headroom vs Total**<br><span class='val'>£{headroom_live:,.0f}</span>", unsafe_allow_html=True)
-
-        with st.expander("🔧 Adjust Quarterly Allocations", expanded=True):
+        # ---- editor rows ----
+        with st.expander("🛠️ Adjust Quarterly Allocations", expanded=True):
             st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
             for name in STAKEHOLDERS:
-                col1, col2, col3 = st.columns([1.2, 1.2, 1.0])
-                with col1:
-                    st.markdown(f"<div class='rowpad'><strong>{name}</strong></div>", unsafe_allow_html=True)
-                with col2:
-                    b1, bmid, b3 = st.columns([0.25, 1.0, 0.25])
-                    if b1.button("−", key=f"dec_{name}"):
+                c1, c2, c3 = st.columns([1.4, 1.4, 1.0])
+                with c1:
+                    st.markdown(f"**{name}**")
+                with c2:
+                    bL, num, bR = st.columns([0.25, 1.0, 0.25])
+                    if bL.button("−", key=f"dec_{name}"):
                         st.session_state.alloc_working[name] = max(0.0, work[name] - STEP)
                         work = st.session_state.alloc_working
-                    val = bmid.number_input("", key=f"in_{name}", value=float(work[name]),
-                                            step=float(STEP), min_value=0.0, format="%.0f", label_visibility="collapsed")
-                    if val != work[name]:
-                        st.session_state.alloc_working[name] = float(val); work = st.session_state.alloc_working
-                    if b3.button("+", key=f"inc_{name}"):
-                        st.session_state.alloc_working[name] = work[name] + STEP; work = st.session_state.alloc_working
-                with col3:
-                    st.markdown(f"<div class='budget-pill'>£{st.session_state.alloc_working[name]:,.0f}</div>",
-                                unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            s_left, s_right = st.columns([1,1])
-            with s_left:
-                if st.button("💾 Save changes", use_container_width=True):
-                    out_df = (
-                        st.session_state.alloc_working.rename("Allocated")
-                        .reset_index().rename(columns={"index": "Stakeholder"})
+                    new_val = num.number_input(
+                        f"{name}_val", min_value=0.0, step=float(STEP),
+                        value=float(work[name]), format="%.0f", label_visibility="collapsed",
+                        key=f"in_{name}"
                     )
-                    out_df.to_csv(BUDGET_FILE, index=False)       # persist to budgets.csv
-                    st.session_state.budgets_df = out_df          # in-memory source of truth
-                    st.success("Allocations saved to budgets.csv")
-                    st.experimental_rerun()
+                    if new_val != work[name]:
+                        st.session_state.alloc_working[name] = float(new_val)
+                        work = st.session_state.alloc_working
+                    if bR.button("+", key=f"inc_{name}"):
+                        st.session_state.alloc_working[name] = work[name] + STEP
+                        work = st.session_state.alloc_working
+                with c3:
+                    st.markdown(
+                        f"<div class='budget-pill'>£{float(st.session_state.alloc_working[name]):,.0f}</div>",
+                        unsafe_allow_html=True
+                    )
+
+            st.divider()
+            if st.button("💾 Save changes", use_container_width=True):
+                out = (
+                    st.session_state.alloc_working
+                    .reindex(STAKEHOLDERS).fillna(0).astype(float)
+                    .rename("Allocated").reset_index().rename(columns={"index":"Team"})
+                )
+                out.to_csv(BUDGET_FILE, index=False)
+                st.session_state.budgets_df = out  # refresh global view
+                st.success("Allocations saved to budgets.csv")
+
 
 
 
