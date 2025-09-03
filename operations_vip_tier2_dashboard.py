@@ -9575,7 +9575,7 @@ if st.session_state.screen == "operational_area":
     with c1:
         with st.container():  # card
             st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
-                        f"<div class='val'>£{TOTAL_BUDGET:,0f}</div></div>", unsafe_allow_html=True)
+                        f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
     with c2:
         # derive current headroom from saved budgets (not the working copy)
         def _alloc_from_budgets(bud):
@@ -9587,7 +9587,7 @@ if st.session_state.screen == "operational_area":
         headroom_now = float(TOTAL_BUDGET - saved_alloc_sum)
         with st.container():
             st.markdown("<div class='kpi'><h3>Budget Remaining</h3>"
-                        f"<div class='val'>£{headroom_now:,0f}</div></div>", unsafe_allow_html=True)
+                        f"<div class='val'>£{headroom_now:,.0f}</div></div>", unsafe_allow_html=True)
 
 
     st.markdown("<hr/>", unsafe_allow_html=True)
