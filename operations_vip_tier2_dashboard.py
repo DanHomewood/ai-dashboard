@@ -1552,7 +1552,7 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
-div.block-container{max-width:1300px;margin:0 auto;padding-top:.5rem;padding-bottom:1rem;}
+div.block-container{max-width:1700px;margin:0 auto;padding-top:.5rem;padding-bottom:1rem;}
 .stTabs [data-baseweb="tab-list"]{gap:.25rem}
 </style>
 """, unsafe_allow_html=True)
