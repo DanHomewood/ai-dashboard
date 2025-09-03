@@ -7197,159 +7197,155 @@ def render_exec_overview(embed: bool = False):
         # Default granularity for sparklines if not already set elsewhere
         if "gran" not in locals():
             gran = "M"   # "M" = monthly, "W" = weekly, "D" = daily
-    # === Exec: Sky Business (Caffe Nero) snapshot ===
-    with st.expander("🏢 Sky Business", expanded=False):
-        import pandas as pd
 
-        sb = load_sky_business()
-        if sb.empty or "SBDate" not in sb.columns or "SLA" not in sb.columns:
-            st.info("No Sky Business data (need 'SBDate' and 'SLA').")
+# === Exec: Sky Business (Caffe Nero) snapshot ===
+with st.expander("🏢 Sky Business", expanded=False):
+    import pandas as pd
+    import unicodedata
+
+    sb = load_sky_business()
+    # We only need SBDate; SLA/JobType can be empty – we’ll handle that
+    if sb.empty or "SBDate" not in sb.columns:
+        st.info("No Sky Business data (need 'SBDate').")
+    else:
+        sb = sb.copy()
+        sb["SBDate"] = pd.to_datetime(sb["SBDate"], errors="coerce")
+        sb = sb.dropna(subset=["SBDate"])
+
+        # --- Local Year / Month selectors (same behaviour as Sky Business page)
+        years = sb["SBDate"].dt.year.sort_values().unique().tolist()
+        MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+        cY, cM = st.columns([1,1])
+        with cY:
+            sb_year  = st.selectbox("Year", ["All"] + [int(y) for y in years], index=0, key="exec_sb_year")
+        with cM:
+            sb_month = st.selectbox("Month", MONTHS, index=0, key="exec_sb_month")
+
+        # --- Build current selection (cur) to match the SB page counts
+        cur = sb.copy()
+        if sb_year != "All":
+            cur = cur[cur["SBDate"].dt.year == int(sb_year)]
+        if sb_month != "All":
+            mnum = MONTHS.index(sb_month)  # 1..12
+            cur  = cur[cur["SBDate"].dt.month == mnum]
+
+        # --- Build sparkline base: year-only filter (keeps history for MoM)
+        spark_base = sb.copy()
+        if sb_year != "All":
+            spark_base = spark_base[spark_base["SBDate"].dt.year == int(sb_year)]
+        spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
+
+        # --- Cap month for the sparkline (end of year / selected month / latest)
+        if sb_year != "All" and sb_month != "All":
+            end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
+        elif sb_year != "All":
+            end_month = pd.Timestamp(int(sb_year), 12, 1).to_period("M").to_timestamp()
         else:
-            sb = sb.copy()
-            sb["SBDate"] = pd.to_datetime(sb["SBDate"], errors="coerce")
-            sb = sb.dropna(subset=["SBDate"])
-            # Use SLA + JobType (so we catch Nero text whichever column it lives in)
-            def _merge_text(df: pd.DataFrame) -> pd.Series:
-                sla  = df["SLA"]     if "SLA" in df.columns else ""
-                jtyp = df["JobType"] if "JobType" in df.columns else ""
-                return (sla.fillna("") + " " + jtyp.fillna("")).astype(str)
+            end_month = spark_base["Month"].max() if not spark_base.empty else None
 
-            cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
-            base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
+        # ---------- Helpers (define BEFORE use) ----------
+        def _strip_accents(text: str) -> str:
+            return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
 
-            cur_sla   = normalise_sla(cur_text)
-            base_sla  = normalise_sla(base_text)
+        def normalise_sla(series: pd.Series) -> pd.Series:
+            s = series.astype(str).map(_strip_accents).str.lower()
+            return (
+                s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unify unusual dashes
+                 .str.replace(r"[^a-z0-9]+", " ", regex=True)         # drop punctuation, collapse spaces
+                 .str.replace(r"\s+", " ", regex=True)
+                 .str.strip()
+            )
 
-            cur_masks  = masks_for(cur_sla)
-            base_masks = masks_for(base_sla)
-            # --- Local Year / Month selectors (same behaviour as Sky Business page)
-            years = sb["SBDate"].dt.year.sort_values().unique().tolist()
-            MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        # Use SLA + JobType (so we catch Nero text whichever column it lives in)
+        def _merge_text(df: pd.DataFrame) -> pd.Series:
+            sla  = df["SLA"]     if "SLA" in df.columns else ""
+            jtyp = df["JobType"] if "JobType" in df.columns else ""
+            return (pd.Series(sla).fillna("") + " " + pd.Series(jtyp).fillna("")).astype(str)
 
-            cY, cM = st.columns([1,1])
-            with cY:
-                sb_year  = st.selectbox("Year", ["All"] + [int(y) for y in years], index=0, key="exec_sb_year")
-            with cM:
-                sb_month = st.selectbox("Month", MONTHS, index=0, key="exec_sb_month")
-
-            # --- Build current selection (cur) to match the SB page counts
-            cur = sb.copy()
-            if sb_year != "All":
-                cur = cur[cur["SBDate"].dt.year == int(sb_year)]
-            if sb_month != "All":
-                mnum = MONTHS.index(sb_month)  # 1..12
-                cur  = cur[cur["SBDate"].dt.month == mnum]
-
-            # --- Build sparkline base: year-only filter (keeps history for MoM)
-            spark_base = sb.copy()
-            if sb_year != "All":
-                spark_base = spark_base[spark_base["SBDate"].dt.year == int(sb_year)]
-            spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
-
-            # --- Cap month for the sparkline (end of year / selected month / latest)
-            if sb_year != "All" and sb_month != "All":
-                end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
-            elif sb_year != "All":
-                end_month = pd.Timestamp(int(sb_year), 12, 1).to_period("M").to_timestamp()
-            else:
-                end_month = spark_base["Month"].max() if not spark_base.empty else None
-
-            # --- SLA normaliser: lower, unify dashes, strip punctuation -> words only
-            import unicodedata
-
-            def _strip_accents(text: str) -> str:
-                return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
-
-            def normalise_sla(series: pd.Series) -> pd.Series:
-                s = series.astype(str).map(_strip_accents).str.lower()
+        def masks_for(df_norm: pd.Series):
+            if df_norm.empty:
+                # empty masks with correct index
                 return (
-                    s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unify unusual dashes
-                    .str.replace(r"[^a-z0-9]+", " ", regex=True)         # drop punctuation, collapse spaces
-                    .str.replace(r"\s+", " ", regex=True)
-                    .str.strip()
+                    pd.Series(False, index=df_norm.index),
+                    pd.Series(False, index=df_norm.index),
+                    pd.Series(False, index=df_norm.index),
+                    pd.Series(False, index=df_norm.index),
+                    pd.Series(False, index=df_norm.index),
                 )
+            # allow cafe/caffe/caffè (after normalise) and minor typos like "caff nero"
+            m_all_nero  = df_norm.str.contains(r"\bcaf+\w*\s*nero\b", na=False)
+            m_nero_2h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
+            m_nero_next = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b", na=False)
+            m_nero_4h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
+            m_8h        = df_norm.str.contains(r"\b8\s*hour\s*sla\b", na=False)
+            return m_all_nero, m_nero_2h, m_nero_next, m_nero_4h, m_8h
 
+        # ---------- Build text → normalise → masks (NOW call the helpers) ----------
+        cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
+        base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
 
-            # Normalised SLA for cur and spark_base independently (so totals match cur)
-            
+        cur_sla   = normalise_sla(cur_text)
+        base_sla  = normalise_sla(base_text)
 
+        cur_masks  = masks_for(cur_sla)
+        base_masks = masks_for(base_sla)
 
-            # Build masks for cur (totals) and spark_base (series)
-            def masks_for(df_norm: pd.Series):
-                if df_norm.empty:
-                    # empty masks with correct index
-                    return (
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                    )
-                # allow cafe/caffe/caffè (after normalise) and minor typos like "caff nero"
-                m_all_nero  = df_norm.str.contains(r"\bcaf+\w*\s*nero\b", na=False)
-                m_nero_2h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
-                m_nero_next = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b", na=False)
-                m_nero_4h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
-                m_8h        = df_norm.str.contains(r"\b8\s*hour\s*sla\b", na=False)
+        # ---------- Sparkline + MoM helper ----------
+        def spark_and_mom(mask_on_base: pd.Series):
+            if spark_base.empty or mask_on_base.sum() == 0:
+                return [0], "—", "—"
+            ser = (
+                spark_base.loc[mask_on_base]
+                          .groupby("Month")
+                          .size()
+                          .reset_index(name="Count")
+                          .sort_values("Month")
+            )
+            if end_month is not None:
+                ser = ser[ser["Month"] <= end_month]
+            spark_vals = ser["Count"].tail(12).tolist()
 
-                return m_all_nero, m_nero_2h, m_nero_next, m_nero_4h, m_8h
+            if len(ser) < 2:
+                return spark_vals, "—", "—"
+            curr, prev = ser["Count"].iloc[-1], ser["Count"].iloc[-2]
+            if prev == 0:
+                return spark_vals, "—", "—"
+            pct = (curr - prev) / prev * 100.0
+            return spark_vals, f"{pct:+.1f}%", ("▲" if pct >= 0 else "▼")
 
-            
+        # Totals come from cur to match the Sky Business page exactly
+        totals = [int(mask.sum()) for mask in cur_masks]
 
-            # Helper: spark + MoM for a mask on spark_base
-            def spark_and_mom(mask_on_base: pd.Series):
-                if spark_base.empty or mask_on_base.sum() == 0:
-                    return [0], "—", "—"
-                ser = (
-                    spark_base.loc[mask_on_base]
-                            .groupby("Month")
-                            .size()
-                            .reset_index(name="Count")
-                            .sort_values("Month")
-                )
-                if end_month is not None:
-                    ser = ser[ser["Month"] <= end_month]
-                spark_vals = ser["Count"].tail(12).tolist()
+        # ---------- Build the five cards ----------
+        tiles = [
+            ("All Caffe Nero – Requests", totals[0], spark_and_mom(base_masks[0]), "#0ea5e9", "sb_nero_all"),
+            ("Caffe Nero 2 hour",        totals[1], spark_and_mom(base_masks[1]), "#0ea5e9", "sb_nero_2h"),
+            ("Caffe Nero (Next Day)",    totals[2], spark_and_mom(base_masks[2]), "#0ea5e9", "sb_nero_next"),
+            ("Caffe Nero (4 Hour)",      totals[3], spark_and_mom(base_masks[3]), "#0ea5e9", "sb_nero_4h"),
+            ("8-Hour SLA",               totals[4], spark_and_mom(base_masks[4]), "#10b981", "sb_8h"),
+        ]
 
-                if len(ser) < 2:
-                    return spark_vals, "—", "—"
-                curr, prev = ser["Count"].iloc[-1], ser["Count"].iloc[-2]
-                if prev == 0:
-                    return spark_vals, "—", "—"
-                pct = (curr - prev) / prev * 100.0
-                return spark_vals, f"{pct:+.1f}%", ("▲" if pct >= 0 else "▼")
+        c1, c2, c3, c4, c5 = st.columns(5, gap="large")
+        for (title, total, (spark, mom_txt, mom_arrow), color, src), col in zip(tiles, [c1, c2, c3, c4, c5]):
+            subtitle = f"{mom_arrow} {mom_txt} vs prev month" if mom_txt != "—" else "No prior month"
+            try:
+                with col:
+                    card(title, f"{total:,}", subtitle, spark=spark, color=color, source=src)
+            except Exception:
+                with col.container(border=True):
+                    st.caption("Month to date")
+                    st.markdown(f"**{title}**")
+                    st.markdown(f"<div style='font-size:26px;font-weight:700;'>{total:,}</div>", unsafe_allow_html=True)
 
-            # Totals come from cur to match the Sky Business page exactly
-            totals = [int(mask.sum()) for mask in cur_masks]
+        # Window label (for clarity)
+        if spark_base.empty:
+            st.caption("Window: —")
+        else:
+            start_lbl = spark_base["Month"].min().strftime("%b %Y")
+            end_lbl   = (end_month or spark_base["Month"].max()).strftime("%b %Y")
+            st.caption(f"Window: {start_lbl} – {end_lbl}")
 
-            # Build cards
-            tiles = [
-                ("All Caffe Nero – Requests", totals[0], spark_and_mom(base_masks[0]), "#0ea5e9", "sb_nero_all"),
-                ("Caffe Nero 2 hour",        totals[1], spark_and_mom(base_masks[1]), "#0ea5e9", "sb_nero_2h"),
-                ("Caffe Nero (Next Day)",    totals[2], spark_and_mom(base_masks[2]), "#0ea5e9", "sb_nero_next"),
-                ("Caffe Nero (4 Hour)",      totals[3], spark_and_mom(base_masks[3]), "#0ea5e9", "sb_nero_4h"),
-                ("8-Hour SLA",               totals[4], spark_and_mom(base_masks[4]), "#10b981", "sb_8h"),
-            ]
-
-            c1, c2, c3, c4, c5 = st.columns(5, gap="large")
-            for (title, total, (spark, mom_txt, mom_arrow), color, src), col in zip(tiles, [c1, c2, c3, c4, c5]):
-                subtitle = f"{mom_arrow} {mom_txt} vs prev month" if mom_txt != "—" else "No prior month"
-                try:
-                    with col:
-                        card(title, f"{total:,}", subtitle, spark=spark, color=color, source=src)
-                except Exception:
-                    with col.container(border=True):
-                        st.caption("Month to date")
-                        st.markdown(f"**{title}**")
-                        st.markdown(f"<div style='font-size:26px;font-weight:700;'>{total:,}</div>", unsafe_allow_html=True)
-
-            # Window label (for clarity)
-            if spark_base.empty:
-                st.caption("Window: —")
-            else:
-                start_lbl = spark_base["Month"].min().strftime("%b %Y")
-                end_lbl   = (end_month or spark_base["Month"].max()).strftime("%b %Y")
-                st.caption(f"Window: {start_lbl} – {end_lbl}")
 
 
 
