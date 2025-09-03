@@ -7242,15 +7242,20 @@ def render_exec_overview(embed: bool = False):
                 end_month = spark_base["Month"].max() if not spark_base.empty else None
 
             # --- SLA normaliser: lower, unify dashes, strip punctuation -> words only
+            import unicodedata
+
+            def _strip_accents(text: str) -> str:
+                return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
+
             def normalise_sla(series: pd.Series) -> pd.Series:
+                s = series.astype(str).map(_strip_accents).str.lower()
                 return (
-                    series.astype(str)
-                        .str.lower()
-                        .str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unicode dashes -> '-'
-                        .str.replace(r"[^a-z0-9]+", " ", regex=True)         # remove punctuation & collapse
-                        .str.replace(r"\s+", " ", regex=True)
-                        .str.strip()
+                    s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unify unusual dashes
+                    .str.replace(r"[^a-z0-9]+", " ", regex=True)         # drop punctuation, collapse spaces
+                    .str.replace(r"\s+", " ", regex=True)
+                    .str.strip()
                 )
+
 
             # Normalised SLA for cur and spark_base independently (so totals match cur)
             cur_sla   = normalise_sla(cur["SLA"])    if not cur.empty        else pd.Series([], dtype=str)
@@ -7267,11 +7272,13 @@ def render_exec_overview(embed: bool = False):
                         pd.Series(False, index=df_norm.index),
                         pd.Series(False, index=df_norm.index),
                     )
-                m_all_nero  = df_norm.str.contains(r"\b(caffe|cafe|caffe)\s*nero\b", na=False)
-                m_nero_2h   = df_norm.str.contains(r"\b(caffe|cafe|caffe)\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
-                m_nero_next = df_norm.str.contains(r"\b(caffe|cafe|caffe)\s*nero\b.*\bnext\s*day\b", na=False)
-                m_nero_4h   = df_norm.str.contains(r"\b(caffe|cafe|caffe)\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
+                # allow cafe/caffe/caffè (after normalise) and minor typos like "caff nero"
+                m_all_nero  = df_norm.str.contains(r"\bcaf+\w*\s*nero\b", na=False)
+                m_nero_2h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
+                m_nero_next = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b", na=False)
+                m_nero_4h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
                 m_8h        = df_norm.str.contains(r"\b8\s*hour\s*sla\b", na=False)
+
                 return m_all_nero, m_nero_2h, m_nero_next, m_nero_4h, m_8h
 
             cur_masks  = masks_for(cur_sla)
