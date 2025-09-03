@@ -3036,19 +3036,36 @@ def safe_numeric(df, cols):
     return df
 
 # ---------- Card CSS ----------
+# ---------- Card CSS (WHITE) ----------
 st.markdown("""
 <style>
-.kpi-card { background:#151d2c; border-radius:16px; padding:14px 16px; box-shadow:0 6px 20px rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); }
-.kpi-top { font-size:.8rem; color:#9ec6ff; margin-bottom:8px; }
-.kpi-title { font-size:1.0rem; font-weight:700; color:#aad4ff; margin-bottom:6px; }
-.kpi-value { font-size:2.0rem; font-weight:800; color:#ffffff; line-height:1.1; }
-.kpi-sub { font-size:.9rem; color:#bcd4ee; margin-top:4px; }
-.kpi-footer{ display:flex; justify-content:space-between; margin-top:8px; font-size:.85rem; color:#bcd4ee; }
-.kpi-up { color:#54e49b; font-weight:700; } .kpi-down { color:#ff8b8b; font-weight:700; }
-.kpi-bar { height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-top:8px; }
-.kpi-bar > div { height:100%; background:linear-gradient(90deg,#00c6ff,#00e699); }
+/* Base white KPI card */
+.kpi-card {
+  background:#ffffff !important;
+  color:#0f172a !important;
+  border-radius:16px;
+  padding:16px 18px;
+  border:1px solid #e6e8eb;
+  box-shadow:0 14px 28px rgba(2,32,71,.10);
+}
+
+/* Typography inside the card */
+.kpi-top   { font-size:.85rem; color:#475569 !important; margin-bottom:8px; }
+.kpi-title { font-size:1.25rem; font-weight:800; color:#0f172a !important; margin-bottom:8px; }
+.kpi-value { font-size:2.0rem; font-weight:800; color:#0f172a !important; line-height:1.1; }
+.kpi-sub   { font-size:.95rem; color:#334155 !important; margin-top:6px; }
+
+/* Footer row + deltas */
+.kpi-footer { display:flex; justify-content:space-between; margin-top:10px; font-size:.9rem; color:#334155 !important; }
+.kpi-up   { color:#16a34a !important; font-weight:700; }
+.kpi-down { color:#dc2626 !important; font-weight:700; }
+
+/* Progress bar */
+.kpi-bar { height:8px; background:#eef2f7; border-radius:999px; overflow:hidden; margin-top:10px; }
+.kpi-bar > div { height:100%; background:linear-gradient(90deg,#0ea5e9,#2563eb); }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
