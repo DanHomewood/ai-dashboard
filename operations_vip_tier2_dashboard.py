@@ -6182,40 +6182,7 @@ def render_team_overview(team_name: str, tab_index: int):
     with r4c4:
         card("—", "—", "", trend=None, spark=None, source="")
 
-    # ===== 💷 Budget KPIs (new row of 4) =====
-    st.markdown("#### 💷 Budget KPIs")
 
-    alloc, used, remaining, pct_used = compute_team_budget_metrics(team_name)
-
-
-    b1, b2, b3, b4 = st.columns(4)
-
-    with b1:
-        card("Budget Allocated", fmt_money(alloc), "From budgets.csv",
-            trend=None, spark=None, color="#3b82f6", source="Budget")
-
-    with b2:
-        card("Budget Used", fmt_money(used), "From expenses.csv",
-            trend=None, spark=None, color="#ef4444", source="Budget")
-
-    with b3:
-        bar_remaining = None
-        try:
-            bar_remaining = max(0, min(int(remaining / alloc * 100), 100)) if alloc else None
-        except Exception:
-            bar_remaining = None
-        card("Budget Remaining", fmt_money(remaining), "Allocated − Used",
-            trend=None, bar_pct=bar_remaining, spark=None, color="#22c55e", source="Budget")
-
-    with b4:
-        bar_used = None
-        try:
-            bar_used = max(0, min(int(pct_used), 100)) if pct_used == pct_used else None
-        except Exception:
-            bar_used = None
-        pct_txt = f"{pct_used:.1f}%" if pct_used == pct_used else "—"
-        card("Budget % Used", pct_txt, "",
-            trend=None, bar_pct=bar_used, spark=None, color="#06b6d4", source="Budget")
 
   
 
