@@ -7259,6 +7259,7 @@ def render_exec_overview(embed: bool = False):
 
         # 1) Load the SAME file the SB page uses
         sb = load_sky_business()  # reads "Sky Business.xlsx"
+        st.caption(f"DEBUG • SB rows={len(sb)} • cols={list(sb.columns)[:12]}")
 
         if sb.empty:
             st.info("No Sky Business data available (Sky Business.xlsx missing or empty).")
