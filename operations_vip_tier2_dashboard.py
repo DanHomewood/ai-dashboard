@@ -8984,145 +8984,7 @@ if st.session_state.screen == "operational_area":
 
 
 
-        st.title("💷 Budget (Operations)")
-
-        import os, pandas as pd, streamlit as st
-
-        # --------------------- SETTINGS ---------------------
-        TOTAL_BUDGET = 280_000
-        BUDGET_FILE  = "budgets.csv"
-        STAKEHOLDERS = ["VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"]
-        STEP = 1_000
-
-        # --------------------- IO HELPERS -------------------
-        def _load_budgets_safe(path: str) -> pd.DataFrame:
-            """
-            Returns a 2-column dataframe: Team, Allocated (float).
-            Accepts csvs that might use Stakeholder/Area/etc, or Allocation/Budget/etc.
-            """
-            if os.path.exists(path):
-                df = pd.read_csv(path)
-            else:
-                return pd.DataFrame({"Team": STAKEHOLDERS, "Allocated": 0.0})
-            # normalise column names
-            cols = {c.lower().strip(): c for c in df.columns}
-            team_col  = None
-            alloc_col = None
-            for k in ["team","stakeholder","area","department","group"]:
-                if k in cols: team_col = cols[k]; break
-            for k in ["allocated","allocation","quarterlybudget","budget","amount"]:
-                if k in cols: alloc_col = cols[k]; break
-            if team_col is None:
-                # assume first col is team if nothing matches
-                team_col = df.columns[0]
-            if alloc_col is None:
-                # create if missing
-                df["Allocated"] = 0.0
-                alloc_col = "Allocated"
-
-            out = df[[team_col, alloc_col]].copy()
-            out.columns = ["Team","Allocated"]
-            out["Allocated"] = pd.to_numeric(out["Allocated"], errors="coerce").fillna(0.0)
-            out = out.dropna(subset=["Team"])
-            # keep one row per team (last wins)
-            out = out.drop_duplicates(subset=["Team"], keep="last")
-            return out
-
-        def _save_budgets_safe(df: pd.DataFrame, path: str) -> None:
-            """
-            Writes Team,Allocated to budgets.csv (clean, predictable format).
-            """
-            out = df.copy()
-            out = out[["Team","Allocated"]].copy()
-            out["Allocated"] = pd.to_numeric(out["Allocated"], errors="coerce").fillna(0.0)
-            out.to_csv(path, index=False)
-
-        # --------------------- LOAD SAVED -------------------
-        saved = _load_budgets_safe(BUDGET_FILE)
-
-        # KPI: Total Budget / Budget Remaining (Total - sum(Allocated))
-        allocated_sum = float(saved["Allocated"].sum()) if not saved.empty else 0.0
-        budget_remaining = max(TOTAL_BUDGET - allocated_sum, 0.0)
-
-        k1, k2 = st.columns(2)
-        with k1:
-            st.markdown("### Total Budget (2025/26)")
-            st.markdown(f"**£{TOTAL_BUDGET:,.0f}**")
-        with k2:
-            st.markdown("### Budget Remaining")
-            st.markdown(f"**£{budget_remaining:,.0f}**")
-
-        st.divider()
-
-        # --------------------- ADJUST TAB ONLY ---------------------
-        tab_adj = st.tabs(["Adjust Allocations"])[0]
-        with tab_adj:
-            # seed working copy ONCE from saved file
-            if "alloc_working" not in st.session_state:
-                base = pd.Series(0.0, index=STAKEHOLDERS, dtype=float)
-                if not saved.empty:
-                    base.update(saved.set_index("Team")["Allocated"].reindex(base.index).fillna(0.0))
-                st.session_state.alloc_working = base
-
-            work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0.0).astype(float)
-
-            # simple KPIs for the editor
-            total_alloc_now = float(work.sum())
-            headroom_vs_total = max(TOTAL_BUDGET - total_alloc_now, 0.0)
-            a, b = st.columns(2)
-            a.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
-            b.metric("Headroom vs Total", f"£{headroom_vs_total:,.0f}")
-
-            st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
-
-            # ONE ROW per team: Label | − | [ number ] | +
-            for team in STAKEHOLDERS:
-                lbl, minus, num, plus = st.columns([1.6, 0.15, 1.0, 0.15])
-
-                with lbl:
-                    st.markdown(f"**{team}**")
-
-                with minus:
-                    if st.button("−", key=f"dec_{team}"):
-                        st.session_state.alloc_working[team] = max(0.0, float(work[team]) - STEP)
-                        work = st.session_state.alloc_working
-
-                with num:
-                    val = st.number_input(
-                        f"{team}_val",
-                        value=float(work[team]),
-                        min_value=0.0,
-                        step=float(STEP),
-                        format="%.0f",
-                        label_visibility="collapsed",
-                        key=f"in_{team}",
-                    )
-                    if val != float(work[team]):
-                        st.session_state.alloc_working[team] = float(val)
-                        work = st.session_state.alloc_working
-
-                with plus:
-                    if st.button("+", key=f"inc_{team}"):
-                        st.session_state.alloc_working[team] = float(work[team]) + STEP
-                        work = st.session_state.alloc_working
-
-            st.markdown("")
-            if st.button("💾 Save changes", use_container_width=True):
-                # write clean file and refresh
-                out = pd.DataFrame({
-                    "Team": STAKEHOLDERS,
-                    "Allocated": [float(st.session_state.alloc_working[t]) for t in STAKEHOLDERS],
-                })
-                _save_budgets_safe(out, BUDGET_FILE)
-                # refresh header numbers
-                st.session_state.budgets_df = out.set_index("Team")
-                st.success("Allocations saved. Totals refreshed.")
-                st.experimental_rerun()
-
-        # IMPORTANT: stop here so any older duplicate code below doesn't render
-        st.stop()
-
-
+    elif section == "budget":
         st.title("💷 Budget (Operations)")
         import os
         import pandas as pd
@@ -9283,7 +9145,13 @@ if st.session_state.screen == "operational_area":
         BUDGET_FILE  = "budgets.csv"
         EXPENSE_FILE = "expenses.csv"
 
-        
+        # -- Header & total budget --
+        st.markdown(
+            f"<h2 style='text-align:center; color:#fff; font-size:2.5rem;'>"
+            f"📅 Total Budget (2025/26): £{TOTAL_BUDGET:,}</h2>",
+            unsafe_allow_html=True,
+        )
+        st.markdown("---")
 
 
 
@@ -9338,7 +9206,12 @@ if st.session_state.screen == "operational_area":
         exp_sum = pd.to_numeric(st.session_state.current_exp["Amount"], errors="coerce").fillna(0).sum()
         remaining = TOTAL_BUDGET - used - exp_sum
 
-        
+        st.markdown(
+            f"<h2 style='text-align:center; color:#62d2a2; font-size:2.5rem;'>"
+            f"💷 Budget Remaining: £{remaining:,.0f}</h2>",
+            unsafe_allow_html=True,
+        )
+        st.markdown("---")
         def engineer_team(name: str) -> str | None:
                     cn = _canon_eng_name(name)
                     for team, pool in TEAM_SETS.items():
@@ -9427,240 +9300,332 @@ if st.session_state.screen == "operational_area":
         pretty = summary_df.applymap(lambda x: f"£{x:,.2f}")
 
 
+        # 3) Three tabs: Summary / Adjust / Expenses
+        tab_sum, tab_adj, tab_exp = st.tabs([
+            "🧾 Budget Summary",
+            "🔧 Adjust Allocations",
+            "💼 Expenses",
+        ])
 
 
+        # ---- TAB 1: Read-only summary ----
+        with tab_sum:
+            # ---- KPI cards ----
+            spent_num = pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum()
+            remaining_pct = (remaining / TOTAL_BUDGET * 100) if TOTAL_BUDGET else 0
+            c1, c2, c3 = st.columns(3)
+            c1.metric("💷 Spent so far", f"£{spent_num:,.0f}")
+            c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
+            c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
 
-     
-    # === Budget (Operations) – compact, aligned ===
-    st.markdown("## 💷 Budget (Operations)")
+        with st.expander("➕ Add Expense (manual)", expanded=False):
+            import hashlib
+            from datetime import date
 
-    # — helpers to read saved allocations and total spend —
-    def _pick_col(df: pd.DataFrame, options: list[str]) -> str | None:
-        if df.empty: return None
-        low = {c.lower().strip(): c for c in df.columns}
-        for k in options:
-            if k.lower() in low: return low[k.lower()]
-        # fuzzy
-        import re
-        pat = "|".join([re.escape(k) for k in options])
-        for c in df.columns:
-            if re.search(pat, c, flags=re.I): return c
-        return None
+            save_target = st.radio(
+                "Save to",
+                ["Master (recommended — shows in Detailed Table)", "CSV (legacy)"],
+                index=0,
+                horizontal=True,
+            )
 
-    def _saved_alloc_sum() -> float:
-        bud = st.session_state.get("budgets_df", pd.DataFrame()).copy()
-        if bud.empty: return 0.0
-        # find a team-like column
-        team_col = _pick_col(bud, ["Team","Stakeholder","Area","Department","Group"])
-        alloc_col = _pick_col(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
-        if not team_col or not alloc_col: 
-            return 0.0
-        x = bud[[team_col, alloc_col]].dropna(subset=[team_col]).copy()
-        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
-        # dedupe by team in case file has multiple rows
-        x = x.drop_duplicates(subset=[team_col], keep="last")
-        return float(x[alloc_col].sum())
+            colA, colB = st.columns(2)
+            amount = colA.number_input("Amount (£)", min_value=0.0, step=10.0, format="%.2f")
+            date_val = colB.date_input("Date", value=pd.Timestamp.today().date())
 
-    def _total_spent_master() -> float:
-        # totals from the master store if present
-        try:
-            dfm = load_master()
-        except Exception:
-            return 0.0
-        if dfm.empty: return 0.0
-        if "Amount" not in dfm.columns: return 0.0
-        s = pd.to_numeric(dfm["Amount"], errors="coerce").fillna(0.0)
-        return float(s.sum())
+            if save_target.startswith("Master"):
+                # Master path (needs engineer so we can map team)
+                eng = st.text_input("Engineer Name (pick exact)", "")
+                desc = st.text_input("Business Purpose / Notes", "")
+                vendor = st.text_input("Vendor / Merchant (optional)", "")
+                city = st.text_input("City (optional)", "")
 
-    TOTAL_BUDGET = 280_000  # keep your number
-    # --- HOTFIX: robust saved-allocation sum; no other helpers required ---
-    def _saved_alloc_sum() -> float:
-        bud = st.session_state.get("budgets_df", pd.DataFrame()).copy()
-        if bud.empty: return 0.0
-        team_col  = _pick_col(bud, ["Team","Stakeholder","Area","Department","Group"])
-        alloc_col = _pick_col(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
-        if not team_col or not alloc_col: 
-            return 0.0
-        x = bud[[team_col, alloc_col]].dropna(subset=[team_col]).copy()
-        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
-        x = x.drop_duplicates(subset=[team_col], keep="last")
-        return float(x[alloc_col].sum())
+                # prevent typos: offer a dropdown of known engineers (from rosters)
+                known_engs = sorted(set().union(*TEAM_SETS.values()))
+                pick = st.selectbox("or pick an engineer from rosters", ["(none)"] + known_engs, index=0)
+                if pick != "(none)":
+                    eng = pick
 
+                if st.button("Add to Master"):
+                    if not eng.strip():
+                        st.warning("Engineer is required for Master.")
+                    else:
+                        # Build one master row
+                        eng_canon = _canon_eng_name(eng)
+                        # Create a stable uid for this record
+                        uid = hashlib.sha1(
+                            f"{eng_canon}|{date_val}|{amount:.2f}|{desc}|{vendor}".encode("utf-8")
+                        ).hexdigest()
 
-        # pick a column by common variants or fuzzy match
-        def _pick(df, candidates):
-            low = {c.lower(): c for c in df.columns}
-            for k in candidates:
-                if k.lower() in low:
-                    return low[k.lower()]
-            # fuzzy fallback
-            for c in df.columns:
-                for k in candidates:
-                    if k.lower() in c.lower():
-                        return c
-            return None
+                        new_row = {
+                            "Engineer Name": eng_canon,
+                            "Transaction Date": pd.to_datetime(date_val),
+                            "Expense Type": "",
+                            "Business Purpose": desc or "",
+                            "Vendor": vendor or "",
+                            "City of Purchase": city or "",
+                            "Payment Type": "Manual",
+                            "Amount": float(amount or 0.0),
+                            "Source File": "ManualEntry",
+                            "RowUID": uid,
+                        }
 
-        team_col  = _pick(bud, ["Team","Stakeholder","Area","Department","Group"]) or bud.columns[0]
-        alloc_col = _pick(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
-        if not alloc_col:
-            return 0.0
+                        df = load_master()
+                        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                        save_master(df)
+                        st.success("Added to Master. It will appear in the Detailed Budget Table.")
+                        st.rerun()
 
-        x = bud[[team_col, alloc_col]].copy()
-        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
-        # one row per team (latest wins)
-        x = x.dropna(subset=[team_col]).drop_duplicates(subset=[team_col], keep="last")
-        return float(x[alloc_col].sum())
+            else:
+                # Legacy CSV path (stays as-is)
+                c1, c2 = st.columns(2)
+                name = c1.text_input("Name / Ref (free text)")
+                area = c2.selectbox("Stakeholder / Area", [
+                    "VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"
+                ], index=0)
+                desc = st.text_input("Description", "")
 
-
-
-    alloc_used = _safe_saved_alloc_sum()
-    spent_used  = _total_spent_master()
-    budget_rem  = max(TOTAL_BUDGET - alloc_used - spent_used, 0.0)
-
-    # === KPIs (Total Budget / Budget Remaining) ===
-    def _saved_alloc_sum() -> float:
-        bud = st.session_state.get("budgets_df", pd.DataFrame()).copy()
-        if bud.empty:
-            return 0.0
-        team_col  = _pick_col(bud, ["Team","Stakeholder","Area","Department","Group"])
-        alloc_col = _pick_col(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
-        if not team_col or not alloc_col:
-            return 0.0
-        x = bud[[team_col, alloc_col]].dropna(subset=[team_col]).copy()
-        x[alloc_col] = pd.to_numeric(x[alloc_col], errors="coerce").fillna(0.0)
-        x = x.drop_duplicates(subset=[team_col], keep="last")
-        return float(x[alloc_col].sum())
-    
-
-     
-
-    def _total_spent_master() -> float:
-        try:
-            dfm = load_master()
-        except Exception:
-            return 0.0
-        if dfm.empty or "Amount" not in dfm.columns: return 0.0
-        return float(pd.to_numeric(dfm["Amount"], errors="coerce").fillna(0.0).sum())
-
-    TOTAL_BUDGET = 280_000
-    alloc_used = _saved_alloc_sum()
-    spent_used = _total_spent_master()
-    budget_rem = max(TOTAL_BUDGET - alloc_used - spent_used, 0.0)
-
-    a, b = st.columns(2)
-    with a:
-        st.markdown("<div class='kpi'><h3>Total Budget (2025/26)</h3>"
-                    f"<div class='val'>£{TOTAL_BUDGET:,.0f}</div></div>", unsafe_allow_html=True)
-    with b:
-        st.markdown("<div class='kpi'><h3>Budget Remaining</h3>"
-                    f"<div class='val'>£{budget_rem:,.0f}</div></div>", unsafe_allow_html=True)
-
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    tab_sum, tab_adj, tab_exp = st.tabs(["Budget Summary", "Adjust Allocations", "Expenses"])
-
-
-# ---------------- Adjust Allocations (polished grid) ----------------
-# ---------------- Adjust Allocations (polished grid) ----------------
-    with tab_adj:
-        STAKEHOLDERS = [
-            "VIP North", "VIP South",
-            "Tier 2 North", "Tier 2 South",
-            "Sky Business", "Sky Retail",
-        ]
-        STEP = 1_000
-
-        # seed working copy once from the saved budgets
-        if "alloc_working" not in st.session_state:
-            base = pd.Series(0.0, index=STAKEHOLDERS, dtype=float)
-            bud  = st.session_state.get("budgets_df", pd.DataFrame()).copy()
-            if not bud.empty:
-                team_col  = _pick_col(bud, ["Team","Stakeholder","Area","Department","Group"])
-                alloc_col = _pick_col(bud, ["Allocated","Allocation","QuarterlyBudget","Budget","Amount"])
-                if team_col and alloc_col:
-                    tmp = (
-                        bud[[team_col, alloc_col]]
-                        .dropna(subset=[team_col])
-                        .drop_duplicates(subset=[team_col], keep="last")
-                        .set_index(team_col)[alloc_col]
+                if st.button("Add to CSV"):
+                    row = {
+                        "Name": name or "",
+                        "Date": pd.to_datetime(date_val),
+                        "Area": area,
+                        "Description": desc or "",
+                        "Amount": float(amount or 0.0),
+                    }
+                    exp_df = pd.read_csv(
+                        EXPENSE_FILE,
+                        parse_dates=["Date"],
+                        dtype={"Name":"string","Area":"string","Description":"string"}
                     )
-                    tmp = pd.to_numeric(tmp, errors="coerce").fillna(0.0)
-                    base.update(tmp.reindex(base.index).fillna(0.0))
-            st.session_state.alloc_working = base
+                    exp_df = pd.concat([exp_df, pd.DataFrame([row])], ignore_index=True)
+                    exp_df.to_csv(EXPENSE_FILE, index=False)
+                    st.session_state.current_exp = exp_df.copy()
+                    st.success("Added to CSV.")
+                    st.rerun()
 
-        work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0.0).astype(float)
 
-        # KPIs above editor
-        total_alloc_now = float(work.sum())
-        headroom_vs_total = max(TOTAL_BUDGET - total_alloc_now, 0.0)
-        a, b = st.columns(2)
-        a.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
-        b.metric("Headroom vs Total", f"£{headroom_vs_total:,.0f}")
 
-        # SIMPLE rows: Label | [-]  [value]  [+] | £readout
-        with st.expander("🛠️ Adjust Quarterly Allocations", expanded=True):
-            st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
+            # ---------- helpers ----------
+            def _combine(df, labels, new_label):
+                idx = [l for l in labels if l in df.index]
+                if not idx:
+                    return None
+                row = df.loc[idx].sum(numeric_only=True)
+                row.name = new_label
+                return row
 
-            for team in STAKEHOLDERS:
-                # SIMPLE: Label | − | [number] | +
-                label_col, minus_col, input_col, plus_col = st.columns([1.6, 0.15, 0.9, 0.15])
+            def _fmt_money(x):
+                return f"£{(0 if pd.isna(x) else x):,.2f}"
 
-                with label_col:
-                    st.markdown(f"**{team}**")
+            def _kpi_block(alloc, used):
+                rem = (alloc or 0) - (used or 0)
+                pct_used = (used / alloc * 100) if alloc else float("nan")
+                pct_rem  = 100 - pct_used if pd.notna(pct_used) else float("nan")
+                k1, k2, k3, k4, k5 = st.columns(5)
+                k1.metric("Budget Allocated", _fmt_money(alloc))
+                k2.metric("Budget Used", _fmt_money(used))
+                k3.metric("Budget Remaining", _fmt_money(rem))
+                k4.metric("Budget % Used", f"{pct_used:.1f}%" if pd.notna(pct_used) else "—")
+                k5.metric("Budget % Remaining", f"{pct_rem:.1f}%" if pd.notna(pct_rem) else "—")
 
-                with minus_col:
-                    if st.button("−", key=f"dec_{team}"):
-                        st.session_state.alloc_working[team] = max(0.0, float(st.session_state.alloc_working[team]) - STEP)
+            def _infer_team_from_row(row) -> str | None:
+                """
+                1) Try engineer → team (VIP/Tier2).
+                2) If not found, detect MEWP rows by file/purpose and map to Sky Business/Retail.
+                """
+                # 1) normal engineer mapping
+                t = engineer_team(row.get("Engineer Name", ""))
+                if t:
+                    return t
 
-                with input_col:
-                    val = st.number_input(
-                        f"{team}_val",
-                        value=float(st.session_state.alloc_working[team]),
-                        min_value=0.0,
-                        step=float(STEP),
-                        format="%.0f",
-                        label_visibility="collapsed",
-                        key=f"in_{team}",
+                # 2) MEWP detection by filename/purpose blob
+                blob = f"{row.get('Engineer Name','')} {row.get('Source File','')} {row.get('Business Purpose','')}"
+                low  = blob.lower()
+                if "mewp" in low:
+                    if "sky business" in low:
+                        return "Sky Business"
+                    if "sky retail" in low:
+                        return "Sky Retail"
+                # extra safety: typical vendor appears on these invoices
+                if "orion access" in low and "retail" in low:
+                    return "Sky Retail"
+                if "orion access" in low and "business" in low:
+                    return "Sky Business"
+
+                return None
+
+            # Build display copy and append combined totals
+            display_df = summary_df.copy()
+
+            vip_combo = _combine(display_df, ["VIP North", "VIP South", "Sky VIP"], "VIP Team")
+            if vip_combo is not None:
+                display_df.loc["VIP Team"] = vip_combo
+
+            t2_combo = _combine(display_df, ["Tier 2 North", "Tier 2 South", "Tier 2"], "Tier 2 Team")
+            if t2_combo is not None:
+                display_df.loc["Tier 2 Team"] = t2_combo
+
+            # ---------- Sub-tabs ----------
+            tab_overview, tab_vip, tab_t2 = st.tabs(["📊 Overview", "👥 VIP Team", "🛠 Tier 2 Team"])
+
+            # ===== Overview =====
+            with tab_overview:
+                st.markdown("#### 1️⃣ Budget Usage by Stakeholder")
+
+                desired_order = [
+                    "VIP North", "VIP South", "VIP Team",
+                    "Tier 2 North", "Tier 2 South", "Tier 2 Team",
+                    "Sky Business", "Sky Retail"
+                ]
+                # keep order where rows exist
+                for stakeholder in [x for x in desired_order if x in display_df.index]:
+                    row = display_df.loc[stakeholder]
+                    used_amt  = float(row.get("Total Expense", 0) or 0)
+                    alloc_amt = float(row.get("Allocated", 0) or 0)
+                    pct = int(min((used_amt / alloc_amt * 100) if alloc_amt else 0, 100))
+                    color = "#62d2a2" if pct < 70 else ("#f0ad4e" if pct < 90 else "#d9534f")
+
+                    st.markdown(f"**{stakeholder}** — £{used_amt:,.2f} / £{alloc_amt:,.2f}")
+                    st.markdown(
+                        f"""
+                        <progress value="{pct}" max="100"
+                                style="width:100%; height:1rem; accent-color:{color};">
+                        </progress>
+                        """,
+                        unsafe_allow_html=True,
                     )
-                    # keep state in sync if typed
-                    if val != float(st.session_state.alloc_working[team]):
-                        st.session_state.alloc_working[team] = float(val)
 
-                with plus_col:
-                    if st.button("+", key=f"inc_{team}"):
-                        st.session_state.alloc_working[team] = float(st.session_state.alloc_working[team]) + STEP
+                st.markdown("#### 2️⃣ Allocated vs Spent Chart")
+                chart_df = display_df.reset_index()[["Stakeholder", "Allocated", "Total Expense"]]
+                st.bar_chart(chart_df.set_index("Stakeholder"))
 
-            st.divider()
+                st.markdown("---")
+                pretty_display = display_df.applymap(lambda x: f"£{x:,.2f}")
+                st.dataframe(pretty_display, use_container_width=True)
 
-            if st.button("💾 Save changes", use_container_width=True):
-                out = (
-                    st.session_state.alloc_working
-                    .reindex(STAKEHOLDERS).fillna(0.0).astype(float)
-                    .rename("Allocated").reset_index().rename(columns={"index":"Team"})
-                )
-                out.to_csv(BUDGET_FILE, index=False)
-                st.session_state.budgets_df = out  # update in-memory copy used by Step 1
-                st.success("Allocations saved.")
+            # ===== VIP Team tab =====
+            with tab_vip:
+                if "VIP Team" in display_df.index:
+                    row = display_df.loc["VIP Team"]
+                    _kpi_block(float(row["Allocated"]), float(row["Total Expense"]))
+                else:
+                    st.info("No VIP Team data to combine (need 'VIP North' + 'VIP South' or 'Sky VIP').")
+
+            # ===== Tier 2 Team tab =====
+            with tab_t2:
+                if "Tier 2 Team" in display_df.index:
+                    row = display_df.loc["Tier 2 Team"]
+                    _kpi_block(float(row["Allocated"]), float(row["Total Expense"]))
+                else:
+                    st.info("No Tier 2 Team data to combine (need 'Tier 2 North' + 'Tier 2 South' or 'Tier 2').")
 
 
 
+        # ---- TAB 2: +/- allocators (with +/- buttons, live preview, save) ----
+        import matplotlib.pyplot as plt
 
+        with tab_adj:
+            # Stakeholders list (order fixed)
+            STAKEHOLDERS = [
+                "VIP North", "VIP South",
+                "Tier 2 North", "Tier 2 South",
+                "Sky Business", "Sky Retail",
+            ]
+            STEP = 1_000  # £ step for +/- buttons
+
+            # Seed a working copy in session_state from budgets_df (keeps edits local until Save)
+            if "alloc_working" not in st.session_state:
+                # start from file values; if any missing stakeholder, default to 0
+                base = budgets_df["Allocated"].reindex(STAKEHOLDERS).fillna(0).astype(float)
+                st.session_state.alloc_working = base
+
+            # KPIs (from working values)
+            work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
+            total_alloc_now = float(work.sum())
+            headroom = float(TOTAL_BUDGET - total_alloc_now)
+
+            kc1, kc2 = st.columns(2)
+            kc1.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
+            kc2.metric("Headroom vs Total Budget", f"£{headroom:,.0f}")
+
+            # 2.1) Allocation controls (buttons + live value)
+            with st.expander("🔧 Adjust Quarterly Allocations", expanded=True):
+                st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
+                for name in STAKEHOLDERS:
+                    col1, col2, col3 = st.columns([2,1,1])
+                    col1.markdown(f"**{name}**")
+
+                    # Row controls
+                    with col2:
+                        bcols = st.columns([1,2,1])
+                        if bcols[0].button("−", key=f"dec_{name}"):
+                            st.session_state.alloc_working[name] = max(0.0, work[name] - STEP)
+                            work = st.session_state.alloc_working  # refresh local ref
+                        # show current value as a number_input so you can type too
+                        new_val = bcols[1].number_input(
+                            label=f"{name}_val",
+                            value=float(work[name]),
+                            step=float(STEP),
+                            min_value=0.0,
+                            format="%.0f",
+                            label_visibility="collapsed",
+                            key=f"in_{name}",
+                        )
+                        if new_val != work[name]:
+                            st.session_state.alloc_working[name] = float(new_val)
+                            work = st.session_state.alloc_working
+                        if bcols[2].button("+", key=f"inc_{name}"):
+                            st.session_state.alloc_working[name] = work[name] + STEP
+                            work = st.session_state.alloc_working
+
+                    # pretty inline display on the right
+                    col3.markdown(f"**£{st.session_state.alloc_working[name]:,.0f}**")
+
+                # Save (writes to budgets.csv and updates in-memory budgets_df)
+                if st.button("💾 Save changes"):
+                    out_df = (
+                        st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
+                        .rename("Allocated").reset_index().rename(columns={"index": "Stakeholder"})
+                    )
+                    out_df.to_csv(BUDGET_FILE, index=False)
+                    # update the live budgets_df used elsewhere (no rerun needed for this tab)
+                    st.session_state.budgets_df = out_df.set_index("Stakeholder")
+                    st.success("Allocations saved to budgets.csv")
+                    # refresh local copies
+                    work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
+                    total_alloc_now = float(work.sum())
+                    headroom = float(TOTAL_BUDGET - total_alloc_now)
+
+                import plotly.express as px
+
+                with st.expander("🍩 Allocation Breakdown", expanded=False):
+                    if work.sum() > 0:
+                        fig = px.pie(
+                            values=work.values,
+                            names=STAKEHOLDERS,
+                            hole=0.6,  # makes it a donut
+                        )
+                        fig.update_traces(textinfo="percent+label")
+                        fig.update_layout(
+                            showlegend=True,
+                            margin=dict(t=10, b=10, l=10, r=10),
+                            height=300  # keeps it compact
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.caption("No allocations to show yet.")
 
 
     # ---- TAB 1: Read-only summary ----
     with tab_sum:
         # existing KPIs...
-        # calculate from the same dataframe you display in the detailed table
-        alloc_sum = float(pd.to_numeric(summary_df["Allocated"], errors="coerce").fillna(0).sum())
-        spent_sum = float(pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum())
-        remaining = max(alloc_sum - spent_sum, 0.0)
-        remaining_pct = (remaining / alloc_sum * 100.0) if alloc_sum else 0.0
-
+        spent_num = pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum()
+        remaining_pct = (remaining / TOTAL_BUDGET * 100) if TOTAL_BUDGET else 0
         c1, c2, c3 = st.columns(3)
-        c1.metric("💷 Spent so far",      f"£{spent_sum:,.0f}")
+        c1.metric("💷 Spent so far", f"£{spent_num:,.0f}")
         c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
-        c3.metric("📈 % Remaining",      f"{remaining_pct:.1f}%")
-
+        c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
             # 2.3) Detailed budget table (interactive)
         with st.expander("📋 Detailed Budget Table", expanded=True):
             # --- ALWAYS use the Expenses master mapped to teams (not the CSV) ---
@@ -11113,6 +11078,4 @@ if st.session_state.get("screen") == "highlands_islands":
     st.stop()
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
-import streamlit as st
-
-
+import streamlit as st        
