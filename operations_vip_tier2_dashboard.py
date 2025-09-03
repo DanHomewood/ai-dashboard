@@ -2280,6 +2280,33 @@ h1,h2,h3,h4 { color:#0f172a !important; font-weight:800; }
 /* Sidebar on light */
 section[data-testid="stSidebar"] { background:#ffffff !important; border-right:1px solid #eef1f5; }
 """
+
+LIGHT_CSS += """
+/* Dark KPI pill: keep white text inside the dark rounded card */
+.kpi-pill {
+  background:#0f172a;               /* deep navy (same as old app) */
+  color:#f8fafc !important;
+  border-radius:24px;
+  padding:18px 20px;
+  box-shadow:0 14px 28px rgba(2,32,71,.18);
+  border:1px solid rgba(255,255,255,.04);
+}
+
+/* Ensure *everything* inside renders white */
+.kpi-pill h1, .kpi-pill h2, .kpi-pill h3, .kpi-pill h4,
+.kpi-pill p, .kpi-pill li, .kpi-pill strong, .kpi-pill span, .kpi-pill em {
+  color:#f8fafc !important;
+}
+
+/* Optional: lighten the Expander header on light theme but keep tidy */
+div[data-testid="stExpander"] {
+  background:#ffffff; border:1px solid #e6e8eb; border-radius:12px;
+}
+div[data-testid="stExpander"] > div[role="button"] {
+  background:#ffffff; border-bottom:1px solid #e6e8eb; border-radius:12px 12px 0 0;
+}
+"""
+
 # Use this new CSS instead of the previous dark bundle
 inject_css(LIGHT_CSS)
 
