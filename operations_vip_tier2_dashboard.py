@@ -1550,6 +1550,25 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+st.markdown("""
+<style>
+/* tighter vertical rhythm */
+.block-container {padding-top: 1rem; padding-bottom: 2rem;}
+/* pill look for totals */
+.budget-pill {
+  background: linear-gradient(135deg,#0ea5e9,#2563eb);
+  color:#fff; padding:12px 18px; border-radius:16px;
+  font-weight:700; display:inline-block; min-width:140px; text-align:center;
+  box-shadow: 0 6px 18px rgba(37,99,235,.18);
+}
+/* smaller helper text */
+.subtle {color:#6b7280; font-size:0.9rem;}
+/* align number inputs nicely */
+.budget-input .stNumberInput {width: 100%;}
+/* keep save button off the left edge */
+.save-row { margin-top: 12px; }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Global display defaults ---
 pd.options.display.float_format = "{:,.2f}".format
