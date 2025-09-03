@@ -81,40 +81,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-@st.cache_data(show_spinner=False)
-def load_invoices_df():
-    # Resolve relative to THIS file (works on Streamlit Cloud)
-    APP_DIR = Path(__file__).resolve().parent
 
-    candidates = [
-        APP_DIR / "Invoices.xlsx",
-        APP_DIR / "data" / "Invoices.xlsx",
-        Path.cwd() / "Invoices.xlsx",            # current working dir (fallback)
-    ]
-
-    tried = []
-    for p in candidates:
-        tried.append(p.as_posix())
-        if p.exists():
-            try:
-                df = pd.read_excel(p)   # needs openpyxl
-                st.caption(f"Loaded invoices from **{p.as_posix()}**")
-                return df
-            except Exception as e:
-                st.error(f"Found {p.name} but failed to read: {e}")
-
-    st.warning(
-        "Invoices.xlsx not found/readable. Looked in:\n" + "\n".join(f"• {t}" for t in tried)
-    )
-
-    # Allow upload as a fallback in the UI
-    up = st.file_uploader("Upload Invoices.xlsx", type=["xlsx"], key="upload_invoices")
-    if up:
-        df = pd.read_excel(up)
-        st.caption("Loaded invoices from uploaded file.")
-        return df
-
-    return pd.DataFrame()
 
 
 EXP_MASTER = Path("Expenses/expenses_master.parquet")
@@ -333,48 +300,67 @@ TEAM_COL_OVERRIDE = "Stakeholder"   # <-- your budgets.csv uses this
 
 # === Invoices: loader helper (ADD in helpers section) ===
 @st.cache_data(show_spinner=False)
-def load_invoices(path: str | Path = "Invoices.xlsx") -> pd.DataFrame:
+def load_invoices(path: str | Path | None = None) -> pd.DataFrame:
     """
-    Robust invoices loader.
-    - Reads all readable sheets, concatenates if columns match
-    - Normalises headers
-    - Coerces common columns: Date, Amount/Total, Supplier/Vendor, Status, Paid
-    - Leaves original columns intact as well
+    Robust invoices loader for Streamlit Cloud.
+    Looks next to this file, then /data, then CWD (as a last resort).
+    Concatenates all readable sheets.
     """
-    p = Path(path)
-    if not p.exists():
-        st.warning("⚠️ Invoices.xlsx not found in app folder.")
-        return pd.DataFrame()
+    APP_DIR = Path(__file__).resolve().parent
 
-    try:
-        x = pd.ExcelFile(p)
-        frames = []
-        for s in x.sheet_names:
+    # Candidate locations (first wins)
+    candidates: list[Path] = []
+    if path:
+        p = Path(path)
+        candidates.append(p if p.is_absolute() else (APP_DIR / p))
+    candidates += [
+        APP_DIR / "Invoices.xlsx",
+        APP_DIR / "data" / "Invoices.xlsx",
+        Path.cwd() / "Invoices.xlsx",   # fallback only
+    ]
+
+    tried = []
+    for p in candidates:
+        tried.append(p.as_posix())
+        if p.exists():
             try:
-                df = x.parse(s)
-                if isinstance(df, pd.DataFrame) and not df.empty:
-                    frames.append(df)
-            except Exception:
-                continue
-        if not frames:
-            st.warning("⚠️ No readable sheets in Invoices.xlsx")
-            return pd.DataFrame()
+                xls = pd.ExcelFile(p)  # requires openpyxl in requirements.txt
+                frames = []
+                for s in xls.sheet_names:
+                    try:
+                        df = xls.parse(s)
+                        if isinstance(df, pd.DataFrame) and not df.empty:
+                            # normalise headers
+                            df.columns = (df.columns.astype(str)
+                                          .str.replace("\u00A0", " ", regex=False)
+                                          .str.strip())
+                            frames.append(df)
+                    except Exception:
+                        continue
+                if not frames:
+                    st.warning(f"⚠️ No readable sheets in {p.name}")
+                    return pd.DataFrame()
+                st.caption(f"Loaded invoices from **{p.as_posix()}**")
+                return pd.concat(frames, ignore_index=True)
+            except Exception as e:
+                st.error(f"Found {p.name} but failed to read: {e}")
+                return pd.DataFrame()
 
-        def _norm(df: pd.DataFrame) -> pd.DataFrame:
-            out = df.copy()
-            out.columns = (
-                out.columns.astype(str)
-                .str.replace("\u00A0", " ", regex=False)  # non-breaking spaces
-                .str.strip()
-            )
-            return out
+    st.warning(
+        "Invoices.xlsx not found. Looked in:\n" + "\n".join(f"• {t}" for t in tried)
+    )
+    # Optional upload fallback
+    up = st.file_uploader("Upload Invoices.xlsx", type=["xlsx"], key="upload_invoices")
+    if up:
+        df = pd.read_excel(up)
+        df.columns = (df.columns.astype(str)
+                      .str.replace("\u00A0", " ", regex=False)
+                      .str.strip())
+        st.caption("Loaded invoices from uploaded file.")
+        return df
 
-        frames = [_norm(f) for f in frames]
-        same_cols = all(set(frames[0].columns) == set(f.columns) for f in frames)
-        inv = pd.concat(frames, ignore_index=True) if same_cols else frames[0]
-    except Exception as e:
-        st.error(f"Failed to read Invoices.xlsx: {e}")
-        return pd.DataFrame()
+    return pd.DataFrame()
+
     
     
 
@@ -10962,6 +10948,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
