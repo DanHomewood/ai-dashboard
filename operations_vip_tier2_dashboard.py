@@ -2817,7 +2817,12 @@ highlands_df = combined_oracle_df[
 def load_excel(path):
     return pd.read_excel(path)
 
-
+try:
+    sky_business_df = load_excel("Sky Business.xlsx")
+    sky_business_df.columns = sky_business_df.columns.str.strip()
+except Exception as e:
+    st.warning(f"⚠️ Could not load Sky Business file: {e}")
+    sky_business_df = pd.DataFrame()
 
 try:
     call_log_df = load_excel("Call Log Data.xlsx")
