@@ -2220,6 +2220,7 @@ users = {
 # ===== SECTION 6: Styling + Single Login (with named users & passwords) =====
 
 # ===== Light theme to match your old app =====
+# ===== Light theme to match your old app =====
 LIGHT_CSS = """
 /* App background + base typography */
 html, body, .stApp {
@@ -2233,6 +2234,19 @@ html, body, .stApp {
 
 /* Hide Streamlit default decoration gap at top */
 header[data-testid="stHeader"] { background: transparent; }
+
+/* --- Uniform 'card buttons' --- */
+.menu-row { margin-top: 8px; }
+.stButton { margin: 6px 8px !important; }            /* consistent gaps */
+.stButton > button {
+  min-width: 200px;               /* keeps text on one line for short labels */
+  height: 72px;                   /* same height for all */
+  border-radius: 18px;
+  padding: .6rem 1rem;
+  white-space: normal;            /* allow wrap if needed */
+  line-height: 1.15;
+  word-break: keep-all;
+}
 
 /* Buttons */
 .stButton > button {
@@ -2266,9 +2280,9 @@ h1,h2,h3,h4 { color:#0f172a !important; font-weight:800; }
 /* Sidebar on light */
 section[data-testid="stSidebar"] { background:#ffffff !important; border-right:1px solid #eef1f5; }
 """
-
 # Use this new CSS instead of the previous dark bundle
 inject_css(LIGHT_CSS)
+
 
 
 # ---- Users: EXACT names, passwords, and teams you provided ----
