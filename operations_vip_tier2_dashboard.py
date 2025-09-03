@@ -7255,187 +7255,163 @@ def render_exec_overview(embed: bool = False):
     # === Exec: Sky Business (Caffe Nero) snapshot ===
     with st.expander("🏢 Sky Business", expanded=False):
         import pandas as pd
-        from pathlib import Path
-        import os
 
-        # 1) Load the SAME file the SB page uses
-        sb = load_sky_business()  # reads "Sky Business.xlsx"
+        # 1) Load exactly the same data the Business page uses, but NEVER mutate it.
+        sb_raw = load_sky_business()                 # likely cached
+        df = sb_raw.copy(deep=True)                  # work on our own copy only
 
-        # --- small debug (safe to keep; remove later if you like)
-        st.caption(f"LOAD • rows={len(sb)} • cols={list(sb.columns) if len(sb)>0 else []}")
-        st.caption(f"FILE • exists={Path('Sky Business.xlsx').exists()} • cwd={Path.cwd()}")
-        st.caption(f"DIR • {os.listdir(Path.cwd())[:10]}")
-
-        if sb.empty:
+        if df.empty:
             st.info("No Sky Business data available (Sky Business.xlsx missing or empty).")
-        else:
-            # ---------- Normalise headers ----------
-            sb.columns = (
-                sb.columns.astype(str)
-                .str.replace("\u00A0", " ", regex=False)
-                .str.strip()
-            )
+            st.stop()
 
-            # ---------- Choose and parse a usable date column ----------
-            # Try these in order and pick whichever yields the most valid dates.
-            date_candidates = ["SBDate", "PrefSlot", "Date", "Visit Date"]
+        # ---------- Normalise headers (on our copy only) ----------
+        df.columns = (
+            df.columns.astype(str)
+            .str.replace("\u00A0", " ", regex=False)
+            .str.strip()
+        )
 
-            best_col = None
-            best_parsed = None
-            best_count = 0
+        # ---------- Find & parse a usable date column -> SBDate_exec (do NOT touch original SBDate) ----------
+        date_candidates = ["SBDate", "PrefSlot", "Date", "Visit Date"]
 
-            for col in date_candidates:
-                if col not in sb.columns:
-                    continue
+        best_col = None
+        best_parsed = None
+        best_count = 0
 
-                raw = sb[col]
+        for col in date_candidates:
+            if col not in df.columns:
+                continue
 
-                # 1) Try UK style first
-                dt = pd.to_datetime(raw, errors="coerce", dayfirst=True)
+            raw = df[col]
+            # Try UK style first
+            dt = pd.to_datetime(raw, errors="coerce", dayfirst=True)
+            cnt = dt.notna().sum()
+
+            # If nothing parsed, try Excel serial numbers
+            if cnt == 0:
+                as_num = pd.to_numeric(raw, errors="coerce")
+                dt = pd.to_datetime(as_num, unit="D", origin="1899-12-30", errors="coerce")
                 cnt = dt.notna().sum()
 
-                # 2) If nothing parsed, try Excel serial numbers (float/int)
-                if cnt == 0:
-                    as_num = pd.to_numeric(raw, errors="coerce")
-                    dt = pd.to_datetime(as_num, unit="D", origin="1899-12-30", errors="coerce")
-                    cnt = dt.notna().sum()
+            if cnt > best_count:
+                best_col = col
+                best_parsed = dt
+                best_count = cnt
 
-                # Keep the best column so far
-                if cnt > best_count:
-                    best_col = col
-                    best_parsed = dt
-                    best_count = cnt
+        # Place parsed dates in a PRIVATE column used only here
+        df["SBDate_exec"] = best_parsed if best_count > 0 else pd.NaT
+        has_dates = df["SBDate_exec"].notna().any()
 
-            # Debug what we chose
-            st.caption(f"DATE • using={best_col if best_col else 'none'} • parsed={best_count}/{len(sb)}")
+        # ---------- Year / Month selectors (safe if no dates) ----------
+        MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        years = (
+            sorted(df.loc[df["SBDate_exec"].notna(), "SBDate_exec"].dt.year.unique().tolist())
+            if has_dates else []
+        )
 
-            if best_count > 0:
-                sb["SBDate"] = best_parsed
-                st.caption(f"DATE • examples={sb['SBDate'].dropna().head(3).tolist()}")
+        cY, cM = st.columns([1, 1])
+        with cY:
+            sb_year  = st.selectbox("Year", ["All"] + [int(y) for y in years], index=0, key="exec_sb_year")
+        with cM:
+            sb_month = st.selectbox("Month", MONTHS, index=0, key="exec_sb_month")
+
+        # ---------- Apply selection (on our copy only) ----------
+        cur = df.copy()
+        if has_dates and sb_year != "All":
+            cur = cur[cur["SBDate_exec"].dt.year == int(sb_year)]
+        if has_dates and sb_month != "All":
+            mnum = MONTHS.index(sb_month)            # 1..12
+            cur  = cur[cur["SBDate_exec"].dt.month == mnum]
+
+        # ---------- Sparkline base ----------
+        if has_dates:
+            spark_base = df.loc[df["SBDate_exec"].notna()].copy()
+            if sb_year != "All":
+                spark_base = spark_base[spark_base["SBDate_exec"].dt.year == int(sb_year)]
+            spark_base["Month"] = spark_base["SBDate_exec"].dt.to_period("M").dt.to_timestamp()
+
+            if sb_year != "All" and sb_month != "All":
+                end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
+            elif sb_year != "All":
+                end_month = pd.Timestamp(int(sb_year), 12, 1).to_period("M").to_timestamp()
             else:
-                # No usable dates anywhere — keep NaT, but DO NOT drop rows.
-                sb["SBDate"] = pd.NaT
+                end_month = spark_base["Month"].max() if not spark_base.empty else None
+        else:
+            spark_base = cur.copy()
+            spark_base["Month"] = pd.NaT
+            end_month = None
 
-            # ---------- Year / Month selectors (safe if no dates) ----------
-            has_dates = sb["SBDate"].notna().any()
-            MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        # ---------- Build Nero masks straight from SLA ----------
+        def _nero_masks_from(dfx: pd.DataFrame):
+            if dfx.empty or "SLA" not in dfx.columns:
+                return tuple(pd.Series(False, index=dfx.index) for _ in range(5))
+            s = dfx["SLA"].fillna("").astype(str).str.lower()
+            m_all  = s.str.contains("caffe nero", na=False)
+            m_2h   = m_all & s.str.contains(r"(2[- ]?hour|2\s*hr)", na=False)
+            m_next = m_all & s.str.contains(r"next\s*day", na=False)
+            m_4h   = m_all & s.str.contains(r"(4[- ]?hour|4\s*hr)", na=False)
+            m_8h   = s.str.contains(r"8[- ]?hour", na=False)
+            return m_all, m_2h, m_next, m_4h, m_8h
 
-            years = (
-                sorted(sb.loc[sb["SBDate"].notna(), "SBDate"].dt.year.unique().tolist())
-                if has_dates else []
+        cur_masks  = _nero_masks_from(cur)
+        base_masks = _nero_masks_from(spark_base)
+        totals = [int(m.sum()) for m in cur_masks]
+
+        # ---------- Sparkline + MoM ----------
+        def spark_and_mom(mask_on_base: pd.Series):
+            if (
+                spark_base.empty
+                or mask_on_base.sum() == 0
+                or "Month" not in spark_base.columns
+                or spark_base["Month"].isna().all()
+            ):
+                return [0], "—", "—"
+            ser = (
+                spark_base.loc[mask_on_base]
+                        .groupby("Month").size()
+                        .reset_index(name="Count")
+                        .sort_values("Month")
             )
+            if end_month is not None:
+                ser = ser[ser["Month"] <= end_month]
+            vals = ser["Count"].tail(12).tolist()
+            if len(ser) < 2:
+                return vals, "—", "—"
+            curr, prev = ser["Count"].iloc[-1], ser["Count"].iloc[-2]
+            if prev == 0:
+                return vals, "—", "—"
+            pct = (curr - prev) / prev * 100.0
+            return vals, f"{pct:+.1f}%", ("▲" if pct >= 0 else "▼")
 
-            cY, cM = st.columns([1, 1])
-            with cY:
-                sb_year = st.selectbox("Year", ["All"] + [int(y) for y in years], index=0, key="exec_sb_year")
-            with cM:
-                sb_month = st.selectbox("Month", MONTHS, index=0, key="exec_sb_month")
+        # ---------- Cards ----------
+        tiles = [
+            ("All Caffe Nero – Requests", totals[0], spark_and_mom(base_masks[0]), "#0ea5e9", "sb_nero_all"),
+            ("Caffe Nero 2 hour",        totals[1], spark_and_mom(base_masks[1]), "#0ea5e9", "sb_nero_2h"),
+            ("Caffe Nero (Next Day)",    totals[2], spark_and_mom(base_masks[2]), "#0ea5e9", "sb_nero_next"),
+            ("Caffe Nero (4 Hour)",      totals[3], spark_and_mom(base_masks[3]), "#0ea5e9", "sb_nero_4h"),
+            ("8-Hour SLA",               totals[4], spark_and_mom(base_masks[4]), "#10b981", "sb_8h"),
+        ]
 
-            # ---------- Current selection (totals) ----------
-            cur = sb.copy()
-            if has_dates and sb_year != "All":
-                cur = cur[cur["SBDate"].dt.year == int(sb_year)]
-            if has_dates and sb_month != "All":
-                mnum = MONTHS.index(sb_month)  # 1..12
-                cur  = cur[cur["SBDate"].dt.month == mnum]
+        c1, c2, c3, c4, c5 = st.columns(5, gap="large")
+        for (title, total, (spark, mom_txt, mom_arrow), color, src), col in zip(tiles, [c1, c2, c3, c4, c5]):
+            subtitle = f"{mom_arrow} {mom_txt} vs prev month" if mom_txt != "—" else "No prior month"
+            try:
+                with col:
+                    card(title, f"{total:,}", subtitle, spark=spark, color=color, source=src)
+            except Exception:
+                with col.container(border=True):
+                    st.caption("Month to date")
+                    st.markdown(f"**{title}**")
+                    st.markdown(f"<div style='font-size:26px;font-weight:700;'>{total:,}</div>", unsafe_allow_html=True)
 
-            # ---------- Sparkline base ----------
-            if has_dates:
-                spark_base = sb.loc[sb["SBDate"].notna()].copy()
-                if sb_year != "All":
-                    spark_base = spark_base[spark_base["SBDate"].dt.year == int(sb_year)]
-                spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
+        # ---------- Window label ----------
+        if spark_base.empty or spark_base["Month"].isna().all():
+            st.caption("Window: —")
+        else:
+            start_lbl = spark_base["Month"].min().strftime("%b %Y")
+            end_lbl   = (end_month or spark_base["Month"].max()).strftime("%b %Y")
+            st.caption(f"Window: {start_lbl} – {end_lbl}")
 
-                if sb_year != "All" and sb_month != "All":
-                    end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
-                elif sb_year != "All":
-                    end_month = pd.Timestamp(int(sb_year), 12, 1).to_period("M").to_timestamp()
-                else:
-                    end_month = spark_base["Month"].max() if not spark_base.empty else None
-            else:
-                # No dates: use current selection for totals and disable sparklines
-                spark_base = cur.copy()
-                spark_base["Month"] = pd.NaT
-                end_month = None
-
-            # ---------- Build Nero masks straight from SLA ----------
-            def _nero_masks_from(df: pd.DataFrame):
-                if df.empty or "SLA" not in df.columns:
-                    return tuple(pd.Series(False, index=df.index) for _ in range(5))
-
-                s = df["SLA"].fillna("").astype(str).str.lower()
-
-                m_all  = s.str.contains("caffe nero", na=False)
-                m_2h   = m_all & s.str.contains(r"(2[- ]?hour|2\s*hr)", na=False)
-                m_next = m_all & s.str.contains(r"next\s*day", na=False)
-                m_4h   = m_all & s.str.contains(r"(4[- ]?hour|4\s*hr)", na=False)
-                m_8h   = s.str.contains(r"8[- ]?hour", na=False)
-
-                return m_all, m_2h, m_next, m_4h, m_8h
-
-            # Masks + totals
-            cur_masks  = _nero_masks_from(cur)
-            base_masks = _nero_masks_from(spark_base)
-            totals = [int(m.sum()) for m in cur_masks]
-            st.caption(f"CHECK • cur rows={len(cur)} • nero_all={totals[0]} • 2h={totals[1]} • next={totals[2]} • 4h={totals[3]} • 8h={totals[4]}")
-
-            # ---------- Sparkline + MoM ----------
-            def spark_and_mom(mask_on_base: pd.Series):
-                # If no dates or no data, suppress sparkline
-                if (
-                    spark_base.empty
-                    or mask_on_base.sum() == 0
-                    or "Month" not in spark_base.columns
-                    or spark_base["Month"].isna().all()
-                ):
-                    return [0], "—", "—"
-
-                ser = (
-                    spark_base.loc[mask_on_base]
-                            .groupby("Month")
-                            .size()
-                            .reset_index(name="Count")
-                            .sort_values("Month")
-                )
-                if end_month is not None:
-                    ser = ser[ser["Month"] <= end_month]
-                spark_vals = ser["Count"].tail(12).tolist()
-                if len(ser) < 2:
-                    return spark_vals, "—", "—"
-                curr, prev = ser["Count"].iloc[-1], ser["Count"].iloc[-2]
-                if prev == 0:
-                    return spark_vals, "—", "—"
-                pct = (curr - prev) / prev * 100.0
-                return spark_vals, f"{pct:+.1f}%", ("▲" if pct >= 0 else "▼")
-
-            # ---------- Cards ----------
-            tiles = [
-                ("All Caffe Nero – Requests", totals[0], spark_and_mom(base_masks[0]), "#0ea5e9", "sb_nero_all"),
-                ("Caffe Nero 2 hour",        totals[1], spark_and_mom(base_masks[1]), "#0ea5e9", "sb_nero_2h"),
-                ("Caffe Nero (Next Day)",    totals[2], spark_and_mom(base_masks[2]), "#0ea5e9", "sb_nero_next"),
-                ("Caffe Nero (4 Hour)",      totals[3], spark_and_mom(base_masks[3]), "#0ea5e9", "sb_nero_4h"),
-                ("8-Hour SLA",               totals[4], spark_and_mom(base_masks[4]), "#10b981", "sb_8h"),
-            ]
-
-            c1, c2, c3, c4, c5 = st.columns(5, gap="large")
-            for (title, total, (spark, mom_txt, mom_arrow), color, src), col in zip(tiles, [c1, c2, c3, c4, c5]):
-                subtitle = f"{mom_arrow} {mom_txt} vs prev month" if mom_txt != "—" else "No prior month"
-                try:
-                    with col:
-                        card(title, f"{total:,}", subtitle, spark=spark, color=color, source=src)
-                except Exception:
-                    with col.container(border=True):
-                        st.caption("Month to date")
-                        st.markdown(f"**{title}**")
-                        st.markdown(f"<div style='font-size:26px;font-weight:700;'>{total:,}</div>", unsafe_allow_html=True)
-
-            # Window label
-            if spark_base.empty or spark_base["Month"].isna().all():
-                st.caption("Window: —")
-            else:
-                start_lbl = spark_base["Month"].min().strftime("%b %Y")
-                end_lbl   = (end_month or spark_base["Month"].max()).strftime("%b %Y")
-                st.caption(f"Window: {start_lbl} – {end_lbl}")
 
 
 
