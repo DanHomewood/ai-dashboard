@@ -7261,6 +7261,12 @@ def render_exec_overview(embed: bool = False):
         sb = load_sky_business()  # reads "Sky Business.xlsx"
         st.caption(f"DEBUG • SB rows={len(sb)} • cols={list(sb.columns)[:12]}")
         st.write(sb[["SLA","JobType"]].head(20))
+        nero_any  = sb["SLA"].str.contains("caffe nero", case=False, na=False).sum()
+        nero_2h   = sb["SLA"].str.contains("caffe nero", case=False, na=False) & sb["SLA"].str.contains(r"(2[- ]?hour|2\s*hr)", case=False, na=False)
+        nero_next = sb["SLA"].str.contains("caffe nero", case=False, na=False) & sb["SLA"].str.contains(r"next\s*day", case=False, na=False)
+        nero_4h   = sb["SLA"].str.contains("caffe nero", case=False, na=False) & sb["SLA"].str.contains(r"(4[- ]?hour|4\s*hr)", case=False, na=False)
+
+        st.caption(f"DEBUG • Nero-any={nero_any} | 2-Hour={int(nero_2h.sum())} | Next-Day={int(nero_next.sum())} | 4-Hour={int(nero_4h.sum())}")
 
         if sb.empty:
             st.info("No Sky Business data available (Sky Business.xlsx missing or empty).")
