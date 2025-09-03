@@ -9334,12 +9334,17 @@ if st.session_state.screen == "operational_area":
         # ---- TAB 1: Read-only summary ----
         with tab_sum:
             # ---- KPI cards ----
-            spent_num = pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum()
-            remaining_pct = (remaining / TOTAL_BUDGET * 100) if TOTAL_BUDGET else 0
+            # totals from the detailed table you show
+            alloc_num  = float(pd.to_numeric(summary_df["Allocated"], errors="coerce").fillna(0).sum())
+            spent_num  = float(pd.to_numeric(summary_df["Total Expense"], errors="coerce").fillna(0).sum())
+            remaining  = max(alloc_num - spent_num, 0.0)
+            remaining_pct = (remaining / alloc_num * 100.0) if alloc_num else 0.0
+
             c1, c2, c3 = st.columns(3)
-            c1.metric("💷 Spent so far", f"£{spent_num:,.0f}")
-            c2.metric("📊 Remaining budget", f"£{remaining:,.0f}")
-            c3.metric("📈 % Remaining", f"{remaining_pct:.1f}%")
+            c1.metric("💷 Spent so far",       f"£{spent_num:,.0f}")
+            c2.metric("📊 Remaining budget",  f"£{remaining:,.0f}")
+            c3.metric("📈 % Remaining",       f"{remaining_pct:.1f}%")
+
 
         with st.expander("➕ Add Expense (manual)", expanded=False):
             import hashlib
@@ -9590,28 +9595,26 @@ if st.session_state.screen == "operational_area":
     tab_sum, tab_adj, tab_exp = st.tabs(["Budget Summary", "Adjust Allocations", "Expenses"])
 
     # ---------------- Adjust Allocations (polished grid) ----------------
+# ---------------- Adjust Allocations (polished grid) ----------------
     with tab_adj:
         STAKEHOLDERS = ["VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"]
         STEP = 1_000
 
-        # Seed working copy once
-        # Identify the column that holds team/stakeholder names
+        # Seed working copy once (dedupe by team)
         team_col = "Team" if "Team" in budgets_df.columns else (
             "Stakeholder" if "Stakeholder" in budgets_df.columns else budgets_df.columns[0]
         )
+        bud = budgets_df.drop_duplicates(subset=[team_col]).set_index(team_col)
 
-        # Drop duplicate team rows, keeping the last (or first if you prefer)
-        bud = budgets_df.drop_duplicates(subset=[team_col], keep="last").set_index(team_col)
+        if "alloc_working" not in st.session_state:
+            if "Allocated" in bud.columns:
+                base = bud["Allocated"].reindex(STAKEHOLDERS).fillna(0).astype(float)
+            elif "QuarterlyBudget" in bud.columns:
+                base = bud["QuarterlyBudget"].reindex(STAKEHOLDERS).fillna(0).astype(float)
+            else:
+                base = pd.Series(0.0, index=STAKEHOLDERS)
+            st.session_state.alloc_working = base
 
-        # Pick the right budget column
-        if "Allocated" in bud.columns:
-            base = bud["Allocated"].reindex(STAKEHOLDERS).fillna(0).astype(float)
-        elif "QuarterlyBudget" in bud.columns:
-            base = bud["QuarterlyBudget"].reindex(STAKEHOLDERS).fillna(0).astype(float)
-        else:
-            base = pd.Series(0.0, index=STAKEHOLDERS)
-
-        st.session_state.alloc_working = base
 
 
         work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
