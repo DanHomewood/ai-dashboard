@@ -7334,6 +7334,7 @@ def render_exec_overview(embed: bool = False):
             cur_masks  = _nero_masks_from(cur)
             base_masks = _nero_masks_from(spark_base)
             totals = [int(m.sum()) for m in cur_masks]
+            st.caption(f"CHECK • cur rows={len(cur)} • nero_all={totals[0]} • 2h={totals[1]} • next={totals[2]} • 4h={totals[3]} • 8h={totals[4]}")
 
             # ---------- Sparkline + MoM ----------
             def spark_and_mom(mask_on_base: pd.Series):
