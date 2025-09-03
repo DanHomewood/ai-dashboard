@@ -7198,21 +7198,41 @@ def render_exec_overview(embed: bool = False):
         if "gran" not in locals():
             gran = "M"   # "M" = monthly, "W" = weekly, "D" = daily
 
+
     # === Exec: Sky Business (Caffe Nero) snapshot ===
     with st.expander("🏢 Sky Business", expanded=False):
         import pandas as pd
         import unicodedata
 
-        sb = load_sky_business()
-        # We only need SBDate; SLA/JobType can be empty – we’ll handle that
-        if sb.empty or "SBDate" not in sb.columns:
-            st.info("No Sky Business data (need 'SBDate').")
+        # 1) Use the same dataframe the Sky Business page uses
+        sb = sky_business_df.copy()
+
+        if sb.empty:
+            st.info("No Sky Business data available.")
         else:
-            sb = sb.copy()
-            sb["SBDate"] = pd.to_datetime(sb["SBDate"], errors="coerce")
+            # --- normalise headers once
+            sb.columns = (
+                sb.columns.astype(str)
+                .str.replace("\u00A0", " ", regex=False)
+                .str.strip()
+            )
+
+            # 2) Pick a date column and create SBDate
+            def _pick(df, *alts):
+                for a in alts:
+                    if a in df.columns:
+                        return a
+                return None
+
+            date_col = _pick(sb, "SBDate", "Date", "Visit Date")
+            if date_col is None:
+                st.info("No date column found (need SBDate/Date/Visit Date).")
+                st.stop()
+
+            sb["SBDate"] = pd.to_datetime(sb[date_col], errors="coerce")
             sb = sb.dropna(subset=["SBDate"])
 
-            # --- Local Year / Month selectors (same behaviour as Sky Business page)
+            # 3) Local Year / Month selectors
             years = sb["SBDate"].dt.year.sort_values().unique().tolist()
             MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
@@ -7222,7 +7242,7 @@ def render_exec_overview(embed: bool = False):
             with cM:
                 sb_month = st.selectbox("Month", MONTHS, index=0, key="exec_sb_month")
 
-            # --- Build current selection (cur) to match the SB page counts
+            # 4) Current selection (totals)
             cur = sb.copy()
             if sb_year != "All":
                 cur = cur[cur["SBDate"].dt.year == int(sb_year)]
@@ -7230,13 +7250,13 @@ def render_exec_overview(embed: bool = False):
                 mnum = MONTHS.index(sb_month)  # 1..12
                 cur  = cur[cur["SBDate"].dt.month == mnum]
 
-            # --- Build sparkline base: year-only filter (keeps history for MoM)
+            # 5) Sparkline base (year filter only)
             spark_base = sb.copy()
             if sb_year != "All":
                 spark_base = spark_base[spark_base["SBDate"].dt.year == int(sb_year)]
             spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
 
-            # --- Cap month for the sparkline (end of year / selected month / latest)
+            # For series end point
             if sb_year != "All" and sb_month != "All":
                 end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
             elif sb_year != "All":
@@ -7244,54 +7264,48 @@ def render_exec_overview(embed: bool = False):
             else:
                 end_month = spark_base["Month"].max() if not spark_base.empty else None
 
-            # ---------- Helpers (define BEFORE use) ----------
+            # 6) Build a robust text field (SLA + JobType/Job Type/Type)
+            def _safe_series(df, *alts):
+                for a in alts:
+                    if a in df.columns:
+                        return df[a].fillna("").astype(str)
+                return pd.Series([""] * len(df), index=df.index)
+
+            def _merge_text(df: pd.DataFrame) -> pd.Series:
+                sla  = _safe_series(df, "SLA", "Sla", "SLA Type")
+                job  = _safe_series(df, "JobType", "Job Type", "Type")
+                return (sla + " " + job).str.strip()
+
             def _strip_accents(text: str) -> str:
                 return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
 
-            def normalise_sla(series: pd.Series) -> pd.Series:
-                s = series.astype(str).map(_strip_accents).str.lower()
+            def normalise(s: pd.Series) -> pd.Series:
+                s = s.astype(str).map(_strip_accents).str.lower()
                 return (
-                    s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)   # unify unusual dashes
-                    .str.replace(r"[^a-z0-9]+", " ", regex=True)         # drop punctuation, collapse spaces
+                    s.str.replace(r"[\u2010-\u2015–—]", "-", regex=True)
+                    .str.replace(r"[^a-z0-9]+", " ", regex=True)
                     .str.replace(r"\s+", " ", regex=True)
                     .str.strip()
                 )
 
-            # Use SLA + JobType (so we catch Nero text whichever column it lives in)
-            def _merge_text(df: pd.DataFrame) -> pd.Series:
-                sla  = df["SLA"]     if "SLA" in df.columns else ""
-                jtyp = df["JobType"] if "JobType" in df.columns else ""
-                return (pd.Series(sla).fillna("") + " " + pd.Series(jtyp).fillna("")).astype(str)
+            cur_norm   = normalise(_merge_text(cur))         if not cur.empty        else pd.Series([], dtype=str)
+            base_norm  = normalise(_merge_text(spark_base))  if not spark_base.empty else pd.Series([], dtype=str)
 
-            def masks_for(df_norm: pd.Series):
-                if df_norm.empty:
-                    # empty masks with correct index
-                    return (
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                        pd.Series(False, index=df_norm.index),
-                    )
-                # allow cafe/caffe/caffè (after normalise) and minor typos like "caff nero"
-                m_all_nero  = df_norm.str.contains(r"\bcaf+\w*\s*nero\b", na=False)
-                m_nero_2h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
-                m_nero_next = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b", na=False)
-                m_nero_4h   = df_norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
-                m_8h        = df_norm.str.contains(r"\b8\s*hour\s*sla\b", na=False)
+            # 7) Masks (Caffè/Caffe/Cafe Nero + specific SLAs)
+            def masks_for(norm: pd.Series):
+                if norm.empty:
+                    return tuple(pd.Series(False, index=norm.index) for _ in range(5))
+                m_all_nero  = norm.str.contains(r"\bcaf+\w*\s*nero\b", na=False)
+                m_nero_2h   = norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(2\s*hour|2\s*hr)\b", na=False)
+                m_nero_next = norm.str.contains(r"\bcaf+\w*\s*nero\b.*\bnext\s*day\b", na=False)
+                m_nero_4h   = norm.str.contains(r"\bcaf+\w*\s*nero\b.*\b(4\s*hour|4\s*hr)\b", na=False)
+                m_8h        = norm.str.contains(r"\b8\s*hour\s*sla\b", na=False)
                 return m_all_nero, m_nero_2h, m_nero_next, m_nero_4h, m_8h
 
-            # ---------- Build text → normalise → masks (NOW call the helpers) ----------
-            cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
-            base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
+            cur_masks  = masks_for(cur_norm)
+            base_masks = masks_for(base_norm)
 
-            cur_sla   = normalise_sla(cur_text)
-            base_sla  = normalise_sla(base_text)
-
-            cur_masks  = masks_for(cur_sla)
-            base_masks = masks_for(base_sla)
-
-            # ---------- Sparkline + MoM helper ----------
+            # 8) Sparkline + MoM helper
             def spark_and_mom(mask_on_base: pd.Series):
                 if spark_base.empty or mask_on_base.sum() == 0:
                     return [0], "—", "—"
@@ -7314,10 +7328,10 @@ def render_exec_overview(embed: bool = False):
                 pct = (curr - prev) / prev * 100.0
                 return spark_vals, f"{pct:+.1f}%", ("▲" if pct >= 0 else "▼")
 
-            # Totals come from cur to match the Sky Business page exactly
+            # 9) Totals from the current filter (matches the SB page)
             totals = [int(mask.sum()) for mask in cur_masks]
 
-            # ---------- Build the five cards ----------
+            # 10) Cards
             tiles = [
                 ("All Caffe Nero – Requests", totals[0], spark_and_mom(base_masks[0]), "#0ea5e9", "sb_nero_all"),
                 ("Caffe Nero 2 hour",        totals[1], spark_and_mom(base_masks[1]), "#0ea5e9", "sb_nero_2h"),
@@ -7338,7 +7352,7 @@ def render_exec_overview(embed: bool = False):
                         st.markdown(f"**{title}**")
                         st.markdown(f"<div style='font-size:26px;font-weight:700;'>{total:,}</div>", unsafe_allow_html=True)
 
-            # Window label (for clarity)
+            # Window label
             if spark_base.empty:
                 st.caption("Window: —")
             else:
