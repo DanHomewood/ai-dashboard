@@ -7301,6 +7301,8 @@ def render_exec_overview(embed: bool = False):
             if sb_month != "All":
                 mnum = MONTHS.index(sb_month)  # 1..12
                 cur  = cur[cur["SBDate"].dt.month == mnum]
+            st.caption(f"CHECK • SBDate non-null={sb['SBDate'].notna().sum()} / total={len(sb)}")
+            st.write(sb[['SLA','SBDate']].head(20))
 
             # ---------- Sparkline base (year-only) ----------
             spark_base = sb.copy()
