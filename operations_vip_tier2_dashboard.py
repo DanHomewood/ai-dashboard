@@ -7208,7 +7208,20 @@ def render_exec_overview(embed: bool = False):
             sb = sb.copy()
             sb["SBDate"] = pd.to_datetime(sb["SBDate"], errors="coerce")
             sb = sb.dropna(subset=["SBDate"])
+            # Use SLA + JobType (so we catch Nero text whichever column it lives in)
+            def _merge_text(df: pd.DataFrame) -> pd.Series:
+                sla  = df["SLA"]     if "SLA" in df.columns else ""
+                jtyp = df["JobType"] if "JobType" in df.columns else ""
+                return (sla.fillna("") + " " + jtyp.fillna("")).astype(str)
 
+            cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
+            base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
+
+            cur_sla   = normalise_sla(cur_text)
+            base_sla  = normalise_sla(base_text)
+
+            cur_masks  = masks_for(cur_sla)
+            base_masks = masks_for(base_sla)
             # --- Local Year / Month selectors (same behaviour as Sky Business page)
             years = sb["SBDate"].dt.year.sort_values().unique().tolist()
             MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -7258,20 +7271,7 @@ def render_exec_overview(embed: bool = False):
 
 
             # Normalised SLA for cur and spark_base independently (so totals match cur)
-            # Use SLA + JobType (so we catch Nero text whichever column it lives in)
-            def _merge_text(df: pd.DataFrame) -> pd.Series:
-                sla  = df["SLA"]     if "SLA" in df.columns else ""
-                jtyp = df["JobType"] if "JobType" in df.columns else ""
-                return (sla.fillna("") + " " + jtyp.fillna("")).astype(str)
-
-            cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
-            base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
-
-            cur_sla   = normalise_sla(cur_text)
-            base_sla  = normalise_sla(base_text)
-
-            cur_masks  = masks_for(cur_sla)
-            base_masks = masks_for(base_sla)
+            
 
 
             # Build masks for cur (totals) and spark_base (series)
