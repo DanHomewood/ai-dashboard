@@ -4064,16 +4064,24 @@ def render_team_engineers_page():
     background:#10161d; border:1px solid #263445; border-radius:18px;
     padding:16px 18px; box-shadow:0 8px 18px rgba(0,0,0,.25);
     min-height: 210px;
+    color:#f8fafc !important;                    /* <-- make default text white */
     }
+    /* Force all descendants to white so bullets/headings also show */
+    .engineer-card *, .engineer-card h1, .engineer-card h2, .engineer-card h3, .engineer-card h4,
+    .engineer-card p, .engineer-card li, .engineer-card strong, .engineer-card span, .engineer-card em {
+    color:#f8fafc !important;
+    }
+
     .engineer-card h4{
-    margin:0 0 6px 0; font-weight:700;
+    margin:0 0 6px 0; font-weight:700; color:#e6f0ff !important; /* heading a bit brighter */
     }
     .engineer-card .eyebrow{
-    color:#9fb3c8; font-size:.8rem; margin-bottom:6px;
+    color:#9fb3c8 !important; font-size:.8rem; margin-bottom:6px;
     }
     .engineer-card ul{ list-style:none; padding-left:0; margin:0; }
     .engineer-card li{ margin: 3px 0; }
     .engineer-kpi b{ font-weight:700; }
+
     </style>
     """, unsafe_allow_html=True)
     import base64
