@@ -7351,6 +7351,29 @@ def render_exec_overview(embed: bool = False):
 
             cur_norm  = _normalise(_merge_text(cur))         if not cur.empty        else pd.Series([], dtype=str)
             base_norm = _normalise(_merge_text(spark_base))  if not spark_base.empty else pd.Series([], dtype=str)
+            spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
+            # --- Build boolean masks straight from the SLA column
+            def _nero_masks_from(df):
+                # make sure SLA exists
+                if "SLA" not in df.columns:
+                    return tuple(pd.Series(False, index=df.index) for _ in range(5))
+
+                s = df["SLA"].fillna("").astype(str).str.lower()
+
+                m_all  = s.str.contains("caffe nero", na=False)
+                m_2h   = m_all & s.str.contains(r"(2[- ]?hour|2\s*hr)", na=False)
+                m_next = m_all & s.str.contains(r"next\s*day", na=False)
+                m_4h   = m_all & s.str.contains(r"(4[- ]?hour|4\s*hr)", na=False)
+                m_8h   = s.str.contains(r"8[- ]?hour", na=False)
+
+                return m_all, m_2h, m_next, m_4h, m_8h
+
+            # Build masks for totals (cur) and for sparklines (spark_base)
+            cur_masks  = _nero_masks_from(cur)
+            base_masks = _nero_masks_from(spark_base)
+
+            # Totals for the five cards
+            totals = [int(m.sum()) for m in cur_masks]
 
             # 5) Masks for totals / sparklines
             def masks_for(df: pd.Series):
