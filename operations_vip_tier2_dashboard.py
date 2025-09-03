@@ -8984,143 +8984,143 @@ if st.session_state.screen == "operational_area":
 
 
 
-    st.title("💷 Budget (Operations)")
+        st.title("💷 Budget (Operations)")
 
-    import os, pandas as pd, streamlit as st
+        import os, pandas as pd, streamlit as st
 
-    # --------------------- SETTINGS ---------------------
-    TOTAL_BUDGET = 280_000
-    BUDGET_FILE  = "budgets.csv"
-    STAKEHOLDERS = ["VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"]
-    STEP = 1_000
+        # --------------------- SETTINGS ---------------------
+        TOTAL_BUDGET = 280_000
+        BUDGET_FILE  = "budgets.csv"
+        STAKEHOLDERS = ["VIP North","VIP South","Tier 2 North","Tier 2 South","Sky Business","Sky Retail"]
+        STEP = 1_000
 
-    # --------------------- IO HELPERS -------------------
-    def _load_budgets_safe(path: str) -> pd.DataFrame:
-        """
-        Returns a 2-column dataframe: Team, Allocated (float).
-        Accepts csvs that might use Stakeholder/Area/etc, or Allocation/Budget/etc.
-        """
-        if os.path.exists(path):
-            df = pd.read_csv(path)
-        else:
-            return pd.DataFrame({"Team": STAKEHOLDERS, "Allocated": 0.0})
-        # normalise column names
-        cols = {c.lower().strip(): c for c in df.columns}
-        team_col  = None
-        alloc_col = None
-        for k in ["team","stakeholder","area","department","group"]:
-            if k in cols: team_col = cols[k]; break
-        for k in ["allocated","allocation","quarterlybudget","budget","amount"]:
-            if k in cols: alloc_col = cols[k]; break
-        if team_col is None:
-            # assume first col is team if nothing matches
-            team_col = df.columns[0]
-        if alloc_col is None:
-            # create if missing
-            df["Allocated"] = 0.0
-            alloc_col = "Allocated"
+        # --------------------- IO HELPERS -------------------
+        def _load_budgets_safe(path: str) -> pd.DataFrame:
+            """
+            Returns a 2-column dataframe: Team, Allocated (float).
+            Accepts csvs that might use Stakeholder/Area/etc, or Allocation/Budget/etc.
+            """
+            if os.path.exists(path):
+                df = pd.read_csv(path)
+            else:
+                return pd.DataFrame({"Team": STAKEHOLDERS, "Allocated": 0.0})
+            # normalise column names
+            cols = {c.lower().strip(): c for c in df.columns}
+            team_col  = None
+            alloc_col = None
+            for k in ["team","stakeholder","area","department","group"]:
+                if k in cols: team_col = cols[k]; break
+            for k in ["allocated","allocation","quarterlybudget","budget","amount"]:
+                if k in cols: alloc_col = cols[k]; break
+            if team_col is None:
+                # assume first col is team if nothing matches
+                team_col = df.columns[0]
+            if alloc_col is None:
+                # create if missing
+                df["Allocated"] = 0.0
+                alloc_col = "Allocated"
 
-        out = df[[team_col, alloc_col]].copy()
-        out.columns = ["Team","Allocated"]
-        out["Allocated"] = pd.to_numeric(out["Allocated"], errors="coerce").fillna(0.0)
-        out = out.dropna(subset=["Team"])
-        # keep one row per team (last wins)
-        out = out.drop_duplicates(subset=["Team"], keep="last")
-        return out
+            out = df[[team_col, alloc_col]].copy()
+            out.columns = ["Team","Allocated"]
+            out["Allocated"] = pd.to_numeric(out["Allocated"], errors="coerce").fillna(0.0)
+            out = out.dropna(subset=["Team"])
+            # keep one row per team (last wins)
+            out = out.drop_duplicates(subset=["Team"], keep="last")
+            return out
 
-    def _save_budgets_safe(df: pd.DataFrame, path: str) -> None:
-        """
-        Writes Team,Allocated to budgets.csv (clean, predictable format).
-        """
-        out = df.copy()
-        out = out[["Team","Allocated"]].copy()
-        out["Allocated"] = pd.to_numeric(out["Allocated"], errors="coerce").fillna(0.0)
-        out.to_csv(path, index=False)
+        def _save_budgets_safe(df: pd.DataFrame, path: str) -> None:
+            """
+            Writes Team,Allocated to budgets.csv (clean, predictable format).
+            """
+            out = df.copy()
+            out = out[["Team","Allocated"]].copy()
+            out["Allocated"] = pd.to_numeric(out["Allocated"], errors="coerce").fillna(0.0)
+            out.to_csv(path, index=False)
 
-    # --------------------- LOAD SAVED -------------------
-    saved = _load_budgets_safe(BUDGET_FILE)
+        # --------------------- LOAD SAVED -------------------
+        saved = _load_budgets_safe(BUDGET_FILE)
 
-    # KPI: Total Budget / Budget Remaining (Total - sum(Allocated))
-    allocated_sum = float(saved["Allocated"].sum()) if not saved.empty else 0.0
-    budget_remaining = max(TOTAL_BUDGET - allocated_sum, 0.0)
+        # KPI: Total Budget / Budget Remaining (Total - sum(Allocated))
+        allocated_sum = float(saved["Allocated"].sum()) if not saved.empty else 0.0
+        budget_remaining = max(TOTAL_BUDGET - allocated_sum, 0.0)
 
-    k1, k2 = st.columns(2)
-    with k1:
-        st.markdown("### Total Budget (2025/26)")
-        st.markdown(f"**£{TOTAL_BUDGET:,.0f}**")
-    with k2:
-        st.markdown("### Budget Remaining")
-        st.markdown(f"**£{budget_remaining:,.0f}**")
+        k1, k2 = st.columns(2)
+        with k1:
+            st.markdown("### Total Budget (2025/26)")
+            st.markdown(f"**£{TOTAL_BUDGET:,.0f}**")
+        with k2:
+            st.markdown("### Budget Remaining")
+            st.markdown(f"**£{budget_remaining:,.0f}**")
 
-    st.divider()
+        st.divider()
 
-    # --------------------- ADJUST TAB ONLY ---------------------
-    tab_adj = st.tabs(["Adjust Allocations"])[0]
-    with tab_adj:
-        # seed working copy ONCE from saved file
-        if "alloc_working" not in st.session_state:
-            base = pd.Series(0.0, index=STAKEHOLDERS, dtype=float)
-            if not saved.empty:
-                base.update(saved.set_index("Team")["Allocated"].reindex(base.index).fillna(0.0))
-            st.session_state.alloc_working = base
+        # --------------------- ADJUST TAB ONLY ---------------------
+        tab_adj = st.tabs(["Adjust Allocations"])[0]
+        with tab_adj:
+            # seed working copy ONCE from saved file
+            if "alloc_working" not in st.session_state:
+                base = pd.Series(0.0, index=STAKEHOLDERS, dtype=float)
+                if not saved.empty:
+                    base.update(saved.set_index("Team")["Allocated"].reindex(base.index).fillna(0.0))
+                st.session_state.alloc_working = base
 
-        work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0.0).astype(float)
+            work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0.0).astype(float)
 
-        # simple KPIs for the editor
-        total_alloc_now = float(work.sum())
-        headroom_vs_total = max(TOTAL_BUDGET - total_alloc_now, 0.0)
-        a, b = st.columns(2)
-        a.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
-        b.metric("Headroom vs Total", f"£{headroom_vs_total:,.0f}")
+            # simple KPIs for the editor
+            total_alloc_now = float(work.sum())
+            headroom_vs_total = max(TOTAL_BUDGET - total_alloc_now, 0.0)
+            a, b = st.columns(2)
+            a.metric("Total Allocated", f"£{total_alloc_now:,.0f}")
+            b.metric("Headroom vs Total", f"£{headroom_vs_total:,.0f}")
 
-        st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
+            st.caption("Use – / + to tweak by £1,000 (or type a number). Click **Save changes** to write to file.")
 
-        # ONE ROW per team: Label | − | [ number ] | +
-        for team in STAKEHOLDERS:
-            lbl, minus, num, plus = st.columns([1.6, 0.15, 1.0, 0.15])
+            # ONE ROW per team: Label | − | [ number ] | +
+            for team in STAKEHOLDERS:
+                lbl, minus, num, plus = st.columns([1.6, 0.15, 1.0, 0.15])
 
-            with lbl:
-                st.markdown(f"**{team}**")
+                with lbl:
+                    st.markdown(f"**{team}**")
 
-            with minus:
-                if st.button("−", key=f"dec_{team}"):
-                    st.session_state.alloc_working[team] = max(0.0, float(work[team]) - STEP)
-                    work = st.session_state.alloc_working
+                with minus:
+                    if st.button("−", key=f"dec_{team}"):
+                        st.session_state.alloc_working[team] = max(0.0, float(work[team]) - STEP)
+                        work = st.session_state.alloc_working
 
-            with num:
-                val = st.number_input(
-                    f"{team}_val",
-                    value=float(work[team]),
-                    min_value=0.0,
-                    step=float(STEP),
-                    format="%.0f",
-                    label_visibility="collapsed",
-                    key=f"in_{team}",
-                )
-                if val != float(work[team]):
-                    st.session_state.alloc_working[team] = float(val)
-                    work = st.session_state.alloc_working
+                with num:
+                    val = st.number_input(
+                        f"{team}_val",
+                        value=float(work[team]),
+                        min_value=0.0,
+                        step=float(STEP),
+                        format="%.0f",
+                        label_visibility="collapsed",
+                        key=f"in_{team}",
+                    )
+                    if val != float(work[team]):
+                        st.session_state.alloc_working[team] = float(val)
+                        work = st.session_state.alloc_working
 
-            with plus:
-                if st.button("+", key=f"inc_{team}"):
-                    st.session_state.alloc_working[team] = float(work[team]) + STEP
-                    work = st.session_state.alloc_working
+                with plus:
+                    if st.button("+", key=f"inc_{team}"):
+                        st.session_state.alloc_working[team] = float(work[team]) + STEP
+                        work = st.session_state.alloc_working
 
-        st.markdown("")
-        if st.button("💾 Save changes", use_container_width=True):
-            # write clean file and refresh
-            out = pd.DataFrame({
-                "Team": STAKEHOLDERS,
-                "Allocated": [float(st.session_state.alloc_working[t]) for t in STAKEHOLDERS],
-            })
-            _save_budgets_safe(out, BUDGET_FILE)
-            # refresh header numbers
-            st.session_state.budgets_df = out.set_index("Team")
-            st.success("Allocations saved. Totals refreshed.")
-            st.experimental_rerun()
+            st.markdown("")
+            if st.button("💾 Save changes", use_container_width=True):
+                # write clean file and refresh
+                out = pd.DataFrame({
+                    "Team": STAKEHOLDERS,
+                    "Allocated": [float(st.session_state.alloc_working[t]) for t in STAKEHOLDERS],
+                })
+                _save_budgets_safe(out, BUDGET_FILE)
+                # refresh header numbers
+                st.session_state.budgets_df = out.set_index("Team")
+                st.success("Allocations saved. Totals refreshed.")
+                st.experimental_rerun()
 
-    # IMPORTANT: stop here so any older duplicate code below doesn't render
-    st.stop()
+        # IMPORTANT: stop here so any older duplicate code below doesn't render
+        st.stop()
 
 
         st.title("💷 Budget (Operations)")
