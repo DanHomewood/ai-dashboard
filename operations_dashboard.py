@@ -74,6 +74,20 @@ except ModuleNotFoundError:
         from PyPDF2 import PdfReader
     except ModuleNotFoundError:
         PdfReader = None  # we'll guard usage later if needed
+from pathlib import Path
+import pandas as pd
+
+APP_DIR = Path(__file__).resolve().parent
+CANDIDATES = [
+    APP_DIR / "Invoices.xlsx",
+    APP_DIR / "data" / "Invoices.xlsx",
+]
+
+INV_PATH = next((p for p in CANDIDATES if p.exists()), None)
+if INV_PATH is None:
+    st.warning("Invoices.xlsx not found in repo.")
+else:
+    inv_df = pd.read_excel(INV_PATH)  # engine=openpyxl if needed
 
 EXP_MASTER = Path("Expenses/expenses_master.parquet")
 
@@ -10920,6 +10934,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
