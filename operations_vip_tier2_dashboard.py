@@ -39,108 +39,6 @@ import plotly.graph_objects as go
 from pathlib import Path
 import pandas as pd
 import streamlit as st
-import streamlit as st
-
-# --- LIGHT THEME + CUSTOM STYLES ---
-st.markdown("""
-<style>
-/* 🌕 LIGHT MODE THEME */
-body, .main, .stApp {
-    background-color: #ffffff !important;
-    color: #1f1f1f !important;
-    font-family: 'Segoe UI', 'Inter', sans-serif;
-}
-/* 🔵 BLUE BUTTON STYLE */
-.stButton > button {
-    background: linear-gradient(to right, #007bff, #0051a2) !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 0.6rem 1.2rem !important;
-    font-weight: 600 !important;
-    margin: 0.4rem !important;
-    box-shadow: 0 0 10px rgba(0,123,255,0.4) !important;
-    transition: 0.3s ease-in-out !important;
-}
-.stButton > button:hover {
-    background: linear-gradient(to right, #3399ff, #0073e6) !important;
-    box-shadow: 0 0 16px rgba(0,123,255,0.6) !important;
-}
-/* 🖼️ FULL WIDTH LOGO */
-.logo {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    margin: 2rem 0 1rem 0;
-}
-.logo img {
-    width: 100%;
-    max-width: 600px;
-    height: auto;
-}
-/* 🧭 HEADINGS */
-h1, h2, h3, h4 {
-    color: #1f1f1f !important;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 1rem;
-}
-/* 📦 MARKDOWN & CONTAINERS */
-.stMarkdown, .stText, .stContainer {
-    background-color: transparent !important;
-    color: #1f1f1f !important;
-}
-/* ✅ INFO BOX */
-.info-box {
-    background-color: #f0f4f8;
-    color: #1f1f1f;
-    border-left: 4px solid #007bff;
-    padding: 0.8rem 1.2rem;
-    border-radius: 8px;
-    margin-top: 2rem;
-    font-size: 0.95rem;
-    text-align: center;
-}
-/* 🌀 TYPING ANIMATION */
-@keyframes typing {
-    0% { width: 0 }
-    40%, 60% { width: 100% }
-    100% { width: 0 }
-}
-@keyframes blink {
-    50% { border-color: rgba(0,0,0,0.75); }
-}
-.login-header-wrapper {
-    display: flex;
-    justify-content: center;
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-.login-header {
-    display: inline-block;
-    font-size: 20px;
-    font-weight: 500;
-    border-right: 2px solid rgba(0,0,0,0.75);
-    white-space: nowrap;
-    overflow: hidden;
-    width: 32ch;
-    animation: typing 6s steps(32, end) infinite, blink 0.75s step-end infinite;
-    color: #1f1f1f;
-    text-align: center;
-}
-/* 🧩 SIDEBAR + FOOTER */
-.stSidebar {
-    background-color: #f8f9fa !important;
-}
-footer, #MainMenu, header {
-    visibility: hidden;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Your app content starts here
-st.title("Welcome to My App")
-st.button("Click Me")
 
 EXP_MASTER = Path("Expenses/expenses_master.parquet")
 
@@ -2321,33 +2219,57 @@ users = {
 
 # ===== SECTION 6: Styling + Single Login (with named users & passwords) =====
 
-# --- Dark theme CSS (applied via inject_css from Section 4) ---
-DARK_CSS = """
-/* 🌑 DARK MODE THEME */
-body, .main, .stApp { background-color: #0e1117 !important; color: #e0e0e0 !important; font-family: 'Segoe UI','Inter',sans-serif; }
-/* 🔵 BLUE BUTTON STYLE */
-.stButton > button {
-  background: linear-gradient(to right, #007bff, #0051a2) !important; color: #fff !important;
-  border: none; border-radius: 10px; padding: .6rem 1.2rem; font-weight: 600; margin: .4rem;
-  box-shadow: 0 0 10px rgba(0,123,255,.4); transition: .3s ease-in-out;
+# ===== Light theme to match your old app =====
+LIGHT_CSS = """
+/* App background + base typography */
+html, body, .stApp {
+  background: #f5f7fb !important;
+  color: #111827 !important;
+  font-family: 'Inter','Segoe UI', system-ui, -apple-system, sans-serif;
 }
-.stButton > button:hover { background: linear-gradient(to right, #3399ff, #0073e6) !important; box-shadow: 0 0 16px rgba(0,123,255,.6); }
-/* 🖼️ FULL WIDTH LOGO */
-.logo { width: 100%; display: flex; justify-content: center; margin: 1.6rem 0 .6rem 0; }
-.logo img { width: 100%; max-width: 600px; height: auto; }
-/* 🧭 HEADINGS */
-h1,h2,h3,h4 { color:#fff !important; font-weight:700; text-align:center; margin-bottom:.8rem; }
-/* ✅ INFO BOX */
-.info-box { background:#1f2937; color:#d1d5db; border-left:4px solid #3b82f6; padding:.8rem 1.2rem; border-radius:8px; margin-top:1rem; font-size:.95rem; text-align:center; }
-/* 🌀 TYPING ANIMATION */
-@keyframes typing { 0%{width:0} 40%,60%{width:100%} 100%{width:0} }
-@keyframes blink { 50%{border-color:rgba(255,255,255,.75)} }
-.login-header-wrapper { display:flex; justify-content:center; margin:4px 0 10px 0; }
-.login-header { display:inline-block; font-size:20px; font-weight:600; border-right:2px solid rgba(255,255,255,.75); white-space:nowrap; overflow:hidden; width:32ch; color:#fff; text-align:center; animation: typing 6s steps(32,end) infinite, blink .75s step-end infinite; }
-/* 🧩 SIDEBAR */
-.stSidebar { background-color:#15171e !important; }
+
+/* Tighten the main container a little on large screens */
+.block-container { max-width: 980px; }
+
+/* Hide Streamlit default decoration gap at top */
+header[data-testid="stHeader"] { background: transparent; }
+
+/* Buttons */
+.stButton > button {
+  background: linear-gradient(90deg,#0ea5e9,#2563eb) !important;
+  color:#fff !important; border:0; border-radius:12px; padding:.65rem 1.2rem;
+  font-weight:700; box-shadow:0 6px 18px rgba(2,32,71,.18);
+}
+.stButton > button:hover { filter:brightness(1.06); box-shadow:0 10px 24px rgba(2,32,71,.22); }
+
+/* Login hero (logo + strapline) */
+.logo { display:flex; justify-content:center; margin:12px 0 4px 0; }
+.logo img { max-width: 560px; width: 100%; height:auto; }
+.login-header-wrapper { display:flex; justify-content:center; margin:8px 0 12px; }
+.login-header { font-size:20px; font-weight:700; color:#111827; }
+
+/* Centered white card like the old app */
+.login-card {
+  max-width: 860px; margin: 8px auto 0 auto;
+  background:#fff; border:1px solid #e6e8eb; border-radius:16px;
+  padding:20px 22px; box-shadow:0 18px 40px rgba(2,32,71,.06);
+}
+
+/* Inputs look lighter */
+div[data-baseweb="select"] > div { background:#f8fafc; border-radius:10px; }
+.stTextInput > div > div > input { background:#f8fafc; border-radius:10px; }
+.stPassword > div > div > input { background:#f8fafc; border-radius:10px; }
+
+/* Headings */
+h1,h2,h3,h4 { color:#0f172a !important; font-weight:800; }
+
+/* Sidebar on light */
+section[data-testid="stSidebar"] { background:#ffffff !important; border-right:1px solid #eef1f5; }
 """
-inject_css(BASE_CSS + DARK_CSS)
+
+# Use this new CSS instead of the previous dark bundle
+inject_css(LIGHT_CSS)
+
 
 # ---- Users: EXACT names, passwords, and teams you provided ----
 USERS = {
@@ -10987,6 +10909,5 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
-
 
 
