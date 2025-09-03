@@ -81,6 +81,17 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+def has_openai_key() -> bool:
+    try:
+        return bool(st.secrets["openai"]["api_key"])
+    except Exception:
+        return False
+
+# before calling render_orbit_ai(...)
+if has_openai_key():
+    render_orbit_ai("VIP North")
+else:
+    st.info("OpenAI key not configured; skipping Orbit AI.")
 
 
 
@@ -10948,6 +10959,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
