@@ -77,17 +77,45 @@ except ModuleNotFoundError:
 from pathlib import Path
 import pandas as pd
 
-APP_DIR = Path(__file__).resolve().parent
-CANDIDATES = [
-    APP_DIR / "Invoices.xlsx",
-    APP_DIR / "data" / "Invoices.xlsx",
-]
+from pathlib import Path
+import pandas as pd
+import streamlit as st
 
-INV_PATH = next((p for p in CANDIDATES if p.exists()), None)
-if INV_PATH is None:
-    st.warning("Invoices.xlsx not found in repo.")
-else:
-    inv_df = pd.read_excel(INV_PATH)  # engine=openpyxl if needed
+@st.cache_data(show_spinner=False)
+def load_invoices_df():
+    # Resolve relative to THIS file (works on Streamlit Cloud)
+    APP_DIR = Path(__file__).resolve().parent
+
+    candidates = [
+        APP_DIR / "Invoices.xlsx",
+        APP_DIR / "data" / "Invoices.xlsx",
+        Path.cwd() / "Invoices.xlsx",            # current working dir (fallback)
+    ]
+
+    tried = []
+    for p in candidates:
+        tried.append(p.as_posix())
+        if p.exists():
+            try:
+                df = pd.read_excel(p)   # needs openpyxl
+                st.caption(f"Loaded invoices from **{p.as_posix()}**")
+                return df
+            except Exception as e:
+                st.error(f"Found {p.name} but failed to read: {e}")
+
+    st.warning(
+        "Invoices.xlsx not found/readable. Looked in:\n" + "\n".join(f"• {t}" for t in tried)
+    )
+
+    # Allow upload as a fallback in the UI
+    up = st.file_uploader("Upload Invoices.xlsx", type=["xlsx"], key="upload_invoices")
+    if up:
+        df = pd.read_excel(up)
+        st.caption("Loaded invoices from uploaded file.")
+        return df
+
+    return pd.DataFrame()
+
 
 EXP_MASTER = Path("Expenses/expenses_master.parquet")
 
@@ -10934,6 +10962,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
