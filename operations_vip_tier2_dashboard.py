@@ -9601,15 +9601,24 @@ if st.session_state.screen == "operational_area":
         STEP = 1_000
 
         # Seed working copy once
-        if "alloc_working" not in st.session_state:
-            base = budgets_df.set_index(budgets_df.columns[0]).reindex(STAKEHOLDERS)
-            if "Allocated" in base.columns:
-                base = base["Allocated"].fillna(0).astype(float)
-            elif "QuarterlyBudget" in base.columns:
-                base = base["QuarterlyBudget"].fillna(0).astype(float)
-            else:
-                base = pd.Series(0.0, index=STAKEHOLDERS)
-            st.session_state.alloc_working = base
+        # Identify the column that holds team/stakeholder names
+        team_col = "Team" if "Team" in budgets_df.columns else (
+            "Stakeholder" if "Stakeholder" in budgets_df.columns else budgets_df.columns[0]
+        )
+
+        # Drop duplicate team rows, keeping the last (or first if you prefer)
+        bud = budgets_df.drop_duplicates(subset=[team_col], keep="last").set_index(team_col)
+
+        # Pick the right budget column
+        if "Allocated" in bud.columns:
+            base = bud["Allocated"].reindex(STAKEHOLDERS).fillna(0).astype(float)
+        elif "QuarterlyBudget" in bud.columns:
+            base = bud["QuarterlyBudget"].reindex(STAKEHOLDERS).fillna(0).astype(float)
+        else:
+            base = pd.Series(0.0, index=STAKEHOLDERS)
+
+        st.session_state.alloc_working = base
+
 
         work = st.session_state.alloc_working.reindex(STAKEHOLDERS).fillna(0).astype(float)
         total_alloc_now = float(work.sum())
