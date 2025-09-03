@@ -39,6 +39,14 @@ import plotly.graph_objects as go
 from pathlib import Path
 import pandas as pd
 import streamlit as st
+# Robust import: prefer pypdf, fall back to PyPDF2 if available
+try:
+    from pypdf import PdfReader
+except ModuleNotFoundError:
+    try:
+        from PyPDF2 import PdfReader
+    except ModuleNotFoundError:
+        PdfReader = None  # we'll guard usage later if needed
 
 EXP_MASTER = Path("Expenses/expenses_master.parquet")
 
@@ -10885,5 +10893,6 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
