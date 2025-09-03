@@ -1552,6 +1552,14 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
+div.block-container{max-width:1100px;margin:0 auto;}
+.stTabs [data-baseweb="tab-list"]{gap:.25rem}
+button[kind="secondary"]{margin:2px 4px}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
 /* compact, centered content */
 div.block-container{
   max-width: 1200px;   /* tweak 1000–1280 if you like */
