@@ -311,49 +311,7 @@ TEAM_COL_OVERRIDE = "Stakeholder"   # <-- your budgets.csv uses this
 
 # === Invoices: loader helper (ADD in helpers section) ===
 
-from pathlib import Path
-import pandas as pd
-import streamlit as st
 
-def _invoice_diag():
-    here = Path(__file__).resolve().parent
-    cwd  = Path.cwd()
-    candidates = [
-        here / "Invoices.xlsx",
-        here / "data" / "Invoices.xlsx",
-        cwd / "Invoices.xlsx",
-    ]
-
-    lines = [
-        f"__file__ : {__file__}",
-        f"APP_DIR : {here}",
-        f"CWD     : {cwd}",
-        "Candidates:",
-        *[f"  - {p.as_posix()} -> {'EXISTS' if p.exists() else 'MISSING'}" for p in candidates],
-        "",
-        "APP_DIR listing (first 200):",
-    ]
-    try:
-        listing = [f"  - {p.name}" for p in sorted(here.iterdir())][:200]
-    except Exception as e:
-        listing = [f"(failed to list APP_DIR: {e})"]
-    lines.extend(listing)
-    st.code("\n".join(lines), language="text")
-
-    # Try to actually read whichever candidate exists
-    for p in candidates:
-        if p.exists():
-            try:
-                test = pd.read_excel(p)  # requires openpyxl
-                st.success(f"pd.read_excel OK → {p.as_posix()}  (rows={len(test)})")
-                return
-            except Exception as e:
-                st.error(f"Found file but pd.read_excel failed for {p.name}: {e}")
-                return
-    st.warning("No candidate path contained Invoices.xlsx")
-
-# call it:
-_invoice_diag()
 
 @st.cache_data(show_spinner=False)
 def load_invoices(path: str | Path | None = None) -> pd.DataFrame:
@@ -10982,6 +10940,7 @@ if st.session_state.get("screen") == "highlands_islands":
 # ---- tiny helper to show the exec logo, centered ----
 from pathlib import Path
 import streamlit as st
+
 
 
 
