@@ -7255,15 +7255,15 @@ def render_exec_overview(embed: bool = False):
     # === Exec: Sky Business (Caffe Nero) snapshot ===
     with st.expander("🏢 Sky Business", expanded=False):
         import pandas as pd
+        from pathlib import Path
+        import os
 
         # 1) Load the SAME file the SB page uses
         sb = load_sky_business()  # reads "Sky Business.xlsx"
-        from pathlib import Path
-        st.caption(f"LOAD • rows={len(sb)} • cols={list(sb.columns) if len(sb)>0 else []}")
 
-        p = Path("Sky Business.xlsx")
-        st.caption(f"FILE • exists={p.exists()} • cwd={Path.cwd()}")
-        import os
+        # --- small debug (safe to keep; remove later if you like)
+        st.caption(f"LOAD • rows={len(sb)} • cols={list(sb.columns) if len(sb)>0 else []}")
+        st.caption(f"FILE • exists={Path('Sky Business.xlsx').exists()} • cwd={Path.cwd()}")
         st.caption(f"DIR • {os.listdir(Path.cwd())[:10]}")
 
         if sb.empty:
@@ -7309,51 +7309,54 @@ def render_exec_overview(embed: bool = False):
             # Debug what we chose
             st.caption(f"DATE • using={best_col if best_col else 'none'} • parsed={best_count}/{len(sb)}")
 
-            if best_count == 0:
-                # No usable dates anywhere — keep SBDate but don't drop rows.
-                # Filtering by Year/Month will just show 'All' correctly.
-                sb["SBDate"] = pd.NaT
-            else:
+            if best_count > 0:
                 sb["SBDate"] = best_parsed
                 st.caption(f"DATE • examples={sb['SBDate'].dropna().head(3).tolist()}")
+            else:
+                # No usable dates anywhere — keep NaT, but DO NOT drop rows.
+                sb["SBDate"] = pd.NaT
 
-                # Only drop NaT if we actually parsed some dates (otherwise we’d drop everything)
-                sb = sb.dropna(subset=["SBDate"])
-
-
-
-            # ---------- Year / Month selectors ----------
-            years  = sb["SBDate"].dt.year.sort_values().unique().tolist()
+            # ---------- Year / Month selectors (safe if no dates) ----------
+            has_dates = sb["SBDate"].notna().any()
             MONTHS = ["All","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-            cY, cM = st.columns([1,1])
+            years = (
+                sorted(sb.loc[sb["SBDate"].notna(), "SBDate"].dt.year.unique().tolist())
+                if has_dates else []
+            )
+
+            cY, cM = st.columns([1, 1])
             with cY:
-                sb_year  = st.selectbox("Year", ["All"] + [int(y) for y in years], index=0, key="exec_sb_year")
+                sb_year = st.selectbox("Year", ["All"] + [int(y) for y in years], index=0, key="exec_sb_year")
             with cM:
                 sb_month = st.selectbox("Month", MONTHS, index=0, key="exec_sb_month")
 
             # ---------- Current selection (totals) ----------
             cur = sb.copy()
-            if sb_year != "All":
+            if has_dates and sb_year != "All":
                 cur = cur[cur["SBDate"].dt.year == int(sb_year)]
-            if sb_month != "All":
+            if has_dates and sb_month != "All":
                 mnum = MONTHS.index(sb_month)  # 1..12
                 cur  = cur[cur["SBDate"].dt.month == mnum]
-            st.caption(f"CHECK • SBDate non-null={sb['SBDate'].notna().sum()} / total={len(sb)}")
-            st.write(sb[['SLA','SBDate']].head(20))
 
-            # ---------- Sparkline base (year-only) ----------
-            spark_base = sb.copy()
-            if sb_year != "All":
-                spark_base = spark_base[spark_base["SBDate"].dt.year == int(sb_year)]
-            spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
+            # ---------- Sparkline base ----------
+            if has_dates:
+                spark_base = sb.loc[sb["SBDate"].notna()].copy()
+                if sb_year != "All":
+                    spark_base = spark_base[spark_base["SBDate"].dt.year == int(sb_year)]
+                spark_base["Month"] = spark_base["SBDate"].dt.to_period("M").dt.to_timestamp()
 
-            if sb_year != "All" and sb_month != "All":
-                end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
-            elif sb_year != "All":
-                end_month = pd.Timestamp(int(sb_year), 12, 1).to_period("M").to_timestamp()
+                if sb_year != "All" and sb_month != "All":
+                    end_month = pd.Timestamp(int(sb_year), MONTHS.index(sb_month), 1).to_period("M").to_timestamp()
+                elif sb_year != "All":
+                    end_month = pd.Timestamp(int(sb_year), 12, 1).to_period("M").to_timestamp()
+                else:
+                    end_month = spark_base["Month"].max() if not spark_base.empty else None
             else:
-                end_month = spark_base["Month"].max() if not spark_base.empty else None
+                # No dates: use current selection for totals and disable sparklines
+                spark_base = cur.copy()
+                spark_base["Month"] = pd.NaT
+                end_month = None
 
             # ---------- Build Nero masks straight from SLA ----------
             def _nero_masks_from(df: pd.DataFrame):
@@ -7378,8 +7381,15 @@ def render_exec_overview(embed: bool = False):
 
             # ---------- Sparkline + MoM ----------
             def spark_and_mom(mask_on_base: pd.Series):
-                if spark_base.empty or mask_on_base.sum() == 0:
+                # If no dates or no data, suppress sparkline
+                if (
+                    spark_base.empty
+                    or mask_on_base.sum() == 0
+                    or "Month" not in spark_base.columns
+                    or spark_base["Month"].isna().all()
+                ):
                     return [0], "—", "—"
+
                 ser = (
                     spark_base.loc[mask_on_base]
                             .groupby("Month")
@@ -7420,12 +7430,13 @@ def render_exec_overview(embed: bool = False):
                         st.markdown(f"<div style='font-size:26px;font-weight:700;'>{total:,}</div>", unsafe_allow_html=True)
 
             # Window label
-            if spark_base.empty:
+            if spark_base.empty or spark_base["Month"].isna().all():
                 st.caption("Window: —")
             else:
                 start_lbl = spark_base["Month"].min().strftime("%b %Y")
                 end_lbl   = (end_month or spark_base["Month"].max()).strftime("%b %Y")
                 st.caption(f"Window: {start_lbl} – {end_lbl}")
+
 
 
 
