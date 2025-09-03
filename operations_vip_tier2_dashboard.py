@@ -3065,6 +3065,27 @@ st.markdown("""
 .kpi-bar > div { height:100%; background:linear-gradient(90deg,#0ea5e9,#2563eb); }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* Dark KPI card + force white text inside */
+.kpi-card {
+  background:#0f172a !important;      /* dark box */
+  color:#f8fafc !important;           /* default text color */
+  border-radius:16px;
+  padding:16px 18px;
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow:0 14px 28px rgba(2,32,71,.18);
+}
+/* Make EVERYTHING inside the card white (wins against other styles) */
+.kpi-card *, 
+.kpi-card h1, .kpi-card h2, .kpi-card h3, .kpi-card h4,
+.kpi-card p, .kpi-card li, .kpi-card strong, .kpi-card span, .kpi-card em {
+  color:#f8fafc !important;
+}
+.kpi-card a { color:#93c5fd !important; }          /* links readable */
+.kpi-card .muted { color:#cbd5e1 !important; }     /* optional muted */
+</style>
+""", unsafe_allow_html=True)
 
 
 
