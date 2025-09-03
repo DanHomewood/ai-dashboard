@@ -7258,8 +7258,18 @@ def render_exec_overview(embed: bool = False):
 
 
             # Normalised SLA for cur and spark_base independently (so totals match cur)
-            cur_sla   = normalise_sla(cur["SLA"])    if not cur.empty        else pd.Series([], dtype=str)
-            base_sla  = normalise_sla(spark_base["SLA"]) if not spark_base.empty else pd.Series([], dtype=str)
+            # Use SLA + JobType (so we catch Nero text whichever column it lives in)
+            def _merge_text(df: pd.DataFrame) -> pd.Series:
+                sla  = df["SLA"]     if "SLA" in df.columns else ""
+                jtyp = df["JobType"] if "JobType" in df.columns else ""
+                return (sla.fillna("") + " " + jtyp.fillna("")).astype(str)
+
+            cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
+            base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
+
+            cur_sla   = normalise_sla(cur_text)
+            base_sla  = normalise_sla(base_text)
+
 
             # Build masks for cur (totals) and spark_base (series)
             def masks_for(df_norm: pd.Series):
@@ -7281,8 +7291,18 @@ def render_exec_overview(embed: bool = False):
 
                 return m_all_nero, m_nero_2h, m_nero_next, m_nero_4h, m_8h
 
-            cur_masks  = masks_for(cur_sla)
-            base_masks = masks_for(base_sla)
+            # Use SLA + JobType (so we catch Nero text whichever column it lives in)
+            def _merge_text(df: pd.DataFrame) -> pd.Series:
+                sla  = df["SLA"]     if "SLA" in df.columns else ""
+                jtyp = df["JobType"] if "JobType" in df.columns else ""
+                return (sla.fillna("") + " " + jtyp.fillna("")).astype(str)
+
+            cur_text  = _merge_text(cur)         if not cur.empty        else pd.Series([], dtype=str)
+            base_text = _merge_text(spark_base)  if not spark_base.empty else pd.Series([], dtype=str)
+
+            cur_sla   = normalise_sla(cur_text)
+            base_sla  = normalise_sla(base_text)
+
 
             # Helper: spark + MoM for a mask on spark_base
             def spark_and_mom(mask_on_base: pd.Series):
