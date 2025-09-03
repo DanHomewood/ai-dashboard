@@ -7276,39 +7276,50 @@ def render_exec_overview(embed: bool = False):
                 .str.strip()
             )
 
-            # ---------- Pick date column ----------
-            def _pick(df, *alts):
-                for a in alts:
-                    if a in df.columns:
-                        return a
-                return None
+            # ---------- Choose and parse a usable date column ----------
+            # Try these in order and pick whichever yields the most valid dates.
+            date_candidates = ["SBDate", "PrefSlot", "Date", "Visit Date"]
 
-            date_col = _pick(sb, "SBDate", "Date", "Visit Date")
-            if date_col is None:
-                st.info("No date column (need SBDate/Date/Visit Date).")
-                st.stop()
+            best_col = None
+            best_parsed = None
+            best_count = 0
 
-            # --- show the raw values before parsing
-            st.caption(f"RAW • {date_col} dtype={sb[date_col].dtype}")
-            st.write(sb[[date_col]].head(10))
+            for col in date_candidates:
+                if col not in sb.columns:
+                    continue
 
-            # --- try UK-style day-first first; fall back to Excel serials if needed
-            sb["SBDate"] = pd.to_datetime(sb[date_col], errors="coerce", dayfirst=True)
+                raw = sb[col]
 
-            # if still all NaT, try interpreting as Excel serial numbers
-            if sb["SBDate"].notna().sum() == 0:
-                # sometimes read_excel leaves numeric serials as float/int
-                serial = pd.to_numeric(sb[date_col], errors="coerce")
-                sb["SBDate"] = pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce")
+                # 1) Try UK style first
+                dt = pd.to_datetime(raw, errors="coerce", dayfirst=True)
+                cnt = dt.notna().sum()
 
-            # show what we got after parsing (BEFORE dropna)
-            st.caption(
-                f"PARSE • SBDate not-na={sb['SBDate'].notna().sum()} / total={len(sb)} "
-                f"• examples={sb['SBDate'].dropna().head(3).tolist()}"
-            )
+                # 2) If nothing parsed, try Excel serial numbers (float/int)
+                if cnt == 0:
+                    as_num = pd.to_numeric(raw, errors="coerce")
+                    dt = pd.to_datetime(as_num, unit="D", origin="1899-12-30", errors="coerce")
+                    cnt = dt.notna().sum()
 
-            # now drop rows without a valid date
-            sb = sb.dropna(subset=["SBDate"])
+                # Keep the best column so far
+                if cnt > best_count:
+                    best_col = col
+                    best_parsed = dt
+                    best_count = cnt
+
+            # Debug what we chose
+            st.caption(f"DATE • using={best_col if best_col else 'none'} • parsed={best_count}/{len(sb)}")
+
+            if best_count == 0:
+                # No usable dates anywhere — keep SBDate but don't drop rows.
+                # Filtering by Year/Month will just show 'All' correctly.
+                sb["SBDate"] = pd.NaT
+            else:
+                sb["SBDate"] = best_parsed
+                st.caption(f"DATE • examples={sb['SBDate'].dropna().head(3).tolist()}")
+
+                # Only drop NaT if we actually parsed some dates (otherwise we’d drop everything)
+                sb = sb.dropna(subset=["SBDate"])
+
 
 
             # ---------- Year / Month selectors ----------
