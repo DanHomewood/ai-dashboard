@@ -272,19 +272,19 @@ def save_submission_to_csv(payload: dict, csv_path: Path) -> None:
         df.to_csv(csv_path, index=False, encoding="utf-8")
     else:
         df.to_csv(csv_path, mode="a", header=False, index=False, encoding="utf-8")
-
 def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
     """
     Post a MessageCard to a Teams Incoming Webhook.
-    Handles three shapes: Retail (no invoice_type), Business (invoice_type set, not VIP),
-    and VIP / Tier 2 (invoice_type starts with 'VIP').
+    Handles three shapes: Retail, Business, and VIP / Tier 2.
     """
+
     import json, requests
 
     if not webhook_url:
         return False, "Webhook URL not set."
 
     def add(name, value, facts):
+        """Helper: only add fact if value is not empty/NaN/None."""
         if value is None:
             return
         s = str(value).strip()
@@ -294,6 +294,45 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
     inv_type = (payload.get("invoice_type") or "").strip()
     is_vip = inv_type.lower().startswith("vip")
     is_business = bool(inv_type) and not is_vip
+
+    # --- Build facts ---
+    facts = []
+    add("Date", payload.get("visit_date"), facts)
+    add("VR Number", payload.get("vr_number"), facts)
+    add("Engineer", payload.get("lead_engineer"), facts)
+    add("Job Type", payload.get("job_type"), facts)
+    add("Stakeholder", payload.get("stakeholder_category"), facts)
+
+    if is_vip:
+        add("Labour", f"£{payload.get('labour_value',0):,.2f}", facts)
+        add("Equipment", f"£{payload.get('materials_value',0):,.2f}", facts)
+        add("Hotel/Food", f"£{payload.get('hotel_food_total',0):,.2f}", facts)
+        add("Additional", f"£{payload.get('additional_total',0):,.2f}", facts)
+        add("TOTAL", f"**£{payload.get('total_value',0):,.2f}**", facts)
+    else:
+        add("Labour", f"£{payload.get('labour_value',0):,.2f}", facts)
+        add("TOTAL", f"£{payload.get('total_value',0):,.2f}", facts)
+
+    # --- Card structure ---
+    card = {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "summary": f"{inv_type} Invoice",
+        "themeColor": "0076D7",
+        "title": f"📄 {inv_type} Invoice — {payload.get('lead_engineer','')} — {payload.get('job_type','')}",
+        "sections": [{
+            "facts": facts,
+            "text": payload.get("notes", "")
+        }]
+    }
+
+    try:
+        r = requests.post(webhook_url, json=card)
+        r.raise_for_status()
+        return True, "Teams card sent"
+    except Exception as e:
+        return False, str(e)
+
 
 
 
