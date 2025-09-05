@@ -9,6 +9,11 @@ from collections import OrderedDict  # make sure this is top-level
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import streamlit as st
+
+TEAMS_WEBHOOK_URL_Business = st.secrets["TEAMS_WEBHOOK_URL_Business"]
+TEAMS_WEBHOOK_URL_Retail   = st.secrets["TEAMS_WEBHOOK_URL_Retail"]
+TEAMS_WEBHOOK_URL_VIP      = st.secrets["TEAMS_WEBHOOK_URL_VIP"]
 
 def send_email(recipient, subject, html_content):
     # SMTP server config
