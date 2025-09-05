@@ -1,58 +1,145 @@
 import streamlit as st
 from datetime import datetime
-
-st.set_page_config(page_title="Sky Invoicing", page_icon="🧾", layout="centered")
 import pandas as pd
 from pathlib import Path
 import re
-from collections import OrderedDict  # make sure this is top-level
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import streamlit as st
+from collections import OrderedDict
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import requests, json, os
 
-import streamlit as st
+st.set_page_config(page_title="Sky Invoicing", page_icon="🧾", layout="centered")
 
-# Load Teams webhooks from secrets
+# ----------------------------
+# Load Teams webhooks & email from secrets.toml
+# ----------------------------
 TEAMS_WEBHOOK_URL_Business = st.secrets["TEAMS_WEBHOOK_URL_Business"]
 TEAMS_WEBHOOK_URL_Retail   = st.secrets["TEAMS_WEBHOOK_URL_Retail"]
 TEAMS_WEBHOOK_URL_VIP      = st.secrets["TEAMS_WEBHOOK_URL_VIP"]
 TEAMS_WEBHOOK_URL_Monitor  = st.secrets["TEAMS_WEBHOOK_URL_Monitor"]
 
+EMAIL_HOST = st.secrets["EMAIL_HOST"]
+EMAIL_PORT = int(st.secrets["EMAIL_PORT"])
+EMAIL_USER = st.secrets["EMAIL_USER"]
+EMAIL_PASS = st.secrets["EMAIL_PASS"]
 
-import smtplib, ssl
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import streamlit as st
-
-def send_email(to_address, subject, html_content):
+# ----------------------------
+# Email helper
+# ----------------------------
+def send_email(to_address: str, subject: str, html_content: str) -> tuple[bool, str]:
     try:
-        host = st.secrets["EMAIL_HOST"]
-        port = int(st.secrets["EMAIL_PORT"])
-        user = st.secrets["EMAIL_USER"]
-        password = st.secrets["EMAIL_PASS"]
-
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"Sky VIP Invoices <{user}>"
+        msg["From"] = f"Sky VIP Invoices <{EMAIL_USER}>"
         msg["To"] = to_address
-        msg["Reply-To"] = "daniel.homewood@sky.uk"  # optional
+        msg["Reply-To"] = "daniel.homewood@sky.uk"
 
         part = MIMEText(html_content, "html")
         msg.attach(part)
 
         context = ssl.create_default_context()
-        with smtplib.SMTP(host, port) as server:
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
             server.starttls(context=context)
-            server.login(user, password)
-            server.sendmail(user, [to_address], msg.as_string())
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.sendmail(EMAIL_USER, [to_address], msg.as_string())
 
         return True, "✅ Email sent successfully"
     except Exception as e:
         return False, f"❌ Failed to send email: {e}"
+
+# ----------------------------
+# Save to CSV
+# ----------------------------
+INVOICE_CSV_RETAIL   = Path(__file__).with_name("retail_invoices.csv")
+INVOICE_CSV_BUSINESS = Path(__file__).with_name("business_invoices.csv")
+INVOICE_CSV_VIP      = Path(__file__).with_name("vip_invoices.csv")
+
+def save_submission_to_csv(payload: dict, csv_path: Path) -> None:
+    df = pd.DataFrame([payload])
+    if not csv_path.exists():
+        df.to_csv(csv_path, index=False, encoding="utf-8")
+    else:
+        df.to_csv(csv_path, mode="a", header=False, index=False, encoding="utf-8")
+
+# ----------------------------
+# Teams card helper (unified)
+# ----------------------------
+# ----------------------------
+# Teams card helper (final unified version)
+# ----------------------------
+def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
+    """
+    Post a MessageCard to a Teams Incoming Webhook.
+    Handles Retail, Business, and VIP / Tier 2 in one consistent format.
+    """
+
+    if not webhook_url:
+        return False, "Webhook URL not set."
+
+    def add_fact(name, value, facts):
+        """Helper: only add fact if value is valid."""
+        if value is None:
+            return
+        s = str(value).strip()
+        if s and s.lower() not in ("nan", "none", ""):
+            facts.append({"name": name, "value": s})
+
+    inv_type = (payload.get("invoice_type") or "Retail").strip()
+    is_vip = inv_type.lower().startswith("vip")
+    is_business = (inv_type.lower().startswith("business") or inv_type in ["SLA Callout", "BAU/NON SLA work"])
+
+    # --- Title ---
+    title = f"📄 {inv_type} Invoice — {payload.get('job_type','') or payload.get('vr_number','') or ''}"
+
+    # --- Facts ---
+    facts = []
+    add_fact("Date", payload.get("visit_date"), facts)
+    add_fact("VR Number", payload.get("vr_number"), facts)
+
+    # Engineers (merge if multiple)
+    engineers = ", ".join([x for x in [
+        payload.get("lead_engineer", ""),
+        payload.get("second_engineer", ""),
+        payload.get("third_engineer", ""),
+        payload.get("engineer", "")
+    ] if x.strip()])
+    add_fact("Engineer(s)", engineers, facts)
+
+    add_fact("Job Type", payload.get("job_type"), facts)
+    add_fact("Stakeholder", payload.get("stakeholder_category") or payload.get("stakeholder_type"), facts)
+
+    # Costs
+    add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+    add_fact("Equipment", f"£{float(payload.get('materials_value',0)):.2f}", facts)
+
+    if is_vip:
+        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value', payload.get('hotel_food_total',0))):.2f}", facts)
+        add_fact("Additional", f"£{float(payload.get('additional_value', payload.get('additional_total',0))):.2f}", facts)
+
+    add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+
+    # --- Card ---
+    card = {
+        "@type": "MessageCard",
+        "@context": "http://schema.org/extensions",
+        "summary": f"{inv_type} Invoice",
+        "themeColor": "0076D7",
+        "title": title,
+        "sections": [{
+            "facts": facts,
+            "text": (payload.get("notes") or "").strip()
+        }]
+    }
+
+    try:
+        r = requests.post(webhook_url, json=card)
+        r.raise_for_status()
+        return True, "Teams card sent"
+    except Exception as e:
+        return False, f"Teams error: {e}"
+
+
 
 
 
@@ -272,149 +359,11 @@ def save_submission_to_csv(payload: dict, csv_path: Path) -> None:
         df.to_csv(csv_path, index=False, encoding="utf-8")
     else:
         df.to_csv(csv_path, mode="a", header=False, index=False, encoding="utf-8")
-def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
-    """
-    Post a MessageCard to a Teams Incoming Webhook.
-    Handles three shapes: Retail, Business, and VIP / Tier 2.
-    """
-
-    import json, requests
-
-    if not webhook_url:
-        return False, "Webhook URL not set."
-
-    def add(name, value, facts):
-        """Helper: only add fact if value is not empty/NaN/None."""
-        if value is None:
-            return
-        s = str(value).strip()
-        if s and s.lower() not in ("nan", "none"):
-            facts.append({"name": name, "value": s})
-
-    inv_type = (payload.get("invoice_type") or "").strip()
-    is_vip = inv_type.lower().startswith("vip")
-    is_business = bool(inv_type) and not is_vip
-
-    # --- Build facts ---
-    facts = []
-    add("Date", payload.get("visit_date"), facts)
-    add("VR Number", payload.get("vr_number"), facts)
-    add("Engineer", payload.get("lead_engineer"), facts)
-    add("Job Type", payload.get("job_type"), facts)
-    add("Stakeholder", payload.get("stakeholder_category"), facts)
-
-    if is_vip:
-        add("Labour", f"£{payload.get('labour_value',0):,.2f}", facts)
-        add("Equipment", f"£{payload.get('materials_value',0):,.2f}", facts)
-        add("Hotel/Food", f"£{payload.get('hotel_food_total',0):,.2f}", facts)
-        add("Additional", f"£{payload.get('additional_total',0):,.2f}", facts)
-        add("TOTAL", f"**£{payload.get('total_value',0):,.2f}**", facts)
-    else:
-        add("Labour", f"£{payload.get('labour_value',0):,.2f}", facts)
-        add("TOTAL", f"£{payload.get('total_value',0):,.2f}", facts)
-
-    # --- Card structure ---
-    card = {
-        "@type": "MessageCard",
-        "@context": "http://schema.org/extensions",
-        "summary": f"{inv_type} Invoice",
-        "themeColor": "0076D7",
-        "title": f"📄 {inv_type} Invoice — {payload.get('lead_engineer','')} — {payload.get('job_type','')}",
-        "sections": [{
-            "facts": facts,
-            "text": payload.get("notes", "")
-        }]
-    }
-
-    try:
-        r = requests.post(webhook_url, json=card)
-        r.raise_for_status()
-        return True, "Teams card sent"
-    except Exception as e:
-        return False, str(e)
 
 
 
 
-    # -------- Title --------
-    if is_vip:
-        title = f"🧾 VIP / Tier 2 Invoice — {payload.get('engineer','')} — {payload.get('vr_number','') or payload.get('job_type','')}"
-    elif is_business:
-        title = f"🧾 Business Invoice — {payload.get('engineer','')} — {inv_type}"
-    else:
-        title = f"🧾 Retail Invoice — {payload.get('engineer','')} — {payload.get('asa_number','')}"
 
-    # -------- Facts --------
-    facts = []
-    add("Date", payload.get("visit_date"), facts)
-    add("Engineer", payload.get("engineer"), facts)
-
-    if is_vip:
-        add("Job Type", payload.get("job_type"), facts)
-        add("Stakeholder Category", payload.get("stakeholder_category"), facts)
-        add("VR Number", payload.get("vr_number"), facts)
-        add("Lead Engineer", payload.get("lead_engineer"), facts)
-        add("2nd Engineer", payload.get("second_engineer"), facts)
-        add("3rd Engineer", payload.get("third_engineer"), facts)
-        # Hours breakdown (only if present)
-        add("Lead Hours", payload.get("lead_hours"), facts)
-        add("2nd Hours", payload.get("second_hours"), facts)
-        add("3rd Hours", payload.get("third_hours"), facts)
-        add("Total Hours", payload.get("total_hours"), facts)
-        if payload.get("rate_per_hour"):
-            add("Rate/hr", f"£{float(payload.get('rate_per_hour')):,.2f}", facts)
-        # Optional materials/extras if you add them later
-        if float(payload.get("materials_value", 0) or 0) > 0:
-            add("Materials", f"£{float(payload.get('materials_value')):,.2f}", facts)
-        if float(payload.get("extras_value", 0) or 0) > 0:
-            add("Extras", f"£{float(payload.get('extras_value')):,.2f}", facts)
-        add("Pricing Mode", payload.get("pricing_mode"), facts)
-        add("Lead Package", payload.get("lead_package"), facts)
-        add("2nd Package", payload.get("second_package"), facts)
-        add("3rd Package", payload.get("third_package"), facts)
-
-
-    elif is_business:
-        add("Type", inv_type, facts)
-        add("Job Type", payload.get("job_type"), facts)           # if you ever pass one
-        add("Area", payload.get("area"), facts)
-        add("VR Number", payload.get("vr_number"), facts)
-        add("SLA Type", payload.get("sla_type"), facts)
-        add("Visit Type", payload.get("visit_type"), facts)
-        add("Engineers", payload.get("engineer_count"), facts)
-        if payload.get("oracle_time_hhmm"):
-            add("Oracle", f"{payload.get('oracle_time_hhmm')} ({payload.get('oracle_hours',0)} h)", facts)
-
-    else:  # Retail
-        add("Stakeholder", payload.get("stakeholder_type"), facts)
-        add("Store", f"{payload.get('store_name','')} ({payload.get('postcode','')})", facts)
-        add("Ticket", payload.get("ticket"), facts)
-        if payload.get("oracle_time_hhmm"):
-            add("Oracle", f"{payload.get('oracle_time_hhmm')} ({payload.get('oracle_hours',0)} h)", facts)
-        add("Hotel/Food", f"£{float(payload.get('hotel_food',0)):,.2f}", facts)
-        add("Additional", f"£{float(payload.get('additional',0)):,.2f}", facts)
-
-    # Totals (all)
-    add("Labour", f"£{float(payload.get('labour_value',0)):,.2f}", facts)
-    add("TOTAL", f"**£{float(payload.get('total_value',0)):,.2f}**", facts)
-
-    body = {
-        "@type": "MessageCard",
-        "@context": "http://schema.org/extensions",
-        "summary": title,
-        "themeColor": "0A7EE2",
-        "title": title,
-        "sections": [{"facts": facts, "markdown": True}]
-    }
-    notes = (payload.get("notes") or "").strip()
-    if notes:
-        body["sections"].append({"text": notes[:1000], "markdown": True})
-
-    try:
-        r = requests.post(webhook_url, data=json.dumps(body), headers={"Content-Type": "application/json"})
-        return (True, "Sent to Teams.") if r.status_code in (200, 201, 204) else (False, f"Teams webhook error: {r.status_code} {r.text}")
-    except Exception as e:
-        return False, f"Teams webhook exception: {e}"
 
 
 
