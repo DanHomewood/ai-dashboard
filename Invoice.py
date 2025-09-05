@@ -1150,7 +1150,7 @@ if st.session_state.active_page == "vip_email_preview":
     payload = st.session_state.get("vip_preview_payload", {})
     if not payload:
         st.warning("No invoice data available. Please create an invoice first.")
-        if st.button("↩️ Back to Invoice"):
+        if st.button("↩️ Back to Invoice", key="back_invoice_email"):
             st.session_state.active_page = "vip"
         st.stop()
 
@@ -1158,10 +1158,10 @@ if st.session_state.active_page == "vip_email_preview":
     recipient = st.text_input("Recipient Email Address", "")
 
     # Build the HTML once and reuse
-    html_body = f"""
+    html_content = f"""
     <div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
     <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/main/sky_vip_logo.png" 
-         width="220" style="display:block; margin:0 auto;"/><br/><br/>
+         width="280" style="display:block; margin:0 auto;"/><br/><br/>
     <p>Hi Guest List Department,</p>
     <p>Please see below invoice:</p>
 
@@ -1189,25 +1189,27 @@ if st.session_state.active_page == "vip_email_preview":
     """
 
     # Show preview in the app
-    st.markdown(html_body, unsafe_allow_html=True)
+    st.markdown(html_content, unsafe_allow_html=True)
 
     st.markdown("---")
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("↩️ Back to Invoice", key="back_invoice_email"):
+        if st.button("↩️ Back to Invoice", key="back_invoice_email2"):
             st.session_state.active_page = "vip"
 
-    if c2.button("✅ Confirm & Send", key="confirm_send"):
-        ok, msg = send_email(
-            to_address=recipient,
-            subject="VIP / Tier 2 Invoice",
-            html_content=html_content
-        )
-        if ok:
-            st.success(msg)
-        else:
-            st.error(msg)
+    with col2:
+        if st.button("✅ Confirm & Send", key="confirm_send_email"):
+            ok, msg = send_email(
+                to_address=recipient,
+                subject="VIP / Tier 2 Invoice",
+                html_content=html_content
+            )
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+
 
 
 
