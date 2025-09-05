@@ -1114,34 +1114,36 @@ if st.session_state.active_page == "vip_email_preview":
     recipient = st.text_input("Recipient Email Address", "")
 
     # Structured preview
-    st.markdown("---")
     st.markdown(f"""
-    <div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
-        <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/refs/heads/main/sky_vip_logo.png" width="180"/><br/><br/>
-      <p>Hi Guest List Department,</p>
-      <p>Please see below invoice:</p>
+<div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
+  <div style="text-align:center; margin-bottom:20px;">
+    <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/refs/heads/main/sky_vip_logo.png" width="280"/>
+  </div>
+  <p>Hi Guest List Department,</p>
+  <p>Please see below invoice:</p>
 
-      <p><b>VR Number:</b> {payload.get("vr_number","")}<br/>
-      <b>Customer Name:</b> Test<br/>
-      <b>Date Of Visit:</b> {payload.get("visit_date","")}<br/>
-      <b>Visit Type:</b> {payload.get("job_type","")}</p>
+  <p><b>VR Number:</b> {payload.get("vr_number","")}<br/>
+  <b>Customer Name:</b> Test<br/>
+  <b>Date Of Visit:</b> {payload.get("visit_date","")}<br/>
+  <b>Visit Type:</b> {payload.get("job_type","")}</p>
 
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; font-size:14px;">
-        <tr style="background:#f0f0f0;">
-          <th>Equipment</th><th>Qty</th><th>Price £</th>
-        </tr>
-        {"".join([f"<tr><td>{l['item']}</td><td>{l['qty']}</td><td>{l['total']:.2f}</td></tr>" for l in json.loads(payload.get("equipment_json","[]"))])}
-      </table>
+  <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; font-size:14px; margin:auto;">
+      <tr style="background:#f0f0f0;">
+      <th>Equipment</th><th>Qty</th><th>Price £</th>
+      </tr>
+      {"".join([f"<tr><td>{l['item']}</td><td>{l['qty']}</td><td>{l['total']:.2f}</td></tr>" for l in json.loads(payload.get("equipment_json","[]"))])}
+  </table>
 
-      <p><b>Total for Parts:</b> £{payload.get("materials_value",0):.2f}<br/>
-      <b>Total for Labour:</b> £{payload.get("labour_value",0):.2f}</p>
+  <p><b>Total for Parts:</b> £{payload.get("materials_value",0):.2f}<br/>
+  <b>Total for Labour:</b> £{payload.get("labour_value",0):.2f}</p>
 
-      <p style="color:red; font-weight:bold;">TOTAL DUE: £{payload.get("total_value",0):.2f}</p>
+  <p style="color:red; font-weight:bold;">TOTAL DUE: £{payload.get("total_value",0):.2f}</p>
 
-      <p>Our Hourly Rate is £90 per hour per engineer. Whilst we will endeavour to provide an
-      accurate estimate for the works requested the overall cost may differ from the original estimate given.</p>
-    </div>
-    """, unsafe_allow_html=True)
+  <p>Our Hourly Rate is £90 per hour per engineer. Whilst we will endeavour to provide an
+  accurate estimate for the works requested the overall cost may differ from the original estimate given.</p>
+</div>
+""", unsafe_allow_html=True)
+
 
     st.markdown("---")
     c1, c2 = st.columns([1,1])
@@ -1149,7 +1151,6 @@ if st.session_state.active_page == "vip_email_preview":
         st.session_state.active_page = "vip"
     if c2.button("✅ Confirm & Send (future step)"):
         st.info("This is where we’d add sending via Outlook/SMTP/Graph API.")
-
 
 
 
