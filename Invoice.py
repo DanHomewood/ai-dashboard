@@ -14,9 +14,14 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import streamlit as st
+
+# Load Teams webhooks from secrets
 TEAMS_WEBHOOK_URL_Business = st.secrets["TEAMS_WEBHOOK_URL_Business"]
 TEAMS_WEBHOOK_URL_Retail   = st.secrets["TEAMS_WEBHOOK_URL_Retail"]
 TEAMS_WEBHOOK_URL_VIP      = st.secrets["TEAMS_WEBHOOK_URL_VIP"]
+TEAMS_WEBHOOK_URL_Monitor  = st.secrets["TEAMS_WEBHOOK_URL_Monitor"]
+
 
 import smtplib, ssl
 from email.mime.multipart import MIMEMultipart
@@ -1200,15 +1205,44 @@ if st.session_state.active_page == "vip_email_preview":
 
     with col2:
         if st.button("✅ Confirm & Send", key="confirm_send_email"):
+            # 1) Send Email
             ok, msg = send_email(
                 to_address=recipient,
                 subject="VIP / Tier 2 Invoice",
                 html_content=html_content
             )
             if ok:
-                st.success(msg)
+                st.success("📧 " + msg)
             else:
-                st.error(msg)
+                st.error("❌ " + msg)
+
+            # 2) Save invoice locally as HTML
+            file_name = f"Invoice_{payload.get('vr_number','')}.html"
+            with open(file_name, "w", encoding="utf-8") as f:
+                f.write(html_content)
+
+            # 3) Send Teams notification (with reference to invoice)
+            TEAMS_WEBHOOK_URL_MONITOR = "https://skyglobal.webhook.office.com/webhookb2/e5c5ef89-18a1-406a-86ee-3db25b5ae3cc@68b865d5-cf18-4b2b-82a4-a4eddb9c5237/IncomingWebhook/3f2b10b6b5bd47618ea106bd133ea5e7/dbfef891-1f21-4f48-9e09-96708380a6c3/V28VJKQ9rmyCkX9DnCnvdywohiJPn14-LgpMSQRb4M43Q1"
+
+            teams_msg = {
+                "@type": "MessageCard",
+                "@context": "http://schema.org/extensions",
+                "summary": "Invoice Sent",
+                "themeColor": "0076D7",
+                "title": "📄 Invoice Sent",
+                "sections": [{
+                    "activityTitle": f"VR: {payload.get('vr_number','')} | Total £{payload.get('total_value',0):.2f}",
+                    "text": f"An invoice was sent to **{recipient}**.\n\n"
+                            f"💾 A copy has also been saved locally as `{file_name}` in the app."
+                }]
+            }
+
+            ok, msg = send_teams_card(teams_msg, TEAMS_WEBHOOK_URL_MONITOR)
+            if ok:
+                st.info("📤 Teams monitoring notification sent.")
+            else:
+                st.warning(f"⚠️ Teams not sent: {msg}")
+
 
 
 
