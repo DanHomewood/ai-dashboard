@@ -15,32 +15,30 @@ TEAMS_WEBHOOK_URL_Business = st.secrets["TEAMS_WEBHOOK_URL_Business"]
 TEAMS_WEBHOOK_URL_Retail   = st.secrets["TEAMS_WEBHOOK_URL_Retail"]
 TEAMS_WEBHOOK_URL_VIP      = st.secrets["TEAMS_WEBHOOK_URL_VIP"]
 
-def send_email(recipient, subject, html_content):
-    # SMTP server config
-    smtp_server = "smtp.gmail.com"       # if using Gmail, change if Outlook/Exchange
-    smtp_port = 587
-    sender_email = "your_email@example.com"
-    sender_password = "your_app_password"   # ⚠️ use App Password, not your real password
+def send_email(recipient: str, subject: str, html_content: str):
+    host = st.secrets["EMAIL_HOST"]
+    port = int(st.secrets["EMAIL_PORT"])
+    user = st.secrets["EMAIL_USER"]
+    password = st.secrets["EMAIL_PASS"]
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = user
+    msg["To"] = recipient
+
+    # HTML body
+    msg.attach(MIMEText(html_content, "html"))
 
     try:
-        # Create email
-        msg = MIMEMultipart("alternative")
-        msg["From"] = sender_email
-        msg["To"] = recipient
-        msg["Subject"] = subject
-
-        msg.attach(MIMEText(html_content, "html"))
-
-        # Send email
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, recipient, msg.as_string())
-
-        return True, "Email sent successfully ✅"
-
+        context = ssl.create_default_context()
+        with smtplib.SMTP(host, port) as server:
+            server.starttls(context=context)
+            server.login(user, password)
+            server.sendmail(user, recipient, msg.as_string())
+        return True, "Email sent successfully."
     except Exception as e:
-        return False, f"Error: {e}"
+        return False, str(e)
+
 
 # ---- VIP equipment catalogue (GLOBAL) ----
 VIP_EQUIP_RAW = r"""
