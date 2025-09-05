@@ -98,9 +98,10 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
 
     # ---------- VIP ----------
     if is_vip:
+        title = f"📄 VIP / Tier 2 Invoice — {payload.get('lead_engineer','')} — {payload.get('vr_number','') or payload.get('job_type','')}"
+        facts = []
         add_fact("Date", payload.get("visit_date"), facts)
         add_fact("VR Number", payload.get("vr_number"), facts)
-        add_fact("Job Type", payload.get("job_type"), facts)
 
         engineers = ", ".join([x for x in [
             payload.get("lead_engineer", ""),
@@ -109,12 +110,14 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         ] if x.strip()])
         add_fact("Engineer(s)", engineers, facts)
 
-        add_fact("Stakeholder", payload.get("stakeholder_category"), facts)
-        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value',0)):.2f}", facts)
-        add_fact("Additional", f"£{float(payload.get('additional_value',0)):.2f}", facts)
+        add_fact("Job Type", payload.get("job_type"), facts)
+
         add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
         add_fact("Equipment", f"£{float(payload.get('materials_value',0)):.2f}", facts)
+        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value',0)):.2f}", facts)
+        add_fact("Additional", f"£{float(payload.get('additional_value',0)):.2f}", facts)
         add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+
 
     # ---------- Business ----------
     elif is_business:
@@ -1145,6 +1148,8 @@ if st.session_state.active_page == "vip_email_preview":
     st.markdown(html_content, unsafe_allow_html=True)
 
     if st.button("↩️ Back to Invoice"): st.session_state.active_page = "vip"
+    if st.button("↩️ Back to Home"):
+        st.session_state.active_page = "home"
 
     if st.button("✅ Confirm & Send"):
         ok, msg = send_email(
