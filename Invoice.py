@@ -18,29 +18,37 @@ TEAMS_WEBHOOK_URL_Business = st.secrets["TEAMS_WEBHOOK_URL_Business"]
 TEAMS_WEBHOOK_URL_Retail   = st.secrets["TEAMS_WEBHOOK_URL_Retail"]
 TEAMS_WEBHOOK_URL_VIP      = st.secrets["TEAMS_WEBHOOK_URL_VIP"]
 
-def send_email(recipient: str, subject: str, html_content: str):
-    host = st.secrets["EMAIL_HOST"]
-    port = int(st.secrets["EMAIL_PORT"])
-    user = st.secrets["EMAIL_USER"]
-    password = st.secrets["EMAIL_PASS"]
+import smtplib, ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import streamlit as st
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = user
-    msg["To"] = recipient
-
-    # HTML body
-    msg.attach(MIMEText(html_content, "html"))
-
+def send_email(to_address, subject, html_content):
     try:
+        host = st.secrets["EMAIL_HOST"]
+        port = int(st.secrets["EMAIL_PORT"])
+        user = st.secrets["EMAIL_USER"]
+        password = st.secrets["EMAIL_PASS"]
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"Sky VIP Invoices <{user}>"
+        msg["To"] = to_address
+        msg["Reply-To"] = "daniel.homewood@sky.uk"  # optional
+
+        part = MIMEText(html_content, "html")
+        msg.attach(part)
+
         context = ssl.create_default_context()
         with smtplib.SMTP(host, port) as server:
             server.starttls(context=context)
             server.login(user, password)
-            server.sendmail(user, recipient, msg.as_string())
-        return True, "Email sent successfully."
+            server.sendmail(user, [to_address], msg.as_string())
+
+        return True, "✅ Email sent successfully"
     except Exception as e:
-        return False, str(e)
+        return False, f"❌ Failed to send email: {e}"
+
 
 
 # ---- VIP equipment catalogue (GLOBAL) ----
@@ -1190,16 +1198,17 @@ if st.session_state.active_page == "vip_email_preview":
         if st.button("↩️ Back to Invoice", key="back_invoice_email"):
             st.session_state.active_page = "vip"
 
-    with col2:
-        if st.button("✅ Confirm & Send", key="confirm_send_email"):
-            if not recipient:
-                st.error("Please enter a recipient email address first.")
-            else:
-                ok, msg = send_email(recipient, "Sky Invoice", html_body)
-                if ok:
-                    st.success("✅ Email sent successfully.")
-                else:
-                    st.error(f"❌ Failed to send email: {msg}")
+    if c2.button("✅ Confirm & Send", key="confirm_send"):
+        ok, msg = send_email(
+            to_address=recipient,
+            subject="VIP / Tier 2 Invoice",
+            html_content=html_content
+        )
+        if ok:
+            st.success(msg)
+        else:
+            st.error(msg)
+
 
 
 
