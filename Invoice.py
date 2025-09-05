@@ -1149,18 +1149,13 @@ if st.session_state.active_page == "vip_email_preview":
         with open(file_name, "w", encoding="utf-8") as f: f.write(html_content)
 
         # Send Teams notification
-        teams_msg = {
-            "@type": "MessageCard",
-            "@context": "http://schema.org/extensions",
-            "summary": "VIP Invoice Sent",
-            "themeColor": "0076D7",
-            "title": "📄 VIP Invoice Sent",
-            "sections": [{
-                "activityTitle": f"VR: {payload.get('vr_number','')} | Total £{payload.get('total_value',0):.2f}",
-                "text": f"Invoice sent to **{recipient}**. Copy saved as `{file_name}`."
-            }]
-        }
-        send_teams_card(teams_msg, TEAMS_WEBHOOK_URL_VIP)
+        # Reuse the same invoice payload so Teams card looks like Retail/Business
+    ok, msg = send_teams_card(payload, TEAMS_WEBHOOK_URL_VIP)
+    if ok:
+        st.info("Teams notification sent.")
+    else:
+        st.warning(f"Teams not sent: {msg}")
+
 
 
 
