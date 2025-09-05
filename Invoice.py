@@ -922,326 +922,190 @@ if st.session_state.active_page == "business":
 
 
 
-# ---------- VIP / Tier 2 Invoice (TIME-ONLY + EVENT/SURVEY; no half/full day) ----------
+# ---------- VIP / Tier 2 Invoice ----------
 if st.session_state.active_page == "vip":
-    import datetime, re, json
+    import datetime, re, json, csv, os
 
     st.title("VIP / Tier 2 Invoice")
-    st.caption(f"User: **{st.session_state.user_name}**")
-    st.caption(f"Teams webhook configured: {'Yes' if TEAMS_WEBHOOK_URL_VIP else 'No'}")
+    ss = st.session_state
 
     # ---- constants ----
     RATE_PER_HOUR = 90.0
     FIRST_90_COST = 90.0
     HOURLY_AFTER  = 90.0
-    SITE_SURVEY   = 160.0
-    EVENT_SET     = 1600.0
 
-    # ---- pick-lists ----
-    JOB_TYPES = [
-        "ADMIN","CONCIERGE VISIT","SGL SITE SURVEY","SKY GLASS  SITE SURVEY","SKY GLASS INSTALL",
-        "SKY GLASS SERVICE","SKY GLASS DE-INSTALL ","INSTALL Q","INSTALL HD ","SERVICE Q","SERVICE HD",
-        "MOVING HOME Q","MOVING HOME HD","BROADBAND","WIFI","COMMERCIAL INSTALL","COMMERCIAL SERVICE",
-        "COMMERCIAL DE-INSTALL ","COMMERCIAL SITE SURVEY","EVENT INSTALL","EVENT SERVICE CALL",
-        "EVENT SITE SURVEY","EVENT  DEINSTALL","SRS SITE SURVEY","SRS INSTALL","SRS SERVICE ",
-        "SRS ENGAGE STAND UPGRADE ","SRS STAND RELOCATION","SRS DE-INSTALL","SGL TRIPLE 19S INSTALL Q ",
-        "SGL TRIPLE 19S SERVICE Q","SGL TRIPLE 19S INSTALL HD","SGL TRIPLE 19S SERVICE HD",
-        "FIELD ESCALATIONS","NO VISIT DATA","VIP TRAINING","TRAVELLING TO VISIT LOCATION",
-        "SKY Q MINI BOX (£49 INC VAT)","SKY Q MINI BOX (£99 INC VAT)"
-    ]
-    STAKEHOLDER_CATEGORIES = [
-        "SKY GUEST LIST","SKY GUEST LIST (PCI)","FIELD BASED","ESCALATION","PDD","SRS",
-        "EVENT","COMMERCIAL","VIP / TIER 2 ADMIN","VIP TRAINING",
-    ]
-
-    # ---- session defaults ----
-    ss = st.session_state
-    if "vip_date" not in ss: ss.vip_date = datetime.date.today()
-    if "vip_scope" not in ss: ss.vip_scope = "Internal"
-    if "vip_vr" not in ss: ss.vip_vr = ""
-    if "vip_job_type" not in ss: ss.vip_job_type = "ADMIN"
-    if "vip_stake_cat" not in ss: ss.vip_stake_cat = "VIP / TIER 2 ADMIN"
-
-    if "vip_lead" not in ss: ss.vip_lead = st.session_state.user_name
-    if "vip_second" not in ss: ss.vip_second = ""
-    if "vip_third" not in ss: ss.vip_third = ""
-
-    if "vip_pricing_mode" not in ss: ss.vip_pricing_mode = "Time – per engineer"
-    if "vip_evsv_pick" not in ss: ss.vip_evsv_pick = "Event set cost (£1,600)"
-
-    # time defaults
-    for who in ["lead", "second", "third"]:
-        for part in ["site", "travel"]:
-            key = f"vip_time_{who}_{part}"
-            if key not in ss: ss[key] = datetime.time(0, 0)
-
-    # ---- header ----
-    hdr = st.container()
-    with hdr:
-        left, right = st.columns([3, 2])
-        with left:
-            st.markdown("**Invoice Scope**")
-            st.radio("", ["Internal", "External (+20%)", "Quote (+20%)"],
-                     horizontal=True, key="vip_scope")
-        with right:
-            st.markdown("**Invoice Date**")
-            st.date_input("", value=ss.vip_date, key="vip_date")
-        st.text_input("Lead Engineer", value=ss.vip_lead, disabled=True, key="vip_lead_display")
-
-    # ---- base details ----
-    st.text_input("VR Number / Reference", value=ss.vip_vr, key="vip_vr")
-    st.selectbox("Job Type", JOB_TYPES, key="vip_job_type")
-    st.selectbox("Stake Holder Category", STAKEHOLDER_CATEGORIES, key="vip_stake_cat")
+    # CSV file path (all invoices saved here)
+    INVOICE_CSV_VIP = "vip_invoices.csv"
 
     # ---- helpers ----
-    def mins(t: datetime.time) -> int:
-        return (t.hour * 60 + t.minute) if t else 0
+    def mins(t: datetime.time) -> int: return (t.hour * 60 + t.minute) if t else 0
     def time_charge(total_minutes: int) -> float:
         if total_minutes <= 0: return 0.0
         if total_minutes <= 90: return FIRST_90_COST
         return FIRST_90_COST + (total_minutes - 90) / 60.0 * HOURLY_AFTER
 
-    # ---- pricing mode ----
-    st.markdown("### Pricing Mode")
-    MODE = st.selectbox("Pricing Mode", ["Time – per engineer", "Fixed – event/survey"],
-                        key="vip_pricing_mode")
-    is_time = MODE.startswith("Time")
-    is_evsv = MODE.endswith("event/survey")
+    def save_submission_to_csv(payload: dict, file_path: str):
+        """Append invoice payload to CSV file"""
+        fieldnames = list(payload.keys())
+        file_exists = os.path.isfile(file_path)
+
+        with open(file_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(payload)
+
+    # ---- base details ----
+    if "vip_date" not in ss: ss.vip_date = datetime.date.today()
+    st.text_input("VR Number / Reference", value=ss.get("vip_vr",""), key="vip_vr")
+    st.date_input("Date of Visit", value=ss.vip_date, key="vip_date")
+    st.text_input("Lead Engineer", value=ss.get("vip_lead", ss.user_name), key="vip_lead")
+    st.text_input("2nd Engineer (optional)", value=ss.get("vip_second",""), key="vip_second")
+    st.text_input("3rd Engineer (optional)", value=ss.get("vip_third",""), key="vip_third")
+    st.selectbox("Job Type", ["ADMIN","SITE SURVEY","INSTALL","SERVICE"], key="vip_job_type")
 
     # ---- time entries ----
-    if is_time:
-        st.markdown("### Time Entries (HH:MM)")
-        a1, a2 = st.columns(2)
-        with a1: st.time_input("Lead – On-site", value=ss.vip_time_lead_site, step=300, key="vip_time_lead_site")
-        with a2: st.time_input("Lead – Travel", value=ss.vip_time_lead_travel, step=300, key="vip_time_lead_travel")
-        if ss.vip_second.strip():
-            b1, b2 = st.columns(2)
-            with b1: st.time_input("2nd – On-site", value=ss.vip_time_second_site, step=300, key="vip_time_second_site")
-            with b2: st.time_input("2nd – Travel", value=ss.vip_time_second_travel, step=300, key="vip_time_second_travel")
-        if ss.vip_third.strip():
-            c1, c2 = st.columns(2)
-            with c1: st.time_input("3rd – On-site", value=ss.vip_time_third_site, step=300, key="vip_time_third_site")
-            with c2: st.time_input("3rd – Travel", value=ss.vip_time_third_travel, step=300, key="vip_time_third_travel")
-
-    # ---- event/survey ----
-    if is_evsv:
-        st.markdown("### Event / Survey Selection")
-        st.radio("Pick one", ["Event set cost (£1,600)", "Site survey (£160)"],
-                 horizontal=True, key="vip_evsv_pick")
-
-    # ---- compute totals ----
-    labour_value, total_hours = 0.0, 0.0
-    if is_time:
-        for who in ["lead", "second", "third"]:
-            if who == "lead" or ss[f"vip_{who}"].strip():
-                m = mins(ss[f"vip_time_{who}_site"]) + mins(ss[f"vip_time_{who}_travel"])
-                labour_value += time_charge(m)
-                total_hours += m / 60.0
-    elif is_evsv:
-        labour_value = EVENT_SET if "Event" in ss.vip_evsv_pick else SITE_SURVEY
+    st.markdown("### Time Entries (HH:MM)")
+    a1, a2 = st.columns(2)
+    with a1: st.time_input("Lead – On-site", step=300, key="vip_time_lead_site")
+    with a2: st.time_input("Lead – Travel", step=300, key="vip_time_lead_travel")
+    if ss.vip_second.strip():
+        b1, b2 = st.columns(2)
+        with b1: st.time_input("2nd – On-site", step=300, key="vip_time_second_site")
+        with b2: st.time_input("2nd – Travel", step=300, key="vip_time_second_travel")
+    if ss.vip_third.strip():
+        c1, c2 = st.columns(2)
+        with c1: st.time_input("3rd – On-site", step=300, key="vip_time_third_site")
+        with c2: st.time_input("3rd – Travel", step=300, key="vip_time_third_travel")
 
     # ---- equipment ----
     st.markdown("### Equipment & Materials")
-    VIP_EQUIPMENT = globals().get("VIP_EQUIPMENT", {})
+    VIP_EQUIPMENT = globals().get("VIP_EQUIPMENT", {"SKY DISH": 40.0, "LNB": 25.0})
     equip_names = list(VIP_EQUIPMENT.keys())
-    def equip_label(name: str) -> str: return f"{name} — £{VIP_EQUIPMENT[name]:.2f}"
-    selected_items = st.multiselect("Add items (choose one or more)", options=equip_names,
-                                    format_func=equip_label, key="vip_eq_select")
+    selected_items = st.multiselect("Add items", options=equip_names)
     equipment_lines, equipment_total = [], 0.0
     for name in selected_items:
-        safe_key = "vip_qty_" + re.sub(r"[^a-z0-9]+", "_", name.lower())
-        qty = st.number_input(f"Qty — {name}", min_value=1, step=1, value=1, key=safe_key)
+        qty = st.number_input(f"Qty — {name}", min_value=1, step=1, value=1, key="vip_qty_"+name)
         unit = float(VIP_EQUIPMENT.get(name, 0.0))
         line_total = unit * float(qty)
         equipment_lines.append({"item": name, "unit": unit, "qty": int(qty), "total": round(line_total, 2)})
         equipment_total += line_total
 
+    # ---- hotel / additional ----
+    st.markdown("### Hotel / Food / Additional Costs")
+    hotel_costs, add_costs = {}, {}
+    hotel_costs["lead"] = st.number_input("Lead Hotel/Food (£)", min_value=0.0, step=1.0, value=0.0, key="vip_hotel_lead")
+    add_costs["lead"]   = st.number_input("Lead Additional (£)", min_value=0.0, step=1.0, value=0.0, key="vip_add_lead")
+
+    if ss.vip_second.strip():
+        hotel_costs["second"] = st.number_input("2nd Hotel/Food (£)", min_value=0.0, step=1.0, value=0.0, key="vip_hotel_second")
+        add_costs["second"]   = st.number_input("2nd Additional (£)", min_value=0.0, step=1.0, value=0.0, key="vip_add_second")
+    if ss.vip_third.strip():
+        hotel_costs["third"] = st.number_input("3rd Hotel/Food (£)", min_value=0.0, step=1.0, value=0.0, key="vip_hotel_third")
+        add_costs["third"]   = st.number_input("3rd Additional (£)", min_value=0.0, step=1.0, value=0.0, key="vip_add_third")
+
     # ---- totals ----
-    sub_total   = labour_value + equipment_total
-    uplift_rate = 0.2 if "20%" in ss.vip_scope else 0.0
-    uplift_amt  = sub_total * uplift_rate
-    grand_total = sub_total + uplift_amt
+    labour_value, total_hours = 0.0, 0.0
+    for who in ["lead","second","third"]:
+        if who=="lead" or ss.get(f"vip_{who}","").strip():
+            site = ss.get(f"vip_time_{who}_site", datetime.time(0,0))
+            trav = ss.get(f"vip_time_{who}_travel", datetime.time(0,0))
+            m = mins(site)+mins(trav)
+            labour_value += time_charge(m)
+            total_hours += m/60.0
 
-    st.markdown("""<style>
-      .total-card { border:2px solid rgba(255,255,255,0.15); border-radius:14px; padding:16px 18px; margin:8px 0; }
-      .total-label { opacity:0.85; font-weight:600; font-size:0.95rem; }
-      .total-amount { font-size:1.8rem; font-weight:800; }
-      .breakdown { opacity:0.8; font-size:0.9rem; margin-top:6px; line-height:1.4; }
-    </style>""", unsafe_allow_html=True)
-    st.markdown(f"""
-      <div class="total-card">
-        <div class="total-label">Grand Total (read-only)</div>
-        <div class="total-amount">£{grand_total:,.2f}</div>
-        <div class="breakdown">
-          Labour = £{labour_value:,.2f}<br/>
-          Equipment = £{equipment_total:,.2f}<br/>
-          Scope: <b>{ss.vip_scope}</b> → Uplift £{uplift_amt:,.2f}<br/>
-          <i>Sub-total (before uplift): £{sub_total:,.2f}</i>
-        </div>
-      </div>""", unsafe_allow_html=True)
+    hotel_total = sum(hotel_costs.values())
+    add_total   = sum(add_costs.values())
+    sub_total   = labour_value + equipment_total + hotel_total + add_total
+    grand_total = sub_total
 
-    # ---- form (submit + preview) ----
-    with st.form("vip_submit_form", clear_on_submit=False):
-        notes = st.text_area("Notes (optional)", placeholder="Anything useful for review/finance…", key="vip_notes")
+    st.subheader(f"TOTAL: £{grand_total:.2f}")
 
-        # build payload always
-        def hhmm_to_hours(t: datetime.time) -> float:
-            return round((t.hour * 60 + t.minute) / 60.0, 2) if t else 0.0
+    # ---- payload ----
+    payload = {
+        "visit_date": str(ss.vip_date),
+        "vr_number": ss.vip_vr,
+        "job_type": ss.vip_job_type,
+        "lead_engineer": ss.vip_lead,
+        "second_engineer": ss.vip_second,
+        "third_engineer": ss.vip_third,
+        "labour_value": round(labour_value,2),
+        "materials_value": round(equipment_total,2),
+        "hotel_cost": round(hotel_total,2),
+        "additional_cost": round(add_total,2),
+        "total_value": round(grand_total,2),
+        "equipment_json": json.dumps(equipment_lines, ensure_ascii=False)
+    }
 
-        lead_hours = hhmm_to_hours(ss.vip_time_lead_site) + hhmm_to_hours(ss.vip_time_lead_travel) if is_time else 0.0
-        sec_hours  = (hhmm_to_hours(ss.vip_time_second_site) + hhmm_to_hours(ss.vip_time_second_travel)) if (is_time and ss.vip_second.strip()) else 0.0
-        thd_hours  = (hhmm_to_hours(ss.vip_time_third_site)  + hhmm_to_hours(ss.vip_time_third_travel))  if (is_time and ss.vip_third.strip())  else 0.0
+    if st.button("➡️ Preview Invoice"):
+        st.session_state.vip_preview_payload = payload
+        st.session_state.active_page = "vip_email_preview"
 
-        equipment_summary = "; ".join([f"{l['item']} x{l['qty']} @ £{l['unit']:.2f} = £{l['total']:.2f}" for l in equipment_lines])
-
-        payload = {
-            "engineer": ss.user_name,
-            "visit_date": str(ss.vip_date),
-            "invoice_type": "VIP / Tier 2",
-            "pricing_mode": ss.vip_pricing_mode,
-            "vr_number": ss.vip_vr,
-            "job_type": ss.vip_job_type,
-            "stakeholder_category": ss.vip_stake_cat,
-            "lead_engineer": ss.vip_lead,
-            "second_engineer": ss.vip_second,
-            "third_engineer": ss.vip_third,
-            "total_hours": round(lead_hours + sec_hours + thd_hours, 2),
-            "rate_per_hour": RATE_PER_HOUR,
-            "lead_hours": lead_hours,
-            "second_hours": sec_hours,
-            "third_hours": thd_hours,
-            "labour_value": round(labour_value, 2),
-            "materials_value": round(equipment_total, 2),
-            "equipment_summary": equipment_summary,
-            "equipment_json": json.dumps(equipment_lines, ensure_ascii=False),
-            "scope": ss.vip_scope,
-            "uplift_rate": uplift_rate,
-            "total_before_uplift": round(sub_total, 2),
-            "uplift_amount": round(uplift_amt, 2),
-            "total_value": round(grand_total, 2),
-            "notes": notes,
-        }
-
-        # two buttons side by side
-        c1, c2 = st.columns(2)
-        submitted = c1.form_submit_button("Submit VIP / Tier 2 Invoice")
-        preview   = c2.form_submit_button("Preview Email")
-
-        if submitted:
-            try:
-                save_submission_to_csv(payload, INVOICE_CSV_VIP)
-                st.success(f"Saved to {INVOICE_CSV_VIP.name}")
-            except Exception as e:
-                st.error(f"Could not save CSV: {e}")
-
-            ok, msg = send_teams_card(payload, TEAMS_WEBHOOK_URL_VIP)
-            if ok: st.info("Teams notification sent.")
-            else:  st.warning(f"Teams not sent: {msg}")
-
-            with st.expander("Show captured data"):
-                st.json(payload)
-
-        if preview:
-            st.session_state.vip_preview_payload = payload
-            st.session_state.active_page = "vip_email_preview"
-
-    if st.button("↩️ Back to Home"):
-        ss.active_page = "home"
 
 # ---------- VIP Email Preview ----------
 if st.session_state.active_page == "vip_email_preview":
     st.title("📧 Email Preview — VIP / Tier 2 Invoice")
-
     payload = st.session_state.get("vip_preview_payload", {})
-    if not payload:
-        st.warning("No invoice data available. Please create an invoice first.")
-        if st.button("↩️ Back to Invoice", key="back_invoice_email"):
-            st.session_state.active_page = "vip"
-        st.stop()
 
     # Input for recipient
     recipient = st.text_input("Recipient Email Address", "")
 
-    # Build the HTML once and reuse
+    # Build HTML email
     html_content = f"""
     <div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
-    <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/main/sky_vip_logo.png" 
-         width="280" style="display:block; margin:0 auto;"/><br/><br/>
-    <p>Hi Guest List Department,</p>
-    <p>Please see below invoice:</p>
+    <h3>Invoice</h3>
+    <p><b>VR:</b> {payload.get("vr_number","")}<br/>
+    <b>Date:</b> {payload.get("visit_date","")}<br/>
+    <b>Type:</b> {payload.get("job_type","")}</p>
 
-    <p><b>VR Number:</b> {payload.get("vr_number","")}<br/>
-    <b>Customer Name:</b> Test<br/>
-    <b>Date Of Visit:</b> {payload.get("visit_date","")}<br/>
-    <b>Visit Type:</b> {payload.get("job_type","")}</p>
+    <p><b>Labour:</b> £{payload.get("labour_value",0):.2f}<br/>
+    <b>Equipment:</b> £{payload.get("materials_value",0):.2f}<br/>
+    <b>Hotel/Food:</b> £{payload.get("hotel_cost",0):.2f}<br/>
+    <b>Additional:</b> £{payload.get("additional_cost",0):.2f}</p>
 
-    <table border="1" cellpadding="6" cellspacing="0" 
-           style="border-collapse:collapse; font-size:14px; margin-left:0;">
-        <tr style="background:#f0f0f0;">
-            <th>Equipment</th><th>Qty</th><th>Price £</th>
-        </tr>
-        {"".join([f"<tr><td>{l['item']}</td><td>{l['qty']}</td><td>{l['total']:.2f}</td></tr>" for l in json.loads(payload.get("equipment_json","[]"))])}
-    </table>
-
-    <p><b>Total for Parts:</b> £{payload.get("materials_value",0):.2f}<br/>
-    <b>Total for Labour:</b> £{payload.get("labour_value",0):.2f}</p>
-
-    <p style="color:red; font-weight:bold;">TOTAL DUE: £{payload.get("total_value",0):.2f}</p>
-
-    <p>Our Hourly Rate is £90 per hour per engineer. Whilst we will endeavour to provide an
-    accurate estimate for the works requested the overall cost may differ from the original estimate given.</p>
+    <h4 style="color:red;">TOTAL DUE: £{payload.get("total_value",0):.2f}</h4>
     </div>
     """
 
-    # Show preview in the app
     st.markdown(html_content, unsafe_allow_html=True)
 
-    st.markdown("---")
-    col1, col2 = st.columns(2)
+    if st.button("✅ Confirm & Send"):
+        # 1) Save to CSV
+        try:
+            save_submission_to_csv(payload, INVOICE_CSV_VIP)
+            st.success(f"Saved to {INVOICE_CSV_VIP}")
+        except Exception as e:
+            st.error(f"Could not save invoice to CSV: {e}")
 
-    with col1:
-        if st.button("↩️ Back to Invoice", key="back_invoice_email2"):
-            st.session_state.active_page = "vip"
+        # 2) Email
+        ok, msg = send_email(to_address=recipient, subject="VIP Invoice", html_content=html_content)
+        if ok: st.success("📧 " + msg)
+        else: st.error("❌ " + msg)
 
-    with col2:
-        if st.button("✅ Confirm & Send", key="confirm_send_email"):
-            # 1) Send Email
-            ok, msg = send_email(
-                to_address=recipient,
-                subject="VIP / Tier 2 Invoice",
-                html_content=html_content
-            )
-            if ok:
-                st.success("📧 " + msg)
-            else:
-                st.error("❌ " + msg)
+        # 3) Teams notification
+        teams_msg = {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "summary": "VIP Invoice",
+            "themeColor": "0076D7",
+            "title": f"VIP Invoice — {payload['lead_engineer']}",
+            "sections": [{
+                "facts": [
+                    {"name": "VR", "value": payload["vr_number"]},
+                    {"name": "Date", "value": payload["visit_date"]},
+                    {"name": "Type", "value": payload["job_type"]},
+                    {"name": "Labour", "value": f"£{payload['labour_value']:.2f}"},
+                    {"name": "Equipment", "value": f"£{payload['materials_value']:.2f}"},
+                    {"name": "Hotel/Food", "value": f"£{payload['hotel_cost']:.2f}"},
+                    {"name": "Additional", "value": f"£{payload['additional_cost']:.2f}"},
+                    {"name": "TOTAL", "value": f"£{payload['total_value']:.2f}"}
+                ]
+            }]
+        }
+        ok, msg = send_teams_card(teams_msg, TEAMS_WEBHOOK_URL_VIP)
+        if ok: st.info("📤 Sent to Teams")
+        else: st.warning(f"⚠️ Teams not sent: {msg}")
 
-            # 2) Save invoice locally as HTML
-            file_name = f"Invoice_{payload.get('vr_number','')}.html"
-            with open(file_name, "w", encoding="utf-8") as f:
-                f.write(html_content)
-
-            # 3) Send Teams notification (with reference to invoice)
-            TEAMS_WEBHOOK_URL_MONITOR = "https://skyglobal.webhook.office.com/webhookb2/e5c5ef89-18a1-406a-86ee-3db25b5ae3cc@68b865d5-cf18-4b2b-82a4-a4eddb9c5237/IncomingWebhook/3f2b10b6b5bd47618ea106bd133ea5e7/dbfef891-1f21-4f48-9e09-96708380a6c3/V28VJKQ9rmyCkX9DnCnvdywohiJPn14-LgpMSQRb4M43Q1"
-
-            teams_msg = {
-                "@type": "MessageCard",
-                "@context": "http://schema.org/extensions",
-                "summary": "Invoice Sent",
-                "themeColor": "0076D7",
-                "title": "📄 Invoice Sent",
-                "sections": [{
-                    "activityTitle": f"VR: {payload.get('vr_number','')} | Total £{payload.get('total_value',0):.2f}",
-                    "text": f"An invoice was sent to **{recipient}**.\n\n"
-                            f"💾 A copy has also been saved locally as `{file_name}` in the app."
-                }]
-            }
-
-            ok, msg = send_teams_card(teams_msg, TEAMS_WEBHOOK_URL_MONITOR)
-            if ok:
-                st.info("📤 Teams monitoring notification sent.")
-            else:
-                st.warning(f"⚠️ Teams not sent: {msg}")
 
 
 

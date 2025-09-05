@@ -1,0 +1,5 @@
+engineer,visit_date,invoice_type,vr_number,job_type,total_hours,rate_per_hour,labour_value,materials_value,extras_value,total_value,notes
+Alex Green,2025-09-05,VIP / Tier 2,Hudson,ADMIN,0.0,90.0,0.0,0.0,0.0,0.0,
+Alex Green,2025-09-05,VIP / Tier 2,Hudson,ADMIN,SKY GUEST LIST,0.0,90.0,0.0,0.0,0.0,0.0,
+Jordan Smith,2025-09-05,VIP / Tier 2,Time-based (per engineer),Hudson,ADMIN,ESCALATION,Jordan Smith,dan,,9.0,90.0,720.0,,,,6.42,2.58,0.0,0.0,0.0,720.0,
+Alex Green,2025-09-05,VIP / Tier 2,Time – per engineer,,ADMIN,SKY GUEST LIST (PCI),Alex Green,,,5.75,90.0,5.75,0.0,0.0,472.5,,,,0.0,"SKY Q PACK (DISH,LNB,CABLE,SKY Q 2TB & 1 MINI) x1 @ £0.00 = £0.00","[{""item"": ""SKY Q PACK (DISH,LNB,CABLE,SKY Q 2TB & 1 MINI)"", ""unit"": 0.0, ""qty"": 1, ""total"": 0.0}]",Internal,0.0,472.5,0.0,472.5,TESTING

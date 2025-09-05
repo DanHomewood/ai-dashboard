@@ -1,0 +1,4 @@
+engineer,visit_date,invoice_type,area,vr_number,sla_type,venue_name,visit_type,engineer_count,oracle_time_hhmm,oracle_hours,rate_per_hour,labour_value,total_value,notes
+Alex Green,2025-09-05,Business Cover,North,,,,,,05:20,5.33,90.0,480.0,480.0,
+Alex Green,2025-09-05,Business Cover,North,,,,,,01:20,1.33,90.0,120.0,120.0,
+Alex Green,2025-09-05,Business Cover,North,,,,,,00:00,0.0,90.0,0.0,0.0,

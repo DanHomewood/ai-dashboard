@@ -1,0 +1,3 @@
+engineer,visit_date,ticket,stakeholder_type,asa_number,asa,store_name,address,postcode,oracle_time_hhmm,oracle_hours,rate_per_hour,labour_value,hotel_food,additional,total_value,notes
+Alex Green,2025-09-05,11111111,Curry's,00286-2222,00286-2222,LIVERPOOL Aintree,"Unit 1A Aintree Racecourse RP, Merseyside",L9 5AL,01:35,1.58,90.0,142.5,150.0,22.0,314.5,brought big batteries
+Alex Green,2025-09-05,,Curry's,00286-2237,00286-2237,ROTHERHAM,"Unit 15 Parkgate Shopping Park, South Yorkshire",S60 1TG,01:20,1.33,90.0,120.0,0.0,0.0,120.0,
