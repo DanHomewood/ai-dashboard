@@ -1117,7 +1117,7 @@ if st.session_state.active_page == "vip_email_preview":
     st.markdown("---")
     st.markdown(f"""
     <div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/8/8e/Sky_logo_2020.svg" width="120"/><br/><br/>
+        <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/refs/heads/main/sky_vip_logo.png" width="180"/><br/><br/>
       <p>Hi Guest List Department,</p>
       <p>Please see below invoice:</p>
 
@@ -1149,6 +1149,7 @@ if st.session_state.active_page == "vip_email_preview":
         st.session_state.active_page = "vip"
     if c2.button("✅ Confirm & Send (future step)"):
         st.info("This is where we’d add sending via Outlook/SMTP/Graph API.")
+
 
 
 
