@@ -1085,7 +1085,6 @@ if st.session_state.active_page == "vip":
 
     # ---- payload for saving/email ----
     payload = {
-        "invoice_type": "VIP",
         "invoice_type": "vip / tier 2",
         "vr_number": ss.vip_vr,
         "visit_date": str(ss.vip_date),
