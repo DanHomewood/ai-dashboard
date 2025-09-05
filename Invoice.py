@@ -1183,19 +1183,24 @@ if st.session_state.active_page == "vip_email_preview":
     # Show preview in the app
     st.markdown(html_body, unsafe_allow_html=True)
 
-st.markdown("---")
-if c1.button("↩️ Back to Invoice", key="back_invoice_email"):
-    st.session_state.active_page = "vip"
+    st.markdown("---")
+    col1, col2 = st.columns(2)
 
-if c2.button("✅ Confirm & Send", key="confirm_send_email"):
-    if not recipient:
-        st.error("Please enter a recipient email address first.")
-    else:
-        ok, msg = send_email(recipient, "Sky Invoice", html_body)
-        if ok:
-            st.success("✅ Email sent successfully.")
-        else:
-            st.error(f"❌ Failed to send email: {msg}")
+    with col1:
+        if st.button("↩️ Back to Invoice", key="back_invoice_email"):
+            st.session_state.active_page = "vip"
+
+    with col2:
+        if st.button("✅ Confirm & Send", key="confirm_send_email"):
+            if not recipient:
+                st.error("Please enter a recipient email address first.")
+            else:
+                ok, msg = send_email(recipient, "Sky Invoice", html_body)
+                if ok:
+                    st.success("✅ Email sent successfully.")
+                else:
+                    st.error(f"❌ Failed to send email: {msg}")
+
 
 
 
