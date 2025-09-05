@@ -10,6 +10,9 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import streamlit as st
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 TEAMS_WEBHOOK_URL_Business = st.secrets["TEAMS_WEBHOOK_URL_Business"]
 TEAMS_WEBHOOK_URL_Retail   = st.secrets["TEAMS_WEBHOOK_URL_Retail"]
@@ -1181,10 +1184,10 @@ if st.session_state.active_page == "vip_email_preview":
     st.markdown(html_body, unsafe_allow_html=True)
 
     st.markdown("---")
-    c1, c2 = st.columns([1,1])
-    if c1.button("↩️ Back to Invoice"):
+    if c1.button("↩️ Back to Invoice", key="back_invoice_email"):
         st.session_state.active_page = "vip"
-    if c2.button("✅ Confirm & Send"):
+
+    if c2.button("✅ Confirm & Send", key="confirm_send_email"):
         if not recipient:
             st.error("Please enter a recipient email address first.")
         else:
@@ -1197,20 +1200,8 @@ if st.session_state.active_page == "vip_email_preview":
 
 
 
-    st.markdown("---")
-    c1, c2 = st.columns([1,1])
-    if c1.button("↩️ Back to Invoice"):
-        st.session_state.active_page = "vip"
-    if c2.button("✅ Confirm & Send"):
-        success, msg = send_email(
-            recipient=recipient,
-            subject=f"VIP / Tier 2 Invoice — {payload.get('vr_number','')}",
-            html_content=email_html  # <-- your formatted invoice preview
-        )
-        if success:
-            st.success(msg)
-        else:
-            st.error(msg)
+
+    
 
 
 
