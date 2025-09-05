@@ -68,31 +68,35 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         return False, "Webhook URL not set."
 
     def add_fact(name, value, facts):
-        if value is None: return
+        if value is None:
+            return
         s = str(value).strip()
         if s and s.lower() not in ("nan", "none", ""):
             facts.append({"name": name, "value": s})
 
-    inv_type = (payload.get("invoice_type") or "").strip().lower()
+    inv_type_raw = (payload.get("invoice_type") or "").strip()
+    inv_type = inv_type_raw.lower()
     facts, title = [], ""
 
     # ---------- VIP ----------
-    if inv_type.startswith("vip"):
+    if "vip" in inv_type:   # <-- FIXED: catches 'vip', 'vip / tier 2', etc
         title = f"📄 VIP / Tier 2 Invoice — {payload.get('lead_engineer','')} — {payload.get('vr_number','')}"
         add_fact("Date", payload.get("visit_date"), facts)
         add_fact("VR Number", payload.get("vr_number"), facts)
-        engs = ", ".join([x for x in [
+
+        engineers = ", ".join([x for x in [
             payload.get("lead_engineer",""),
             payload.get("second_engineer",""),
             payload.get("third_engineer","")
         ] if x.strip()])
-        add_fact("Engineer(s)", engs, facts)
+        add_fact("Engineer(s)", engineers, facts)
+
         add_fact("Job Type", payload.get("job_type"), facts)
-        add_fact("Labour", f"£{payload.get('labour_value',0):.2f}", facts)
-        add_fact("Equipment", f"£{payload.get('materials_value',0):.2f}", facts)
-        add_fact("Hotel/Food", f"£{payload.get('hotel_value',0):.2f}", facts)
-        add_fact("Additional", f"£{payload.get('additional_value',0):.2f}", facts)
-        add_fact("TOTAL", f"**£{payload.get('total_value',0):.2f}**", facts)
+        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+        add_fact("Equipment", f"£{float(payload.get('materials_value',0)):.2f}", facts)
+        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value',0)):.2f}", facts)
+        add_fact("Additional", f"£{float(payload.get('additional_value',0)):.2f}", facts)
+        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
 
     # ---------- Business ----------
     elif inv_type.startswith("business") or inv_type in ["sla callout", "bau/non sla work"]:
@@ -104,8 +108,8 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         add_fact("SLA Type", payload.get("sla_type"), facts)
         add_fact("Visit Type", payload.get("visit_type"), facts)
         add_fact("Engineers", payload.get("engineer_count"), facts)
-        add_fact("Labour", f"£{payload.get('labour_value',0):.2f}", facts)
-        add_fact("TOTAL", f"**£{payload.get('total_value',0):.2f}**", facts)
+        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
 
     # ---------- Retail ----------
     else:
@@ -116,15 +120,15 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         add_fact("ASA Number", payload.get("asa_number"), facts)
         store_str = f"{payload.get('store_name','N/A')} ({payload.get('postcode','N/A')})"
         add_fact("Store", store_str, facts)
-        add_fact("Labour", f"£{payload.get('labour_value',0):.2f}", facts)
-        add_fact("Hotel/Food", f"£{payload.get('hotel_food',0):.2f}", facts)
-        add_fact("Additional", f"£{payload.get('additional',0):.2f}", facts)
-        add_fact("TOTAL", f"**£{payload.get('total_value',0):.2f}**", facts)
+        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+        add_fact("Hotel/Food", f"£{float(payload.get('hotel_food',0)):.2f}", facts)
+        add_fact("Additional", f"£{float(payload.get('additional',0)):.2f}", facts)
+        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
 
     card = {
         "@type": "MessageCard",
         "@context": "http://schema.org/extensions",
-        "summary": f"{inv_type.title()} Invoice",
+        "summary": f"{inv_type_raw or 'Invoice'}",
         "themeColor": "0076D7",
         "title": title,
         "sections": [{
@@ -139,6 +143,7 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         return True, "Teams card sent"
     except Exception as e:
         return False, f"Teams error: {e}"
+
 
 
 
