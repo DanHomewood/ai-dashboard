@@ -6,6 +6,36 @@ import pandas as pd
 from pathlib import Path
 import re
 from collections import OrderedDict  # make sure this is top-level
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+def send_email(recipient, subject, html_content):
+    # SMTP server config
+    smtp_server = "smtp.gmail.com"       # if using Gmail, change if Outlook/Exchange
+    smtp_port = 587
+    sender_email = "your_email@example.com"
+    sender_password = "your_app_password"   # ⚠️ use App Password, not your real password
+
+    try:
+        # Create email
+        msg = MIMEMultipart("alternative")
+        msg["From"] = sender_email
+        msg["To"] = recipient
+        msg["Subject"] = subject
+
+        msg.attach(MIMEText(html_content, "html"))
+
+        # Send email
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, recipient, msg.as_string())
+
+        return True, "Email sent successfully ✅"
+
+    except Exception as e:
+        return False, f"Error: {e}"
 
 # ---- VIP equipment catalogue (GLOBAL) ----
 VIP_EQUIP_RAW = r"""
@@ -1155,8 +1185,17 @@ if st.session_state.active_page == "vip_email_preview":
     c1, c2 = st.columns([1,1])
     if c1.button("↩️ Back to Invoice"):
         st.session_state.active_page = "vip"
-    if c2.button("✅ Confirm & Send (future step)"):
-        st.info("This is where we’d add sending via Outlook/SMTP/Graph API.")
+    if c2.button("✅ Confirm & Send"):
+        success, msg = send_email(
+            recipient=recipient,
+            subject=f"VIP / Tier 2 Invoice — {payload.get('vr_number','')}",
+            html_content=email_html  # <-- your formatted invoice preview
+        )
+        if success:
+            st.success(msg)
+        else:
+            st.error(msg)
+
 
 
 
