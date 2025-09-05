@@ -1045,66 +1045,102 @@ if st.session_state.active_page == "vip":
 # ---------- VIP Email Preview ----------
 if st.session_state.active_page == "vip_email_preview":
     st.title("📧 Email Preview — VIP / Tier 2 Invoice")
+
     payload = st.session_state.get("vip_preview_payload", {})
+    if not payload:
+        st.warning("No invoice data available. Please create an invoice first.")
+        if st.button("↩️ Back to Invoice", key="back_invoice_email"):
+            st.session_state.active_page = "vip"
+        st.stop()
 
     # Input for recipient
     recipient = st.text_input("Recipient Email Address", "")
 
-    # Build HTML email
+    # --- restore original HTML style with logos ---
     html_content = f"""
     <div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
-    <h3>Invoice</h3>
-    <p><b>VR:</b> {payload.get("vr_number","")}<br/>
-    <b>Date:</b> {payload.get("visit_date","")}<br/>
-    <b>Type:</b> {payload.get("job_type","")}</p>
+    <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/main/sky_vip_logo.png"
+         width="220" style="display:block; margin:0 auto;"/>
+    <br/><br/>
+    <p>Hi Guest List Department,</p>
+    <p>Please see below invoice:</p>
 
-    <p><b>Labour:</b> £{payload.get("labour_value",0):.2f}<br/>
-    <b>Equipment:</b> £{payload.get("materials_value",0):.2f}<br/>
-    <b>Hotel/Food:</b> £{payload.get("hotel_cost",0):.2f}<br/>
-    <b>Additional:</b> £{payload.get("additional_cost",0):.2f}</p>
+    <p><b>VR Number:</b> {payload.get("vr_number","")}<br/>
+    <b>Customer Name:</b> Test<br/>
+    <b>Date Of Visit:</b> {payload.get("visit_date","")}<br/>
+    <b>Visit Type:</b> {payload.get("job_type","")}</p>
 
-    <h4 style="color:red;">TOTAL DUE: £{payload.get("total_value",0):.2f}</h4>
+    <table border="1" cellpadding="6" cellspacing="0" 
+           style="border-collapse:collapse; font-size:14px; margin-left:0;">
+        <tr style="background:#f0f0f0;">
+            <th>Equipment</th><th>Qty</th><th>Price £</th>
+        </tr>
+        {"".join([f"<tr><td>{l['item']}</td><td>{l['qty']}</td><td>{l['total']:.2f}</td></tr>" 
+                  for l in json.loads(payload.get("equipment_json","[]"))])}
+    </table>
+
+    <p><b>Total for Parts:</b> £{payload.get("materials_value",0):.2f}<br/>
+    <b>Total for Labour:</b> £{payload.get("labour_value",0):.2f}<br/>
+    <b>Total for Hotel/Food:</b> £{payload.get("hotel_value",0):.2f}<br/>
+    <b>Total for Additional:</b> £{payload.get("additional_value",0):.2f}</p>
+
+    <p style="color:red; font-weight:bold;">TOTAL DUE: £{payload.get("total_value",0):.2f}</p>
+
+    <p>Our Hourly Rate is £90 per hour per engineer. Whilst we will endeavour to provide an
+    accurate estimate for the works requested the overall cost may differ from the original estimate given.</p>
     </div>
     """
 
+    # Show preview
     st.markdown(html_content, unsafe_allow_html=True)
 
-    if st.button("✅ Confirm & Send"):
-        # 1) Save to CSV
-        try:
-            save_submission_to_csv(payload, INVOICE_CSV_VIP)
-            st.success(f"Saved to {INVOICE_CSV_VIP}")
-        except Exception as e:
-            st.error(f"Could not save invoice to CSV: {e}")
+    st.markdown("---")
+    col1, col2 = st.columns(2)
 
-        # 2) Email
-        ok, msg = send_email(to_address=recipient, subject="VIP Invoice", html_content=html_content)
-        if ok: st.success("📧 " + msg)
-        else: st.error("❌ " + msg)
+    with col1:
+        if st.button("↩️ Back to Invoice", key="back_invoice_email2"):
+            st.session_state.active_page = "vip"
 
-        # 3) Teams notification
-        teams_msg = {
-            "@type": "MessageCard",
-            "@context": "http://schema.org/extensions",
-            "summary": "VIP Invoice",
-            "themeColor": "0076D7",
-            "title": f"VIP Invoice — {payload['lead_engineer']}",
-            "sections": [{
-                "facts": [
-                    {"name": "VR", "value": payload["vr_number"]},
-                    {"name": "Date", "value": payload["visit_date"]},
-                    {"name": "Type", "value": payload["job_type"]},
-                    {"name": "Labour", "value": f"£{payload['labour_value']:.2f}"},
-                    {"name": "Equipment", "value": f"£{payload['materials_value']:.2f}"},
-                    {"name": "Hotel/Food", "value": f"£{payload['hotel_cost']:.2f}"},
-                    {"name": "Additional", "value": f"£{payload['additional_cost']:.2f}"},
-                    {"name": "TOTAL", "value": f"£{payload['total_value']:.2f}"}
-                ]
-            }]
-        }
-        ok, msg = send_teams_card(teams_msg, TEAMS_WEBHOOK_URL_VIP)
-        if ok: st.info("📤 Sent to Teams")
-        else: st.warning(f"⚠️ Teams not sent: {msg}")
+    with col2:
+        if st.button("✅ Confirm & Send", key="confirm_send_email"):
+            # 1) Send Email
+            ok, msg = send_email(
+                to_address=recipient,
+                subject="VIP / Tier 2 Invoice",
+                html_content=html_content
+            )
+            if ok:
+                st.success("📧 " + msg)
+            else:
+                st.error("❌ " + msg)
+
+            # 2) Send Teams notification (like Business/Retail style)
+            teams_card = {
+                "@type": "MessageCard",
+                "@context": "http://schema.org/extensions",
+                "summary": "VIP Invoice",
+                "themeColor": "0076D7",
+                "title": f"📄 VIP Invoice — {payload.get('lead_engineer','')} — {payload.get('job_type','')}",
+                "sections": [{
+                    "facts": [
+                        {"name": "Date", "value": payload.get("visit_date","")},
+                        {"name": "Engineer", "value": payload.get("lead_engineer","")},
+                        {"name": "Type", "value": payload.get("job_type","")},
+                        {"name": "Labour", "value": f"£{payload.get('labour_value',0):.2f}"},
+                        {"name": "Equipment", "value": f"£{payload.get('materials_value',0):.2f}"},
+                        {"name": "Hotel/Food", "value": f"£{payload.get('hotel_value',0):.2f}"},
+                        {"name": "Additional", "value": f"£{payload.get('additional_value',0):.2f}"},
+                        {"name": "TOTAL", "value": f"£{payload.get('total_value',0):.2f}"}
+                    ]
+                }]
+            }
+
+            ok, msg = send_teams_card(teams_card, TEAMS_WEBHOOK_URL_VIP)
+            if ok:
+                st.info("📤 Teams notification sent.")
+            else:
+                st.warning(f"⚠️ Teams not sent: {msg}")
+
 
 
 
