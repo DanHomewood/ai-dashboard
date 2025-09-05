@@ -1,13 +1,11 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, time, date
 import pandas as pd
 from pathlib import Path
-import re
+import re, os, ssl, smtplib, json, requests
 from collections import OrderedDict
-import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import requests, json, os
 
 st.set_page_config(page_title="Sky Invoicing", page_icon="🧾", layout="centered")
 
@@ -63,91 +61,70 @@ def save_submission_to_csv(payload: dict, csv_path: Path) -> None:
         df.to_csv(csv_path, mode="a", header=False, index=False, encoding="utf-8")
 
 # ----------------------------
-# Teams card helper (unified)
-# ----------------------------
-# ----------------------------
-# Teams card helper (final unified version)
+# Unified Teams card helper
 # ----------------------------
 def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
-    """
-    Post a MessageCard to a Teams Incoming Webhook.
-    Handles Retail, Business, and VIP / Tier 2 in one consistent format.
-    """
-
     if not webhook_url:
         return False, "Webhook URL not set."
 
     def add_fact(name, value, facts):
-        """Helper: only add fact if value is valid."""
-        if value is None:
-            return
+        if value is None: return
         s = str(value).strip()
         if s and s.lower() not in ("nan", "none", ""):
             facts.append({"name": name, "value": s})
 
-    inv_type = (payload.get("invoice_type") or "Retail").strip()
-    is_vip = inv_type.lower().startswith("vip")
-    is_business = (inv_type.lower().startswith("business") 
-                   or inv_type in ["SLA Callout", "BAU/NON SLA work"])
-
-    # --- Title ---
-    title = f"📄 {inv_type} Invoice"
-
-    # --- Facts ---
-    facts = []
+    inv_type = (payload.get("invoice_type") or "").strip().lower()
+    facts, title = [], ""
 
     # ---------- VIP ----------
-    if is_vip:
-        title = f"📄 VIP / Tier 2 Invoice — {payload.get('lead_engineer','')} — {payload.get('vr_number','') or payload.get('job_type','')}"
-        facts = []
+    if inv_type.startswith("vip"):
+        title = f"📄 VIP / Tier 2 Invoice — {payload.get('lead_engineer','')} — {payload.get('vr_number','')}"
         add_fact("Date", payload.get("visit_date"), facts)
         add_fact("VR Number", payload.get("vr_number"), facts)
-
-        engineers = ", ".join([x for x in [
-            payload.get("lead_engineer", ""),
-            payload.get("second_engineer", ""),
-            payload.get("third_engineer", "")
+        engs = ", ".join([x for x in [
+            payload.get("lead_engineer",""),
+            payload.get("second_engineer",""),
+            payload.get("third_engineer","")
         ] if x.strip()])
-        add_fact("Engineer(s)", engineers, facts)
-
+        add_fact("Engineer(s)", engs, facts)
         add_fact("Job Type", payload.get("job_type"), facts)
-
-        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
-        add_fact("Equipment", f"£{float(payload.get('materials_value',0)):.2f}", facts)
-        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value',0)):.2f}", facts)
-        add_fact("Additional", f"£{float(payload.get('additional_value',0)):.2f}", facts)
-        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
-
+        add_fact("Labour", f"£{payload.get('labour_value',0):.2f}", facts)
+        add_fact("Equipment", f"£{payload.get('materials_value',0):.2f}", facts)
+        add_fact("Hotel/Food", f"£{payload.get('hotel_value',0):.2f}", facts)
+        add_fact("Additional", f"£{payload.get('additional_value',0):.2f}", facts)
+        add_fact("TOTAL", f"**£{payload.get('total_value',0):.2f}**", facts)
 
     # ---------- Business ----------
-    elif is_business:
+    elif inv_type.startswith("business") or inv_type in ["sla callout", "bau/non sla work"]:
+        title = f"📄 Business Invoice — {payload.get('engineer','')} — {payload.get('invoice_type','')}"
         add_fact("Date", payload.get("visit_date"), facts)
         add_fact("VR Number", payload.get("vr_number"), facts)
-        add_fact("Invoice Type", inv_type, facts)
+        add_fact("Invoice Type", payload.get("invoice_type"), facts)
         add_fact("Area", payload.get("area"), facts)
         add_fact("SLA Type", payload.get("sla_type"), facts)
         add_fact("Visit Type", payload.get("visit_type"), facts)
         add_fact("Engineers", payload.get("engineer_count"), facts)
-        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
-        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+        add_fact("Labour", f"£{payload.get('labour_value',0):.2f}", facts)
+        add_fact("TOTAL", f"**£{payload.get('total_value',0):.2f}**", facts)
 
     # ---------- Retail ----------
     else:
+        title = f"📄 Retail Invoice — {payload.get('engineer','')} — {payload.get('ticket','')}"
         add_fact("Date", payload.get("visit_date"), facts)
         add_fact("Ticket", payload.get("ticket"), facts)
         add_fact("Stakeholder", payload.get("stakeholder_type"), facts)
         add_fact("ASA Number", payload.get("asa_number"), facts)
-        add_fact("Store", f"{payload.get('store_name','')} ({payload.get('postcode','')})", facts)
-        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
-        add_fact("Hotel/Food", f"£{float(payload.get('hotel_food',0)):.2f}", facts)
-        add_fact("Additional", f"£{float(payload.get('additional',0)):.2f}", facts)
-        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+        store_str = f"{payload.get('store_name','N/A')} ({payload.get('postcode','N/A')})"
+        add_fact("Store", store_str, facts)
+        add_fact("Labour", f"£{payload.get('labour_value',0):.2f}", facts)
+        add_fact("Hotel/Food", f"£{payload.get('hotel_food',0):.2f}", facts)
+        add_fact("Additional", f"£{payload.get('additional',0):.2f}", facts)
+        add_fact("TOTAL", f"**£{payload.get('total_value',0):.2f}**", facts)
 
-    # --- Card ---
     card = {
         "@type": "MessageCard",
         "@context": "http://schema.org/extensions",
-        "summary": f"{inv_type} Invoice",
+        "summary": f"{inv_type.title()} Invoice",
         "themeColor": "0076D7",
         "title": title,
         "sections": [{
@@ -162,6 +139,7 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         return True, "Teams card sent"
     except Exception as e:
         return False, f"Teams error: {e}"
+
 
 
 
