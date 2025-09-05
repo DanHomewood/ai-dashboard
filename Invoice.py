@@ -87,37 +87,58 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
 
     inv_type = (payload.get("invoice_type") or "Retail").strip()
     is_vip = inv_type.lower().startswith("vip")
-    is_business = (inv_type.lower().startswith("business") or inv_type in ["SLA Callout", "BAU/NON SLA work"])
+    is_business = (inv_type.lower().startswith("business") 
+                   or inv_type in ["SLA Callout", "BAU/NON SLA work"])
 
     # --- Title ---
-    title = f"📄 {inv_type} Invoice — {payload.get('job_type','') or payload.get('vr_number','') or ''}"
+    title = f"📄 {inv_type} Invoice"
 
     # --- Facts ---
     facts = []
-    add_fact("Date", payload.get("visit_date"), facts)
-    add_fact("VR Number", payload.get("vr_number"), facts)
 
-    # Engineers (merge if multiple)
-    engineers = ", ".join([x for x in [
-        payload.get("lead_engineer", ""),
-        payload.get("second_engineer", ""),
-        payload.get("third_engineer", ""),
-        payload.get("engineer", "")
-    ] if x.strip()])
-    add_fact("Engineer(s)", engineers, facts)
-
-    add_fact("Job Type", payload.get("job_type"), facts)
-    add_fact("Stakeholder", payload.get("stakeholder_category") or payload.get("stakeholder_type"), facts)
-
-    # Costs
-    add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
-    add_fact("Equipment", f"£{float(payload.get('materials_value',0)):.2f}", facts)
-
+    # ---------- VIP ----------
     if is_vip:
-        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value', payload.get('hotel_food_total',0))):.2f}", facts)
-        add_fact("Additional", f"£{float(payload.get('additional_value', payload.get('additional_total',0))):.2f}", facts)
+        add_fact("Date", payload.get("visit_date"), facts)
+        add_fact("VR Number", payload.get("vr_number"), facts)
+        add_fact("Job Type", payload.get("job_type"), facts)
 
-    add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+        engineers = ", ".join([x for x in [
+            payload.get("lead_engineer", ""),
+            payload.get("second_engineer", ""),
+            payload.get("third_engineer", "")
+        ] if x.strip()])
+        add_fact("Engineer(s)", engineers, facts)
+
+        add_fact("Stakeholder", payload.get("stakeholder_category"), facts)
+        add_fact("Hotel/Food", f"£{float(payload.get('hotel_value',0)):.2f}", facts)
+        add_fact("Additional", f"£{float(payload.get('additional_value',0)):.2f}", facts)
+        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+        add_fact("Equipment", f"£{float(payload.get('materials_value',0)):.2f}", facts)
+        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+
+    # ---------- Business ----------
+    elif is_business:
+        add_fact("Date", payload.get("visit_date"), facts)
+        add_fact("VR Number", payload.get("vr_number"), facts)
+        add_fact("Invoice Type", inv_type, facts)
+        add_fact("Area", payload.get("area"), facts)
+        add_fact("SLA Type", payload.get("sla_type"), facts)
+        add_fact("Visit Type", payload.get("visit_type"), facts)
+        add_fact("Engineers", payload.get("engineer_count"), facts)
+        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
+
+    # ---------- Retail ----------
+    else:
+        add_fact("Date", payload.get("visit_date"), facts)
+        add_fact("Ticket", payload.get("ticket"), facts)
+        add_fact("Stakeholder", payload.get("stakeholder_type"), facts)
+        add_fact("ASA Number", payload.get("asa_number"), facts)
+        add_fact("Store", f"{payload.get('store_name','')} ({payload.get('postcode','')})", facts)
+        add_fact("Labour", f"£{float(payload.get('labour_value',0)):.2f}", facts)
+        add_fact("Hotel/Food", f"£{float(payload.get('hotel_food',0)):.2f}", facts)
+        add_fact("Additional", f"£{float(payload.get('additional',0)):.2f}", facts)
+        add_fact("TOTAL", f"**£{float(payload.get('total_value',0)):.2f}**", facts)
 
     # --- Card ---
     card = {
@@ -138,6 +159,7 @@ def send_teams_card(payload: dict, webhook_url: str) -> tuple[bool, str]:
         return True, "Teams card sent"
     except Exception as e:
         return False, f"Teams error: {e}"
+
 
 
 
