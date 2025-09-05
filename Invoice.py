@@ -1146,15 +1146,11 @@ if st.session_state.active_page == "vip_email_preview":
     # Input for recipient
     recipient = st.text_input("Recipient Email Address", "")
 
-    # Structured preview
-    st.markdown(f"""
+    # Build the HTML once and reuse
+    html_body = f"""
     <div style="font-family:Arial; border:1px solid #ddd; padding:20px; border-radius:8px;">
-
-    <!-- Centered logo, larger -->
-    <div style="text-align:center; margin-bottom:20px;">
-        <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/refs/heads/main/sky_vip_logo.png" width="400"/>
-    </div>
-
+    <img src="https://raw.githubusercontent.com/DanHomewood/ai-dashboard/main/sky_vip_logo.png" 
+         width="220" style="display:block; margin:0 auto;"/><br/><br/>
     <p>Hi Guest List Department,</p>
     <p>Please see below invoice:</p>
 
@@ -1163,9 +1159,8 @@ if st.session_state.active_page == "vip_email_preview":
     <b>Date Of Visit:</b> {payload.get("visit_date","")}<br/>
     <b>Visit Type:</b> {payload.get("job_type","")}</p>
 
-    <!-- Table aligned left -->
     <table border="1" cellpadding="6" cellspacing="0" 
-            style="border-collapse:collapse; font-size:14px; margin-left:0; margin-top:10px;">
+           style="border-collapse:collapse; font-size:14px; margin-left:0;">
         <tr style="background:#f0f0f0;">
             <th>Equipment</th><th>Qty</th><th>Price £</th>
         </tr>
@@ -1180,7 +1175,25 @@ if st.session_state.active_page == "vip_email_preview":
     <p>Our Hourly Rate is £90 per hour per engineer. Whilst we will endeavour to provide an
     accurate estimate for the works requested the overall cost may differ from the original estimate given.</p>
     </div>
-    """, unsafe_allow_html=True)
+    """
+
+    # Show preview in the app
+    st.markdown(html_body, unsafe_allow_html=True)
+
+    st.markdown("---")
+    c1, c2 = st.columns([1,1])
+    if c1.button("↩️ Back to Invoice"):
+        st.session_state.active_page = "vip"
+    if c2.button("✅ Confirm & Send"):
+        if not recipient:
+            st.error("Please enter a recipient email address first.")
+        else:
+            ok, msg = send_email(recipient, "Sky Invoice", html_body)
+            if ok:
+                st.success("✅ Email sent successfully.")
+            else:
+                st.error(f"❌ Failed to send email: {msg}")
+
 
 
 
