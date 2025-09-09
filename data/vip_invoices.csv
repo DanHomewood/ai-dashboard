@@ -1,0 +1,2 @@
+type,engineer,team,vr_number,visit_date,job_type,site_name,oracle_time,rate_per_hr,notes,include_vat,labour_value,equip_value,hotel_value,additional,total_value,additional_desc,equipment_lines
+vip,,,vr56,2025-09-09,ADMIN,,,0,,True,£585.00,£0.64,£0.00,£0.00,£702.77,,[]

@@ -1,0 +1,2108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sky Invoicing — Modern Shell</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+
+  <style>
+    .profile-chip{
+  position:absolute; top:16px; right:16px;
+  display:inline-flex; align-items:center; gap:10px;
+  padding:8px 12px; border-radius:999px;
+  background:var(--card); border:1px solid var(--stroke);
+  backdrop-filter: blur(8px); font-weight:600; box-shadow: var(--shadow);
+}
+.profile-chip .who{ opacity:.95; }
+.profile-chip .ghost{
+  padding:6px 10px; border-radius:999px; border:1px solid var(--stroke);
+  background:#0b1224; color:var(--txt); cursor:pointer;
+}
+.profile-chip .ghost:hover{ filter:brightness(1.1) }
+
+    :root {
+      --bg1: #0f172a; /* slate-900 */
+      --bg2: #0b1022; /* deeper */
+      --card: rgba(255,255,255,0.07);
+      --stroke: rgba(255,255,255,0.15);
+      --txt: #e5e7eb; /* gray-200 */
+      --muted: #cbd5e1; /* slate-300 */
+      --brand: #1e90ff;
+      --accent1: #8a2be2; /* retail */
+      --accent2: #2563eb; /* business */
+      --accent3: #f59e0b; /* vip */
+      --radius: 18px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0; color: var(--txt); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 10% -10%, #1e293b 0%, #0b1022 45%),
+                  radial-gradient(900px 900px at 100% 0%, #1d4ed8 0%, transparent 60%),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
+    }
+
+    .wrap {
+      min-height: 100%; display: grid; place-items: center; padding: 32px;
+    }
+
+    .app {
+      width: min(1100px, 95vw); padding: 28px; border-radius: calc(var(--radius) + 6px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      box-shadow: var(--shadow);
+      border: 1px solid var(--stroke);
+      backdrop-filter: blur(10px);
+      position: relative; overflow: hidden;
+    }
+
+    .glow {
+      position: absolute; inset: -20%; background: radial-gradient(600px 200px at 20% -10%, rgba(99,102,241,.25), transparent 60%),
+                                        radial-gradient(500px 300px at 120% 0%, rgba(59,130,246,.25), transparent 60%),
+                                        radial-gradient(1000px 400px at 50% 120%, rgba(34,197,94,.12), transparent 60%);
+      filter: blur(40px); pointer-events: none;
+    }
+
+    header { display:flex; align-items:center; gap:18px; padding: 6px 6px 20px 6px; }
+    .logo { width: 52px; height: 52px; border-radius: 14px; display:grid; place-items:center; background: #0ea5e9; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+    .logo svg { width:30px; height:30px }
+    .title h1 { margin:0; font-weight:800; letter-spacing:.3px; font-size: clamp(24px, 3vw, 36px); }
+    .title p { margin:.2rem 0 0; color: var(--muted) }
+
+    .bar { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap: wrap; }
+    .card { border: 1px solid var(--stroke); background: var(--card); border-radius: var(--radius); padding: 16px; }
+
+    .name { display:flex; gap:12px; align-items:center; }
+    select, button, input {
+      border-radius: 14px; border:1px solid var(--stroke); background:#0b1224; color: var(--txt);
+      padding: 12px 14px; font: inherit; outline: none;
+    }
+    select:focus, input:focus { border-color:#60a5fa; box-shadow: 0 0 0 4px rgba(37,99,235,.25) }
+
+    .cta-row { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-top: 18px; }
+    .cta { border: 1px solid var(--stroke); border-radius: calc(var(--radius) + 4px); padding: 20px; position: relative; overflow: hidden; transform-style: preserve-3d; transition: transform .15s ease; }
+    .cta:hover { transform: translateY(-2px) }
+    .cta h3 { margin: 0 0 6px; font-size: 20px; font-weight: 800 }
+    .cta p { margin: 0 0 12px; color: var(--muted) }
+    .cta .go { width: 100%; padding: 14px 16px; font-weight: 800; letter-spacing:.3px; }
+
+    .retail { background: linear-gradient(180deg, rgba(138,43,226,.18), rgba(138,43,226,.05)); }
+    .retail .go { background: linear-gradient(90deg, #8a2be2, #5e17eb); }
+    .business { background: linear-gradient(180deg, rgba(37,99,235,.18), rgba(37,99,235,.05)); }
+    .business .go { background: linear-gradient(90deg, #0ea5e9, #2563eb); }
+    .vip { background: linear-gradient(180deg, rgba(245,158,11,.20), rgba(245,158,11,.05)); }
+    .vip .go { background: transparent; border:2px solid #e5e7eb }
+
+    .views { margin-top: 20px }
+    .view { display:none }
+    .view.active { display:block }
+
+    .footer { margin-top: 28px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size: 14px; }
+    .link { color:#93c5fd; text-decoration: none }
+
+    /* Small screens */
+    @media (max-width: 900px) {
+      .cta-row { grid-template-columns: 1fr }
+    }
+
+    /* Subtle animated accent under header */
+    .underline {
+      position: relative; height: 3px; background: linear-gradient(90deg, transparent, rgba(99,102,241,.6), transparent);
+      border-radius: 99px; overflow: hidden; margin-top: 8px;
+    }
+    .underline::before { content:""; position:absolute; inset:0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(59,130,246,1), transparent); animation: slide 3s linear infinite; }
+    @keyframes slide { to { transform: translateX(100%) } }
+
+    .pill {
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--stroke); font-weight:600; font-size:12px;
+    }
+      .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-weight:700;font-size:12px;opacity:.9}
+  .field input,.field select{width:100%}
+  .money{text-align:right}
+  .totals .row{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+  .numbers{display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center;min-width:260px}
+  .numbers div{display:contents}
+  .numbers span{opacity:.8}
+  .numbers strong{font-size:20px}
+  .numbers .grand strong{font-size:26px}
+  .numbers .sep{grid-column:1/-1;height:1px;background:var(--stroke);margin:6px 0}
+  .actions{display:flex;gap:12px;margin-top:16px}
+  .ghost{background:transparent;border:2px solid var(--stroke)}
+  .switch{display:flex;align-items:center;gap:8px;margin-top:8px}
+
+  /* --- Intro / Hero --- */
+.hero {
+  display:grid; place-items:center; text-align:center; gap:18px;
+  padding:48px 18px 36px;
+}
+.hero-logo { width: min(520px, 70vw); height:auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+.hero h1 { margin:6px 0 0; font-weight:800; font-size: clamp(26px, 5vw, 42px); letter-spacing:.3px; }
+.hero p { margin:0; color: var(--muted); font-size: clamp(14px, 2.4vw, 16px); line-height:1.45; }
+
+.hero-card {
+  display:inline-flex; align-items:center; gap:12px; margin-top:10px;
+  padding:14px; border-radius: var(--radius); background: var(--card);
+  border:1px solid var(--stroke); backdrop-filter: blur(8px);
+}
+.hero-card select, .hero-card button { height:44px; font-weight:600; }
+.hero-card .enter { padding:0 18px; }
+
+.hint { color:var(--muted); font-size:12px; opacity:.8; }
+/* ===== Delight & Motion ===== */
+
+/* Subtle page reveal for every view */
+.view{opacity:.0; transform:translateY(8px); transition:opacity .28s ease, transform .28s ease}
+.view.active{opacity:1; transform:none}
+
+/* Floating logo + gentle hover */
+.brandbar img{
+  animation: floatY 6s ease-in-out infinite;
+  transition: transform .25s ease, filter .25s ease;
+}
+.brandbar img:hover{ transform: translateY(-3px) scale(1.02); filter: drop-shadow(0 16px 40px rgba(59,130,246,.35)) }
+@keyframes floatY{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+/* Cards – glow + 3D tilt support */
+.cta{
+  background-clip: padding-box;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+.cta::before{
+  content:""; position:absolute; inset:-1px;
+  border-radius:inherit; pointer-events:none;
+  background: radial-gradient(350px 150px at var(--gx,50%) var(--gy,0%),
+              rgba(255,255,255,.12), transparent 45%);
+  opacity:0; transition:opacity .2s ease;
+}
+.cta:hover::before{ opacity:1 }
+
+/* Buttons – lively gradient, shine + magnetic hover */
+.go{
+  position:relative; overflow:hidden; color:white; border:none;
+  background: linear-gradient(90deg,#7c3aed,#2563eb);
+  box-shadow: 0 10px 24px rgba(37,99,235,.35);
+  transform: translateZ(0); transition: transform .12s ease, filter .2s ease, box-shadow .2s ease;
+}
+.go:hover{ transform: translateY(-2px) scale(1.02); filter:brightness(1.05) }
+.go:active{ transform: translateY(0) scale(.99) }
+
+/* moving light that follows the cursor (JS sets --mx/--my) */
+.go::after{
+  content:""; position:absolute; width:260px; height:260px; pointer-events:none;
+  left:calc(var(--mx,50%) - 130px); top:calc(var(--my,50%) - 130px);
+  background: radial-gradient(closest-side, rgba(255,255,255,.35), transparent 55%);
+  opacity:.0; transform:translateZ(0); transition:opacity .15s ease;
+  mix-blend-mode: soft-light;
+}
+.go:hover::after{ opacity:.35 }
+
+/* Chip hover polish */
+.profile-chip:hover{ filter:brightness(1.07) }
+
+/* Inputs – crisp focus ring already exists; add hover */
+.card input:hover, .card select:hover{ filter:brightness(1.05) }
+
+/* Small pulse when Home cards animate in */
+#home.animate-in .cta{ animation: rise .38s ease both }
+#home.animate-in .cta:nth-child(2){ animation-delay:.08s }
+#home.animate-in .cta:nth-child(3){ animation-delay:.16s }
+@keyframes rise{ from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+
+/* --- View transitions --- */
+.view { display:none; }
+.view.active { display:block; }
+#home.animate-in .cta { animation: rise .38s ease both; }
+#home.animate-in .cta:nth-child(2) { animation-delay: 80ms; }
+#home.animate-in .cta:nth-child(3) { animation-delay: 160ms; }
+
+@keyframes rise {
+  from { opacity:0; transform: translateY(10px) scale(.98); }
+  to   { opacity:1; transform: translateY(0)    scale(1); }
+}
+/* Global brand bar (shows on every page) */
+.brandbar{
+  display:grid; place-items:center;
+  margin: 10px 0 16px;
+}
+.brandbar img{
+  height:auto;
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,.35));
+  transition: width .25s ease, opacity .25s ease, transform .25s ease;
+  width: min(440px, 56vw); /* default size */
+}
+
+/* Make it larger on Intro / Home, compact on invoice pages */
+body[data-route="intro"]  .brandbar img{ width: min(620px, 82vw); }
+body[data-route="home"]   .brandbar img{ width: min(520px, 70vw); }
+body[data-route="retail"] .brandbar img,
+body[data-route="business"] .brandbar img,
+body[data-route="vip"]    .brandbar img{ width: min(440px, 56vw); }
+body[data-route="project"] .brandbar{
+  margin-top: 66px;
+}
+
+/* global brand bar already added earlier */
+.brandbar{ display:grid; place-items:center; margin: 10px 0 16px; }
+.brandbar img{ width:min(440px,56vw); height:auto; filter:drop-shadow(0 10px 30px rgba(0,0,0,.35)); }
+
+/* bigger on intro; chip is hidden there so no extra gap needed */
+body[data-route="intro"]  .brandbar img{ width:min(620px,82vw); }
+body[data-route="home"]   .brandbar img{ width:min(520px,70vw); }
+
+/* leave vertical room for the top-right chip so it doesn't overlap the logo */
+body[data-route="home"] .brandbar,
+body[data-route="retail"] .brandbar,
+body[data-route="business"] .brandbar,
+body[data-route="vip"] .brandbar,
+body[data-route="nc"] .brandbar{      /* ← add this line */
+  margin-top: 66px;
+}
+.project{
+  background: linear-gradient(180deg, rgba(20,184,166,.20), rgba(20,184,166,.05));
+}
+.project .go{
+  background: linear-gradient(90deg, #14b8a6, #06b6d4);
+  color:#fff;
+}
+
+
+/* chip stays top-right above content */
+.profile-chip{ position:absolute; top:16px; right:16px; z-index:10; }
+
+
+
+/* Slightly subtler on invoice pages */
+body[data-route="retail"] #fx-laser,
+body[data-route="business"] #fx-laser,
+body[data-route="vip"] #fx-laser{ opacity:.65 }
+
+/* Toggle + a11y */
+body.laser-off #fx-laser{ display:none }
+@media (prefers-reduced-motion: reduce){ #fx-laser{ display:none } }
+
+
+/* Slightly subtler on invoice pages so it doesn't overpower forms */
+body[data-route="retail"] #fx-laser,
+body[data-route="business"] #fx-laser,
+body[data-route="vip"] #fx-laser{ opacity:.65 }
+
+/* Toggle class to disable (JS adds 'laser-off' on <body>) */
+body.laser-off #fx-laser{ display:none }
+
+/* Respect user settings */
+@media (prefers-reduced-motion: reduce){
+  #fx-laser{ display:none }
+}
+/* Keep the hello pill clear of the logo on Project view */
+#project .brand, 
+#project .logo,
+#project .brand-logo {
+  margin-top: 64px !important;   /* give the pill some headroom */
+}
+
+/* (safety) make sure the pill always floats above, but doesn't block the logo */
+.hello-pill { 
+  position: absolute; 
+  top: 14px; 
+  right: 14px; 
+  z-index: 20; 
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="app">
+      <div class="glow" aria-hidden="true"></div>
+      <div id="profileChip" class="profile-chip" style="display:none">
+  <span id="whoChip" class="who"></span>
+  <button id="changeEngineer" class="ghost">Change</button>
+</div>
+
+<div class="brandbar">
+  <img src="Sky%20Engineers.png" alt="Sky Engineers" />
+</div>
+
+<!-- Neon laser overlay (pointer-events: none) -->
+<div id="fx-laser" aria-hidden="true">
+  <canvas id="fx-laser-canvas"></canvas>
+</div>
+
+
+
+
+      <div class="views">
+        <!-- INTRO -->
+<section class="view active" id="intro">
+  <div class="hero">
+    
+    <h1>Sky Invoices</h1>
+    <p>Pick your name, then choose the invoice type.<br/>Fast, polished, modern.</p>
+
+    <div class="hero-card">
+      <span class="pill">Engineer</span>
+      <select id="engineer">
+        <option value="">— Select —</option>
+        <!-- options will be injected from engineers.json -->
+      </select>
+      <button id="enter" class="enter">Enter</button>
+    </div>
+
+    <div class="hint">Tip: we’ll remember your choice on this device.</div>
+  </div>
+</section>
+
+        <!-- HOME -->
+        <section class="view" id="home">
+        <div class="home-logo">
+          
+        </div>
+          <div class="cta-row">
+            <div class="cta retail">
+              <h3>Sky Retail</h3>
+              <p>Store lookups, Oracle time, and receipts. Polished for retail workflows.</p>
+              <button class="go" data-target="retail">→ sky retail</button>
+            </div>
+            <div class="cta business">
+              <h3>Sky Business</h3>
+              <p>Area/SLA modes with live pricing. Built for speed and clarity.</p>
+              <button class="go" data-target="business">→ sky business</button>
+            </div>
+            <div class="cta vip">
+              <h3>Sky VIP / Tier 2</h3>
+              <p>Multi‑engineer time, equipment catalogue, and premium email preview.</p>
+              <button class="go" data-target="vip">→ sky vip team</button>
+            </div>
+            <div class="cta nc">
+            <h3>Non-chargeable</h3>
+            <p>Overhead time (training, admin, meetings…)</p>
+            <button class="go" data-target="nc">→ non-chargeable</button>
+          </div>
+          <!-- PROJECT -->
+          <div class="cta project">
+            <h3>Project</h3>
+            <p>Install details, site info, time on site, & notes.</p>
+            <button class="go" data-target="project">→ project</button>
+          </div>
+
+          </div>
+        </section>
+
+        <!-- RETAIL (placeholder for Step 2) -->
+        <section class="view" id="retail">
+          <div class="card" style="margin-bottom:12px;">
+            <div class="pill">Retail Invoice</div>
+            <h2 style="margin:.5rem 0 0">Store details</h2>
+            <div class="grid">
+              <div class="field">
+              <label>ASA Number</label>
+              <input id="asa" list="asaList" placeholder="type to search (e.g. 11164-0009)" />
+              <datalist id="asaList"></datalist>
+              </div>
+              <div class="field">
+                <label>Postcode</label>
+                <input id="postcode" placeholder="auto-filled" disabled />
+              </div>
+              <div class="field">
+                <label>Stakeholder</label>
+                <input id="stakeholder" placeholder="auto-filled" disabled />
+              </div>
+              <div class="field">
+                <label>Store Name</label>
+                <input id="store" placeholder="e.g. Glasgow Silverburn" />
+              </div>
+              <div class="field">
+                <label>Receipt/Ref</label>
+                <input id="receipt" placeholder="optional" />
+              </div>
+              <div class="field">
+                <label>Date</label>
+                <input id="date" type="date" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="pill">Oracle time</div>
+            <h2 style="margin:.5rem 0 0">Labour</h2>
+            <div class="grid">
+              <div class="field">
+                <label>Total Time (HH:MM)</label>
+                <input id="time_hhmm" placeholder="e.g. 03:30" />
+              </div>
+              <div class="field">
+                <label>Rate (£/hr)</label>
+                <input id="rate" class="money" type="number" step="1" min="0" value="90" />
+              </div>
+              <div class="field">
+                <label>Notes</label>
+                <input id="notes" placeholder="optional (what was done)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <div class="pill">Expenses</div>
+            <h2 style="margin:.5rem 0 0">Add receipts</h2>
+            <div class="grid">
+              <div class="field"><label>Hotel (£)</label><input id="hotel" class="money" type="number" step="0.01" min="0" value="0" /></div>
+              <div class="field"><label>Food (£)</label><input id="food" class="money" type="number" step="0.01" min="0" value="0" /></div>
+              <div class="field"><label>Travel (£)</label><input id="travel" class="money" type="number" step="0.01" min="0" value="0" /></div>
+              <div class="field"><label>Other (£)</label><input id="other" class="money" type="number" step="0.01" min="0" value="0" /></div>
+            </div>
+          </div>
+
+          <div class="card totals">
+            <div class="row">
+              <div>
+                <div class="pill">Live totals</div>
+                <h2 style="margin:.5rem 0 0">Summary</h2>
+                <p class="muted">Figures update as you type. Toggle VAT if needed.</p>
+                <label class="switch"><input id="vatToggle" type="checkbox" checked /><span>Include VAT (20%)</span></label>
+              </div>
+              <div class="numbers">
+                <div><span>Labour</span><strong id="labourOut">£0.00</strong></div>
+                <div><span>Expenses</span><strong id="expenseOut">£0.00</strong></div>
+                <div class="sep"></div>
+                <div><span>Sub-total</span><strong id="subtotalOut">£0.00</strong></div>
+                <div><span>VAT</span><strong id="vatOut">£0.00</strong></div>
+                <div class="grand"><span>Total</span><strong id="totalOut">£0.00</strong></div>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="go" id="previewRetail">Preview & Continue →</button>
+              <button class="go" id="downloadRetail">⬇ Download CSV</button>
+              <button class="go ghost" onclick="nav('home')">↩ Back to Home</button>
+            </div>
+          </div>
+        </section>
+
+
+<!-- BUSINESS -->
+<section class="view" id="business">
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">Business Invoice</div>
+    <h2 style="margin:.5rem 0 0">Choose type</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Invoice Type</label>
+        <select id="biz_type">
+          <option>Business Cover</option>
+          <option>SLA Callout</option>
+          <option>BAU/NON SLA work</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Visit Date</label>
+        <input id="biz_date" type="date" />
+      </div>
+      <div class="field">
+        <label>VR Number</label>
+        <input id="biz_vr" placeholder="optional" />
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <input id="biz_notes" placeholder="optional" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Business Cover controls -->
+  <div class="card" id="biz_cover" style="margin-bottom:12px;">
+    <div class="pill">Business Cover</div>
+    <h2 style="margin:.5rem 0 0">Area & Time</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Area</label>
+        <select id="biz_area">
+          <option>North</option>
+          <option>Central</option>
+          <option>South</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Oracle Timing (HH:MM)</label>
+        <input id="biz_time_cover" placeholder="e.g. 02:30" />
+      </div>
+      <div class="field">
+        <label>Rate (£/hr)</label>
+        <input id="biz_rate_cover" type="number" step="1" min="0" value="90" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLA Callout controls -->
+  <div class="card" id="biz_sla" style="margin-bottom:12px; display:none;">
+    <div class="pill">SLA Callout</div>
+    <h2 style="margin:.5rem 0 0">Pick SLA</h2>
+    <div class="grid">
+      <div class="field">
+        <label>SLA Type</label>
+        <select id="biz_sla_type">
+          <option>2HR</option>
+          <option>4HR</option>
+          <option>8HR</option>
+          <option>Next Day</option>
+          <option>5 Day</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Venue Name</label>
+        <input id="biz_venue_sla" placeholder="optional" />
+      </div>
+    </div>
+    <p class="muted" style="margin-top:8px;">Fixed price only; time not billed.</p>
+  </div>
+
+  <!-- BAU / NON SLA controls -->
+  <div class="card" id="biz_bau" style="margin-bottom:12px; display:none;">
+    <div class="pill">BAU/NON SLA work</div>
+    <h2 style="margin:.5rem 0 0">Visit & Labour</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Visit Type</label>
+        <input id="biz_visit_type" placeholder="e.g., Maintenance / Install / Survey" />
+      </div>
+      <div class="field">
+        <label>Number of Engineers</label>
+        <input id="biz_eng_count" type="number" min="1" step="1" value="1" />
+      </div>
+      <div class="field">
+        <label>Oracle Timing (HH:MM)</label>
+        <input id="biz_time_bau" placeholder="e.g. 03:00" />
+      </div>
+      <div class="field">
+        <label>Rate (£/hr)</label>
+        <input id="biz_rate_bau" type="number" step="1" min="0" value="90" />
+      </div>
+      <div class="field">
+        <label>Venue Name</label>
+        <input id="biz_venue_bau" placeholder="optional" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card totals">
+    <div class="row">
+      <div>
+        <div class="pill">Live totals</div>
+        <h2 style="margin:.5rem 0 0">Summary</h2>
+        <p class="muted">Matches your Streamlit logic. VAT toggle applies to the final figure.</p>
+        <label class="switch"><input id="biz_vat" type="checkbox" checked /><span>Include VAT (20%)</span></label>
+      </div>
+      <div class="numbers">
+        <div><span>Labour</span><strong id="biz_labour_out">£0.00</strong></div>
+        <div class="sep"></div>
+        <div><span>Sub-total</span><strong id="biz_subtotal_out">£0.00</strong></div>
+        <div><span>VAT</span><strong id="biz_vat_out">£0.00</strong></div>
+        <div class="grand"><span>Total</span><strong id="biz_total_out">£0.00</strong></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="go" id="biz_preview">Preview & Continue →</button>
+       postInvoice('business', data)
+      <button class="go ghost" onclick="nav('home')">↩ Back to Home</button>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- VIP / Tier 2 -->
+<section class="view" id="vip">
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">VIP / Tier 2</div>
+    <h2 style="margin:.5rem 0 0">Base details</h2>
+    <div class="grid">
+      <div class="field">
+        <label>VR Number / Reference</label>
+        <input id="vip_vr" placeholder="e.g. VR-12345" />
+      </div>
+      <div class="field">
+        <label>Date of Visit</label>
+        <input id="vip_date" type="date" />
+      </div>
+      <div class="field">
+        <label>Job Type</label>
+        <select id="vip_job">
+          <option>ADMIN</option><option>CONCIERGE VISIT</option><option>SGL SITE SURVEY</option>
+          <option>SKY GLASS  SITE SURVEY</option><option>SKY GLASS INSTALL</option><option>SKY GLASS SERVICE</option>
+          <option>SKY GLASS DE-INSTALL </option><option>INSTALL Q</option><option>INSTALL HD </option>
+          <option>SERVICE Q</option><option>SERVICE HD</option><option>MOVING HOME Q</option><option>MOVING HOME HD</option>
+          <option>BROADBAND</option><option>WIFI</option><option>COMMERCIAL INSTALL</option><option>COMMERCIAL SERVICE</option>
+          <option>COMMERCIAL DE-INSTALL </option><option>COMMERCIAL SITE SURVEY</option>
+          <option>EVENT INSTALL</option><option>EVENT SERVICE CALL</option><option>EVENT SITE SURVEY</option><option>EVENT  DEINSTALL</option>
+          <option>SRS SITE SURVEY</option><option>SRS INSTALL</option><option>SRS SERVICE </option>
+          <option>SRS ENGAGE STAND UPGRADE </option><option>SRS STAND RELOCATION</option><option>SRS DE-INSTALL</option>
+          <option>SGL TRIPLE 19S INSTALL Q </option><option>SGL TRIPLE 19S SERVICE Q</option>
+          <option>SGL TRIPLE 19S INSTALL HD</option><option>SGL TRIPLE 19S SERVICE HD</option>
+          <option>FIELD ESCALATIONS</option><option>NO VISIT DATA</option><option>VIP TRAINING</option>
+          <option>TRAVELLING TO VISIT LOCATION</option>
+          <option>SKY Q MINI BOX (£49 INC VAT)</option><option>SKY Q MINI BOX (£99 INC VAT)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Pricing Mode</label>
+        <select id="vip_mode">
+          <option>Time – per engineer</option>
+          <option>Fixed – event/survey</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">Engineers</div>
+    <h2 style="margin:.5rem 0 0">Personnel</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Lead Engineer</label>
+        <input id="vip_lead" placeholder="Lead" />
+      </div>
+      <div class="field">
+        <label>2nd Engineer (optional)</label>
+        <input id="vip_second" placeholder="Second" />
+      </div>
+      <div class="field">
+        <label>3rd Engineer (optional)</label>
+        <input id="vip_third" placeholder="Third" />
+      </div>
+      <div class="field">
+        <label>VAT / Uplift</label>
+        <label class="switch"><input id="vip_vat" type="checkbox" checked /><span>Include VAT (20%)</span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIME MODE -->
+  <div class="card" id="vip_time_block" style="margin-bottom:12px;">
+    <div class="pill">Time charging</div>
+    <h2 style="margin:.5rem 0 0">First 90 mins £90, then £90/hr</h2>
+    <div class="grid">
+      <div class="field"><label>Lead — On-site (HH:MM)</label><input id="t_lead_site" placeholder="e.g. 01:15" /></div>
+      <div class="field"><label>Lead — Travel (HH:MM)</label><input id="t_lead_travel" placeholder="e.g. 00:45" /></div>
+
+      <div class="field"><label>2nd — On-site</label><input id="t_second_site" placeholder="00:00" /></div>
+      <div class="field"><label>2nd — Travel</label><input id="t_second_travel" placeholder="00:00" /></div>
+
+      <div class="field"><label>3rd — On-site</label><input id="t_third_site" placeholder="00:00" /></div>
+      <div class="field"><label>3rd — Travel</label><input id="t_third_travel" placeholder="00:00" /></div>
+    </div>
+  </div>
+
+  <!-- FIXED MODE -->
+  <div class="card" id="vip_fixed_block" style="margin-bottom:12px; display:none;">
+    <div class="pill">Fixed price</div>
+    <h2 style="margin:.5rem 0 0">Event / Survey</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Pick one</label>
+        <select id="vip_fixed_pick">
+          <option>Event set cost (£1,600)</option>
+          <option>Site survey (£160)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQUIPMENT -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">Equipment & Materials</div>
+    <h2 style="margin:.5rem 0 0">Catalogue</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Add item</label>
+        <select id="vip_eq_pick"></select>
+      </div>
+      <div class="field">
+        <label>Qty</label>
+        <input id="vip_eq_qty" type="number" min="1" step="1" value="1" />
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="go" id="vip_eq_add">Add item</button>
+      </div>
+    </div>
+
+    <div id="vip_eq_list" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- HOTEL / ADDITIONAL -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">Extras</div>
+    <h2 style="margin:.5rem 0 0">Hotel / Food / Additional</h2>
+    <div class="grid">
+      <div class="field"><label>Lead — Hotel/Food (£)</label><input id="x_lead_hotel" type="number" step="0.01" min="0" value="0" /></div>
+      <div class="field"><label>Lead — Additional (£)</label><input id="x_lead_add"   type="number" step="0.01" min="0" value="0" /></div>
+
+      <div class="field"><label>2nd — Hotel/Food (£)</label><input id="x_second_hotel" type="number" step="0.01" min="0" value="0" /></div>
+      <div class="field"><label>2nd — Additional (£)</label><input id="x_second_add"   type="number" step="0.01" min="0" value="0" /></div>
+
+      <div class="field"><label>3rd — Hotel/Food (£)</label><input id="x_third_hotel" type="number" step="0.01" min="0" value="0" /></div>
+      <div class="field"><label>3rd — Additional (£)</label><input id="x_third_add"   type="number" step="0.01" min="0" value="0" /></div>
+    </div>
+  </div>
+
+  <!-- TOTALS -->
+  <div class="card totals">
+    <div class="row">
+      <div>
+        <div class="pill">Live totals</div>
+        <h2 style="margin:.5rem 0 0">Summary</h2>
+        <p class="muted">Matches your Streamlit math.</p>
+      </div>
+      <div class="numbers">
+        <div><span>Labour</span><strong id="vip_labour_out">£0.00</strong></div>
+        <div><span>Equipment</span><strong id="vip_equip_out">£0.00</strong></div>
+        <div><span>Hotel/Food</span><strong id="vip_hotel_out">£0.00</strong></div>
+        <div><span>Additional</span><strong id="vip_add_out">£0.00</strong></div>
+        <div class="sep"></div>
+        <div><span>Sub-total</span><strong id="vip_sub_out">£0.00</strong></div>
+        <div><span>VAT</span><strong id="vip_vat_out2">£0.00</strong></div>
+        <div class="grand"><span>Total</span><strong id="vip_total_out">£0.00</strong></div>
+      </div>
+    </div>
+    <div class="actions">
+      postInvoice('vip', data)
+      <button class="go" id="vip_preview">Preview & Continue →</button>
+      <button class="go ghost" onclick="nav('home')">↩ Back to Home</button>
+    </div>
+  </div>
+</section>
+<!-- ===================== NON-CHARGEABLE ===================== -->
+<section class="view" id="nc">
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">Non-chargeable</div>
+    <h2 style="margin:.5rem 0 0">Record activity</h2>
+
+    <!-- ✅ fire calcNC() whenever any field changes -->
+    <div class="grid" oninput="calcNC()" onchange="calcNC()">
+      <div class="field">
+        <label>Activity</label>
+        <select id="nc_activity"></select>
+      </div>
+
+      <div class="field">
+        <label>Visit Date</label>
+        <input type="date" id="nc_date" />
+      </div>
+
+      <div class="field">
+        <label>Oracle Timing (HH:MM)</label>
+        <input id="nc_time" placeholder="e.g. 02:25" />
+      </div>
+
+      <div class="field">
+        <label>Rate (£/hr)</label>
+        <input id="nc_rate" class="money" type="number" step="1" min="0" value="90" />
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label>Notes (optional)</label>
+        <input id="nc_notes" placeholder="optional details" />
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label class="switch">
+          <input id="nc_vat" type="checkbox" checked />
+          <span>Include VAT (20%)</span>
+        </label>
+      </div>
+    </div> <!-- /grid -->
+  </div>
+
+  <!-- TOTALS -->
+  <div class="card totals">
+    <div class="row">
+      <div>
+        <div class="pill">Live totals</div>
+        <h2 style="margin:.5rem 0 0">Summary</h2>
+        <p class="muted">Time shows as HH:MM and decimal.</p>
+      </div>
+      <div class="numbers">
+        <div><span>Recorded time</span>
+          <strong><span id="nc_hhmm">00:00</span> (<span id="nc_hours">0.00</span> hrs)</strong>
+        </div>
+        <div><span>Labour</span><strong id="nc_labour_out">£0.00</strong></div>
+        <div class="sep"></div>
+        <div><span>Sub-total</span><strong id="nc_sub_out">£0.00</strong></div>
+        <div><span>VAT</span><strong id="nc_vat_out">£0.00</strong></div>
+        <div class="grand"><span>Total</span><strong id="nc_total_out">£0.00</strong></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="go ghost" onclick="nav('home')">↩ Back to Home</button>
+      <button class="go" style="opacity:.7" disabled>Preview & Continue →</button>
+    </div>
+  </div>
+</section>
+
+
+<section class="view" id="project">
+  <div class="card" style="margin-bottom:12px;">
+    <div class="pill">Project</div>
+    <h2 style="margin:.5rem 0 0">Project install</h2>
+
+    <div class="grid" oninput="calcProject()" onchange="calcProject()">
+
+      <div class="field">
+        <label>Choose Stakeholder</label>
+        <select id="proj_stake">
+          <option>Project</option>
+          <option>Sky Retail</option>
+          <option>Sky Business</option>
+          <option>VIP / Tier 2</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Install Date</label>
+        <input type="date" id="proj_date">
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label>Engineer Name(s)</label>
+        <input id="proj_engineers" placeholder="Engineer names" />
+      </div>
+
+      <div class="field">
+        <label>Venue Name</label>
+        <input id="proj_venue" placeholder="Venue / Site name" />
+      </div>
+
+      <div class="field">
+        <label>Venue Postcode</label>
+        <input id="proj_postcode" placeholder="e.g. EC1Y 4TW" />
+      </div>
+
+      <div class="field">
+        <label>Time on Site (HH:MM)</label>
+        <input id="proj_time" placeholder="e.g. 02:30" />
+      </div>
+
+      <div class="field">
+        <label>Rate (£/hr)</label>
+        <input id="proj_rate" class="money" type="number" min="0" step="1" value="90" />
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label>Equipment Purchased</label>
+        <input id="proj_equipment" placeholder="e.g. HDMI cables, wall mount…" />
+      </div>
+
+      <div class="field">
+        <label>Hotel Required</label>
+        <select id="proj_hotel_req">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label>Any additional info</label>
+        <input id="proj_notes" placeholder="Optional notes for this project" />
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label class="switch">
+          <input id="proj_vat" type="checkbox" checked />
+          <span>Include VAT (20%)</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Totals -->
+  <div class="card totals">
+    <div class="row">
+      <div>
+        <div class="pill">Live totals</div>
+        <h2 style="margin:.5rem 0 0">Summary</h2>
+        <p class="muted">Labour only. We can add equipment/hotel costs later if needed.</p>
+      </div>
+      <div class="numbers">
+        <div><span>Recorded time</span>
+          <strong>
+            <span id="proj_hhmm">00:00</span>
+            <span id="proj_hm" class="muted"> (0 h 00 m)</span>
+            <span class="muted"> • </span>
+            <span id="proj_hours">0.00</span><span class="muted"> h</span>
+          </strong>
+        </div>
+
+        <div><span>Labour</span><strong id="proj_labour_out">£0.00</strong></div>
+        <div class="sep"></div>
+        <div><span>Sub-total</span><strong id="proj_sub_out">£0.00</strong></div>
+        <div><span>VAT</span><strong id="proj_vat_out">£0.00</strong></div>
+        <div class="grand"><span>Total</span><strong id="proj_total_out">£0.00</strong></div>
+      </div>
+    </div>
+
+    <div class="actions">
+<button class="go ghost" onclick="nav('home')">↩ Back to Home</button>
+<button class="go" id="proj_submit">Preview & Continue →</button>
+
+    </div>
+  </div>
+</section>
+
+
+
+  <script>
+// helper(s) reused elsewhere
+
+
+
+
+const setTxt = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+
+function parseHHMM(txt){
+  const m = /^\s*(\d{1,2}):([0-5]\d)\s*$/.exec(txt||'');
+  if(!m) return {h:0,m:0,hours:0};
+  const h = parseInt(m[1],10), min = parseInt(m[2],10);
+  return {h, m:min, hours: h + min/60};
+}
+
+function calcProject(){
+  const time = document.getElementById('proj_time')?.value || '';
+  const rate = parseFloat(document.getElementById('proj_rate')?.value) || 90;
+  const vatOn = document.getElementById('proj_vat')?.checked;
+
+  const {h, m, hours} = parseHHMM(time);
+  const labour = hours * rate;
+  const sub    = labour;
+  const vat    = vatOn ? sub * 0.20 : 0;
+  const total  = sub + vat;
+
+  setTxt('proj_hhmm', time || '00:00');
+  setTxt('proj_hm',   ` (${h} h ${String(m).padStart(2,'0')} m)`);
+  setTxt('proj_hours',(Math.round(hours*100)/100).toFixed(2));
+
+  setTxt('proj_labour_out', toGBP(labour));
+  setTxt('proj_sub_out',    toGBP(sub));
+  setTxt('proj_vat_out',    toGBP(vat));
+  setTxt('proj_total_out',  toGBP(total));
+}
+
+
+
+// optional: wire "Preview" (starter – you can connect to your CSV / email later)
+document.getElementById('proj_preview')?.addEventListener('click', ()=>{
+  alert('Preview coming next: export to CSV/email/Teams, like your other flows.');
+});
+
+    
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    let engineer = localStorage.getItem('engineer') || '';
+    const engineerSelect = $('#engineer');
+    const who = $('#who');
+    const hello = $('#hello');
+
+// === Engineers loader (builds dropdown + team map) ===
+let engineerData = [];
+let engineerTeamMap = new Map();
+
+function buildEngineerDropdown() {
+  const sel = document.getElementById('engineer');
+  if (!sel) return;
+
+  // map: name -> team
+  engineerTeamMap = new Map(
+    (engineerData || []).map(r => [r.name, r.team || ""])
+  );
+
+  // build <option>s
+  sel.innerHTML =
+    `<option value="">— Select —</option>` +
+    engineerData.map(r => `<option value="${r.name}">${r.name}</option>`).join("");
+
+  // preselect previously saved name
+  const saved = localStorage.getItem('engineer') || "";
+  if (saved) sel.value = saved;
+
+  // whenever user changes
+  sel.onchange = (e) => setEngineer(e.target.value || "");
+}
+
+async function loadEngineers() {
+  try {
+    const res = await fetch('http://127.0.0.1:3001/engineers.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    engineerData = await res.json();
+    console.log('Engineers loaded:', engineerData.length);
+    buildEngineerDropdown();
+
+    // 🚨 Don't auto-navigate here!
+    // Just show intro, let the user pick their name.
+    nav('intro');
+
+  } catch (err) {
+    console.error('Failed to load engineers.json', err);
+  }
+}
+
+
+
+
+
+
+// Wait until DOM is ready, then load engineers
+document.addEventListener("DOMContentLoaded", () => {
+  loadEngineers();
+});
+
+
+
+
+
+
+
+// Non-chargeable activities
+const NC_ACTIVITIES = [
+  "ADHOC (filler codes before visits etc)",
+  "Admin/PDP prep/Expenses/Invoices",
+  "Site Survey write up",
+  "VIP TTL",
+  "TTL Local teams",
+  "VIP Team Meeting",
+  "SGL Standby",
+  "SGL Non Chargeable",
+  "Escalation Visit",
+  "Teams call training",
+  "Training",
+  "Unit 9 prep work/white balancing",
+  "Load/unload TV's",
+  "Weekly Call",
+  "Event Prep Work",
+  "Project Work",
+  "Van service/MOT/breakdown",
+  "Stock check",
+  "WISE Checks"
+];
+
+// Build the dropdown once on load
+(function buildNC(){
+  const sel = document.getElementById('nc_activity');
+  if(!sel) return;
+  sel.innerHTML = `<option value="">— Select activity —</option>` +
+    NC_ACTIVITIES.map(v => `<option>${v}</option>`).join('');
+})();
+
+
+
+// NC live calc (just shows recorded hours; money = £0)
+function calcNC(){
+  const time = document.getElementById('nc_time')?.value || '';
+  const hrs  = hhmmToHours(time);
+  const rate = parseFloat(document.getElementById('nc_rate')?.value) || 90;
+  const vatOn = document.getElementById('nc_vat')?.checked;
+
+  const labour = hrs * rate;
+  const sub    = labour;
+  const vat    = vatOn ? sub * 0.20 : 0;
+  const total  = sub + vat;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('nc_hhmm',       time || '00:00');
+  set('nc_hours',      hrs.toFixed(2));
+  set('nc_labour_out', toGBP(labour));
+  set('nc_sub_out',    toGBP(sub));
+  set('nc_vat_out',    toGBP(vat));
+  set('nc_total_out',  toGBP(total));
+}
+
+
+    
+function nav(id){
+  // switch view
+  $$('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+
+  // tell CSS which page we’re on (for logo sizing/margins)
+  document.body.setAttribute('data-route', id);
+
+  // chip visibility + text
+  const chip = document.getElementById('profileChip');
+  if (chip){
+    if (id === 'intro') {                // Intro → hide chip
+      chip.style.display = 'none';
+    } else {                             // Other pages → show & refresh
+      refreshProfileChip();
+      chip.style.display = 'inline-flex';
+    }
+  }
+ if (id === 'nc') calcNC();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+
+
+
+
+
+    function requireName(){
+      if(!engineer){
+        engineerSelect.focus();
+        engineerSelect.animate([{outlineOffset:'0px'},{outlineOffset:'6px'}], {duration:250, iterations:2});
+        return false;
+      }
+      return true;
+    }
+
+    function resetAll(){
+      localStorage.clear();
+      setEngineer('');
+      engineerSelect.value = '';
+      nav('home');
+    }
+
+    // wire up
+    
+    $$('.go[data-target]').forEach(btn => btn.addEventListener('click', (e) => {
+      if(!requireName()) return;
+      nav(e.currentTarget.dataset.target);
+    }));
+
+
+function setEngineer(name){
+  engineer = name || '';
+  localStorage.setItem('engineer', engineer);
+
+  const team = engineerTeamMap.get(engineer) || '';
+  localStorage.setItem('engineer_team', team);
+
+  // ✅ update the chip text (correct id is whoChip)
+  const whoChip = document.getElementById('whoChip');
+  if (whoChip) whoChip.textContent = team ? `${engineer} — ${team}` : engineer;
+
+  // Prefill VIP lead if it’s empty
+  const vipLead = document.getElementById('vip_lead');
+  if (vipLead && (!vipLead.value || vipLead.value.trim()==='')) vipLead.value = engineer;
+}
+
+
+
+
+
+function refreshProfileChip(){
+  const chip = document.getElementById('profileChip');
+  const who  = document.getElementById('whoChip');
+  if (!chip || !who) return;
+
+  const name = (typeof engineer === 'string' && engineer) || localStorage.getItem('engineer') || '';
+  const team = engineerTeamMap.get(name) || localStorage.getItem('engineer_team') || '';
+  who.textContent = name ? (team ? `${name} — ${team}` : name) : '';
+}
+
+
+
+const changeBtn = document.getElementById('changeEngineer');
+if(changeBtn){
+  changeBtn.addEventListener('click', ()=>{
+    // pre-select current engineer in the intro picker
+    const sel = document.getElementById('engineer');
+    if(sel) sel.value = localStorage.getItem('engineer') || '';
+    nav('intro');
+  });
+}
+
+
+
+
+
+
+// Make sure Enter button on intro navigates to Home with animation
+const enterBtn = document.getElementById('enter');
+if (enterBtn) {
+  enterBtn.addEventListener('click', () => {
+    const val = (document.getElementById('engineer')?.value || '').trim();
+    if (!val) { document.getElementById('engineer')?.focus(); return; }
+    setEngineer(val);
+    nav('home');
+    const home = document.getElementById('home');
+    home.classList.remove('animate-in');
+    requestAnimationFrame(()=>home.classList.add('animate-in'));
+  });
+}
+// keep the select in sync (handy if they come back to intro)
+const sel = document.getElementById('engineer');
+if (sel) sel.value = engineer;
+// show chip if we already had a saved name
+refreshProfileChip();
+
+  
+
+  
+
+        // ===== Step 2: Retail calculations =====
+    const toGBP = n => (n||0).toLocaleString('en-GB',{style:'currency',currency:'GBP'});
+    const hhmmToHours = (txt)=>{
+      if(!txt) return 0;
+      const m = /^\s*(\d{1,2}):(\d{2})\s*$/.exec(txt);
+      if(!m) return 0;
+      const h = parseInt(m[1],10), min = parseInt(m[2],10);
+      if(min>59) return 0;
+      return h + (min/60);
+    };
+
+    const fields = ['time_hhmm','rate','hotel','food','travel','other','vatToggle'];
+    fields.forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('input', updateRetailTotals);
+      el.addEventListener('change', updateRetailTotals);
+    });
+
+    function updateRetailTotals(){
+      const hours = hhmmToHours(document.getElementById('time_hhmm')?.value);
+      const rate  = parseFloat(document.getElementById('rate')?.value)||0;
+      const labour = hours * rate;
+
+      const expenses = ['hotel','food','travel','other']
+        .map(id=>parseFloat(document.getElementById(id)?.value)||0)
+        .reduce((a,b)=>a+b,0);
+
+      const sub = labour + expenses;
+      const vatOn = document.getElementById('vatToggle')?.checked;
+      const vat = vatOn ? sub * 0.20 : 0;
+      const total = sub + vat;
+
+      const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = toGBP(val); };
+      set('labourOut', labour);
+      set('expenseOut', expenses);
+      set('subtotalOut', sub);
+      set('vatOut', vat);
+      set('totalOut', total);
+    }
+    updateRetailTotals();
+
+// Retail submission
+// Retail submission
+const previewBtn = document.getElementById('previewRetail');
+if (previewBtn) {
+  previewBtn.addEventListener('click', () => {
+    if (!requireName()) return;
+
+    const asa = document.getElementById('asa').value.trim();
+    if (!asa) {
+      document.getElementById('asa').focus();
+      document.getElementById('asa').animate(
+        [{ outlineOffset: '0px' }, { outlineOffset: '6px' }],
+        { duration: 250, iterations: 2 }
+      );
+      return;
+    }
+
+    const summary = {
+      engineer,
+      asa,
+      store:   document.getElementById('store').value.trim(),
+      receipt: document.getElementById('receipt').value.trim(),
+      date:    document.getElementById('date').value,
+      time:    document.getElementById('time_hhmm').value,
+      rate:    parseFloat(document.getElementById('rate').value) || 0,
+      hotel:   parseFloat(document.getElementById('hotel').value) || 0,
+      food:    parseFloat(document.getElementById('food').value) || 0,
+      travel:  parseFloat(document.getElementById('travel').value) || 0,
+      other:   parseFloat(document.getElementById('other').value) || 0,
+      vat:     document.getElementById('vatToggle').checked,
+      totals: {
+        labour:   document.getElementById('labourOut').textContent,
+        expenses: document.getElementById('expenseOut').textContent,
+        subtotal: document.getElementById('subtotalOut').textContent,
+        vat:      document.getElementById('vatOut').textContent,
+        total:    document.getElementById('totalOut').textContent
+      }
+    };
+
+    // ✅ Save to server & CSV
+    postInvoice("retail", summary);
+  });
+}
+
+
+
+    // ===== Step 2D: Load ASA list from CSV and auto-fill =====
+    const STORE_CSV = 'stores.csv';
+    let STORE_ROWS = [];
+    let ASA_INDEX = new Map();
+
+    // column alias helpers (like your Streamlit pick_col)
+    const pickCol = (cols, candidates) => {
+      const lut = Object.fromEntries(cols.map(c => [c.toLowerCase(), c]));
+      for (const c of candidates) if (lut[c.toLowerCase()]) return lut[c.toLowerCase()];
+      return null;
+    };
+    const clean = v => (v == null ? "" : String(v).trim());
+    const normalizeASA = s => clean(s).replace(/[–—\s]/g, "").toUpperCase();
+
+    function buildIndex(rows){
+      if(!rows.length) return;
+
+      const cols = Object.keys(rows[0] || {});
+      const COL_ASA_NUM = pickCol(cols, ["ASA Number","ASA_Number","ASA number","Asa Number","ASA No","ASA-No","ASA"]);
+      const COL_STORE   = pickCol(cols, ["Store Name","Store","Location","Site Name"]);
+      const COL_PC      = pickCol(cols, ["Postcode","Post Code","PostCode"]);
+      const COL_STKH    = pickCol(cols, ["StakeHolder","Stakeholder","Stake Hd","StakeHd","Stake Hdr","StakeHc","Stake Hd "]);
+
+      ASA_INDEX.clear();
+      const options = [];
+      for(const r of rows){
+        const asaDisplay = clean(r[COL_ASA_NUM]);
+        if(!asaDisplay) continue;
+        const key = normalizeASA(asaDisplay);
+        if(!ASA_INDEX.has(key)){
+          ASA_INDEX.set(key, {
+            asaNumber: asaDisplay,
+            storeName: clean(COL_STORE ? r[COL_STORE] : ""),
+            postcode:  clean(COL_PC ? r[COL_PC] : ""),
+            stakeholder: clean(COL_STKH ? r[COL_STKH] : "")
+          });
+          options.push(asaDisplay);
+        }
+      }
+      options.sort((a,b)=>a.localeCompare(b, 'en'));
+      // populate datalist
+      const dl = document.getElementById('asaList');
+      if(dl){
+        dl.innerHTML = options.map(v => `<option value="${v}"></option>`).join('');
+      }
+    }
+
+    function autofillFromASA(){
+      const asaInput = document.getElementById('asa');
+      if(!asaInput) return;
+      const key = normalizeASA(asaInput.value);
+      const row = ASA_INDEX.get(key);
+      if(!row) return; // nothing to fill yet
+      const setVal = (id,val)=>{ const el = document.getElementById(id); if(el) el.value = val || ""; };
+      setVal('store', row.storeName);
+      setVal('postcode', row.postcode);
+      setVal('stakeholder', row.stakeholder);
+    }
+
+    // Load CSV (requires serving over http://, e.g. VS Code Live Server)
+    function loadStores(){
+      Papa.parse(STORE_CSV, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: (res) => {
+          STORE_ROWS = res.data || [];
+          buildIndex(STORE_ROWS);
+        },
+        error: (err) => {
+          console.warn('Could not load stores.csv:', err);
+        }
+      });
+    }
+
+    // wire ASA change -> autofill
+    const asaEl = document.getElementById('asa');
+    if(asaEl){
+      asaEl.addEventListener('change', autofillFromASA);
+      asaEl.addEventListener('input',  (e)=>{ if(e.inputType === 'insertReplacementText') autofillFromASA(); });
+      // also try to autofill when leaving the field
+      asaEl.addEventListener('blur', autofillFromASA);
+    }
+
+    // kick it off
+    loadStores();
+    // ===== Step 5: Download Retail invoice as CSV =====
+    function downloadCSV(record, filename = "retail_invoice.csv") {
+      const headers = Object.keys(record);
+      const row = headers.map(h => JSON.stringify(record[h] ?? "")).join(",");
+      const blob = new Blob([headers.join(",") + "\n" + row], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    const dlBtn = document.getElementById('downloadRetail');
+    if (dlBtn) {
+      dlBtn.addEventListener('click', () => {
+        if (!requireName()) return;
+        const asa = document.getElementById('asa').value.trim();
+        if (!asa) { alert("Please enter an ASA number"); return; }
+
+        const record = {
+          Engineer: engineer,
+          ASA: asa,
+          Store: document.getElementById('store').value.trim(),
+          Postcode: (document.getElementById('postcode')?.value || "").trim(),
+          Stakeholder: (document.getElementById('stakeholder')?.value || "").trim(),
+          Date: document.getElementById('date').value,
+          Time_HHMM: document.getElementById('time_hhmm').value,
+          Rate_per_hr: document.getElementById('rate').value,
+          Hotel: document.getElementById('hotel').value,
+          Food: document.getElementById('food').value,
+          Travel: document.getElementById('travel').value,
+          Other: document.getElementById('other').value,
+          Labour_GBP: document.getElementById('labourOut').textContent,
+          Expenses_GBP: document.getElementById('expenseOut').textContent,
+          Subtotal_GBP: document.getElementById('subtotalOut').textContent,
+          VAT_GBP: document.getElementById('vatOut').textContent,
+          Total_GBP: document.getElementById('totalOut').textContent,
+          Notes: document.getElementById('notes').value
+        };
+
+        downloadCSV(record, `retail_${asa.replace(/[^A-Za-z0-9_-]/g, '')}.csv`);
+      });
+    }
+    // ===== Step 3: Business (matches Streamlit) =====
+    const SLA_FIXED = { "2HR":245, "4HR":245, "8HR":225, "Next Day":225, "5 Day":225 };
+
+    // elements
+    const $id = s => document.getElementById(s);
+    const bizType = $id('biz_type');
+    const cardCover = $id('biz_cover');
+    const cardSLA   = $id('biz_sla');
+    const cardBAU   = $id('biz_bau');
+
+    function showOnly(type){
+      cardCover.style.display = (type === 'Business Cover') ? '' : 'none';
+      cardSLA.style.display   = (type === 'SLA Callout')    ? '' : 'none';
+      cardBAU.style.display   = (type === 'BAU/NON SLA work') ? '' : 'none';
+    }
+
+    function bizCalc(){
+      const type = bizType?.value || 'Business Cover';
+      let labour = 0;
+
+      if(type === 'Business Cover'){
+        const hrs = hhmmToHours($id('biz_time_cover')?.value);
+        const rate = parseFloat($id('biz_rate_cover')?.value)||0;
+        labour = hrs * rate;
+
+      } else if(type === 'SLA Callout'){
+        const sla = ($id('biz_sla_type')?.value || '2HR');
+        labour = SLA_FIXED[sla] ?? 0;
+
+      } else { // BAU/NON SLA
+        const hrs = hhmmToHours($id('biz_time_bau')?.value);
+        const rate = parseFloat($id('biz_rate_bau')?.value)||0;
+        const eng  = Math.max(1, parseInt($id('biz_eng_count')?.value||'1',10));
+        labour = hrs * rate * eng;
+      }
+
+      const sub = labour;
+      const vatOn = $id('biz_vat')?.checked;
+      const vat = vatOn ? sub * 0.20 : 0;
+      const total = sub + vat;
+
+      $id('biz_labour_out').textContent   = toGBP(labour);
+      $id('biz_subtotal_out').textContent = toGBP(sub);
+      $id('biz_vat_out').textContent      = toGBP(vat);
+      $id('biz_total_out').textContent    = toGBP(total);
+    }
+
+    // wire up
+    [
+      'biz_type','biz_time_cover','biz_rate_cover','biz_area',
+      'biz_sla_type','biz_venue_sla','biz_vat',
+      'biz_time_bau','biz_rate_bau','biz_eng_count','biz_visit_type','biz_venue_bau'
+    ].forEach(id => { const el=$id(id); if(el){ el.addEventListener('input', bizCalc); el.addEventListener('change', bizCalc);} });
+
+    if(bizType){
+      bizType.addEventListener('change', ()=>{ showOnly(bizType.value); bizCalc(); });
+      showOnly(bizType.value);
+    }
+    bizCalc();
+
+// Business submission
+const btnBizPreview = $id('biz_preview');
+if (btnBizPreview) {
+  btnBizPreview.addEventListener('click', () => {
+    if (!requireName()) return;
+
+    const type = bizType?.value || 'Business Cover';
+    const summary = {
+      engineer: engineer,
+      visit_date: $id('biz_date')?.value || '',
+      invoice_type: type,
+      area: (type === 'Business Cover') ? ($id('biz_area')?.value || '') : '',
+      vr_number: (type !== 'Business Cover') ? ($id('biz_vr')?.value || '') : '',
+      sla_type: (type === 'SLA Callout') ? ($id('biz_sla_type')?.value || '') : '',
+      venue_name: (type === 'SLA Callout') ? ($id('biz_venue_sla')?.value || '') :
+                  (type === 'BAU/NON SLA work' ? ($id('biz_venue_bau')?.value || '') : ''),
+      visit_type: (type === 'BAU/NON SLA work') ? ($id('biz_visit_type')?.value || '') : '',
+      engineer_count: (type === 'BAU/NON SLA work') ? (parseInt($id('biz_eng_count')?.value || '1', 10)) : '',
+      oracle_time_hhmm: (type === 'SLA Callout') ? '' :
+                        (type === 'Business Cover' ? ($id('biz_time_cover')?.value || '') : ($id('biz_time_bau')?.value || '')),
+      rate_per_hour: (type === 'SLA Callout') ? '' :
+                     (type === 'Business Cover' ? (parseFloat($id('biz_rate_cover')?.value) || 0) : (parseFloat($id('biz_rate_bau')?.value) || 0)),
+      labour_value: $id('biz_labour_out')?.textContent || '£0.00',
+      total_value: $id('biz_total_out')?.textContent || '£0.00',
+      notes: $id('biz_notes')?.value || ''
+    };
+
+    // ✅ Save to server & CSV
+    postInvoice('business', summary);
+  });
+}
+
+
+        // ===== Step 4: VIP / Tier 2 =====
+    // pricing constants (match Streamlit)
+    const VIP_FIRST_90 = 90.0;
+    const VIP_RATE_HR  = 90.0;
+    const VIP_SITE_SURVEY = 160.0;
+    const VIP_EVENT_SET   = 1600.0;
+
+// equipment catalogue (full list, editable by hand)
+const VIP_EQUIPMENT = [
+  ["Concierge Visit", 0.00],
+  ["SKY Q PACK (DISH,LNB,CABLE,SKY Q 2TB OR SKY Q 1TB UHD)", 0.00],
+  ["SKY Q PACK (DISH,LNB,CABLE,SKY Q 2TB & 2 MINIS)", 0.00],
+  ["SKY Q PACK (DISH,LNB,CABLE,SKY Q 2TB & 1 MINI)", 0.00],
+  ["SKY HD PACK (DISH,LNB,CABLE,HD BOX)", 0.00],
+  ["CLIENT BOX DROP OFF (AV)", 0.00],
+  ["SKY GLASS TV BRACKET", 0.00],
+  ["SKY GLASS TV BRACKET SPACERS (4 PACK)", 0.00],
+  ["SANUS FIXED premium wall mount 37 - 90 inch", 38.00],
+  ["SANUS TILTING premium wall mount 32 -85 inch", 38.00],
+  ["SKY Q 2TB UHD", 0.00],
+  ["SKY 2TB UHD HDR", 0.00],
+  ["SKY Q 1TB UHD", 0.00],
+  ["SKY Q 1 TB", 0.00],
+  ["SKY Q MINI", 0.00],
+  ["SKY Q IR REMOTE", 0.00],
+  ["SKY Q NEW EC200 BLUETOOTH REMOTE", 0.00],
+  ["SKY Q HUB 3", 0.00],
+  ["SKY Q HUB 4", 0.00],
+  ["SKY BOOSTER 4", 0.00],
+  ["SKY Q DISH & LNB", 20.05],
+  ["LNB WIDEBAND", 8.45],
+  ["LNB HYBRID", 17.69],
+  ["LNB QUAD", 13.41],
+  ["LNB OCTO", 17.13],
+  ["LNB QUATTRO ROUND", 17.69],
+  ["TRAIX ZONE 1 DISH", 11.59],
+  ["TRIAX ZONE 2 DISH", 13.95],
+  ["TD 65CM SOLID SATELLITE DISH", 27.21],
+  ["TD 78CM SOLID SATELLITE DISH", 34.30],
+  ["CT63 CABLE PER METER", 0.54],
+  ["CT100 PER METER", 0.64],
+  ["CAT 5/6 CABLE PER METER", 0.75],
+  ["CAT 5/6 CONNECTORS", 0.12],
+  ["CAT 5/6 COUPLER", 3.03],
+  ["HDMI CABLES 3M", 9.23],
+  ["4 WAY SKY Q MULTISWITCH", 182.21],
+  ["DCSS MULTISWITCH TMDS 42 C", 64.74],
+  ["DSCR POWER SUPPLY", 30.19],
+  ["D000188 GI FIBRE QUATRO GTU MKIII", 101.14],
+  ["NETGEAR 5 PORT GS105E GIGABIT ETHERNET SWITCH", 33.05],
+  ["NETGEAR 8 PORT GS108E GIGABIT ETHERNET SWITCH", 49.50],
+  ["EARTH CABLE PER METER", 1.52],
+  ["EARTH CRIMP", 0.07],
+  ["EARTH BLOCK 8 WAY NICKEL PLATED BRASS", 3.30],
+  ["HD PVR COST ADDED @POS", 0.00],
+  ["HD STB NON PVR COST ADDED @POS", 0.00],
+  ["HD 2TB COST ADDED @POS", 0.00],
+  ["HD CLASSIC RC", 23.22],
+  ["SKY Q 2 WAY ADAPTOR 4 IN 2 OUT (BLACK)", 101.04],
+  ["SKY Q OPTICAL ADAPTOR (BLACK)", 110.29],
+  ["OPTICAL IRS FIBRE PSU ONLY 20V 1.2A", 11.20],
+  ["8 WAY SKY Q MULTISWITCH", 265.84],
+  ["16 WAY SKY Q MULTISWITCH", 360.75],
+  ["GI - FIBRE MDU OPITCAL LNB & PSU", 85.28],
+  ["121989 - TD110 SATELLITE DISH", 116.14],
+  ["CT125 5 CORE", 2.91],
+  ["CT165", 3.72],
+  ["F MALE TO FEMALE DC BLOCK 5-2300MHZ 30V MAX", 1.98],
+  ["F MALE TERMINATOR 75 OHM DC", 2.30],
+  ["DSCR POWER INSERTER 2- SP161", 7.20],
+  ["DiSEqC Power Inserter (DCSS-422 OR DSCR)", 3.03],
+  ["PATIO MOUNTS (SPOLE, PATIO ETC)", 25.55],
+  ["NPRM", 88.81],
+  ["PATIO SLABS/BLOCKS", 6.44],
+  ["JPOLE", 15.96],
+  ["T&K BRACKET", 25.69],
+  ["SHELLEY 8 NUT CLAMP C/W 13MM NUTS", 10.44],
+  ["HDMI CABLES 5M", 11.55],
+  ["HDMI CABLES 10M", 21.23],
+  ["HDMI CABLES 20M", 43.66],
+  ["HDMI 2 WAY SPLITTER", 74.58],
+  ["HDMI 4 WAY SPLITTER", 104.09],
+  ["HDMI 8 WAY SPLITTER", 201.42],
+  ["HDMI 16 WAY SPLITTER", 337.54],
+  ["MIKRO TIK RG750GR3", 59.86],
+  ["SKY BROADBAND HUB 2", 80.14],
+  ["SKY BOOSTER 1", 24.98],
+  ["IO - LINK", 11.62],
+  ["IO-LINK PSU", 13.93],
+  ["SPLITTER 8 WAY POWER PASS", 9.12],
+  ["SPLITTER 2 WAY POWER PASS", 4.12],
+  ["6 WAY F SPLITTER (5-2400MHZ)", 7.23],
+  ["REMOTE EYES MINI", 17.41],
+  ["F120( 2WAY DA)", 17.42],
+  ["F140 (4 WAY DA)", 23.23],
+  ["F180 (8 WAY DA)", 46.46],
+  ["F280 (16 WAY DA)", 69.69],
+  ["SPC4", 34.85],
+  ["EV5-204- V5 SPLITTER 2 WAY 4DB EVO 5 IN 5 OUT", 30.36],
+  ["EV5-408- V5 SPLITTER 4 WAY 8DB LOSS EVO 5 IN 4X5", 71.03],
+  ["EV5-508- VISION V5 MULTISWITCH 5X8 EVO 5 IN 8 OUT", 91.36],
+  ["EV5-512- VISION V5 MULTISWITCH 5 X12 EVO 5", 111.74],
+  ["EV5-516-VISION V5 MULTISWITCH 5X16 EVO5", 117.18],
+  ["EV5-524M - MAINS POWERED MULTISWITCH", 214.65],
+  ["EV5-532M - MAINS POWERED MULTISWITCH", 272.05],
+  ["EV5-034- VISION V5 18V 2.5A POWER UNIT", 28.10],
+  ["EV5-D4S 4 OUTPUT DSCR MULTISWITCH", 163.22],
+  ["4X + TERRESTRIAL AMP", 33.67],
+  ["STANDARD MODULE CAT5E EURO", 2.91],
+  ["SATELLITE MODULE EURO SCREW TERMINAL 1 X F", 3.35],
+  ["SINGLE CONNECTOR OUTLET PLATE", 1.17],
+  ["ULTIMA BACKBOX SINGLE GANG WHITE (D) 44MM", 1.75],
+  ["DOUBLE SURFACE BACK BOX", 2.35],
+  ["TX1 IP65 CABINET", 51.51],
+  ["BLUSTREAM HDBASE TTM EXTENDERSET ORDER", 232.29],
+  ["1M FIBRE CABLE FC/PC", 5.88],
+  ["3M FIBRE CABLE FC/PC", 7.91],
+  ["10M FIBRE CABLE FC/PC", 12.43],
+  ["15M FIBRE CABLE FC/PC", 15.69],
+  ["20M FIBRE CABLE FC/PC", 18.92],
+  ["30M FIBRE CABLE FC/PC", 25.46],
+  ["40M FIBRE CABLE FC/PC", 32.08],
+  ["50M FIBRE CABLE FC/PC", 44.60],
+  ["75M FIBRE CABLE FC/PC", 61.42],
+  ["100M FIBRE CABLE FC/PC", 87.96],
+  ["200M FIBRE CABLE FC/PC", 168.65],
+  ["FIBRE CABLE FC/PC TWIN CABLE", 184.68],
+  ["D000187 GI FIBRE QUAD GTU", 101.13],
+  ["F700289- FIBRE 5DB ATTENUATOR FC/PC", 12.36],
+  ["F700290 - FIBRE 10DB ATTENUATOR FC/PC", 12.36],
+  ["F700291- FIBRE 15DB ATTENUATOR FC/PC", 12.36],
+  ["F700331 - FIBRE 20DB ATTENUATOR FC/PC", 12.36],
+  ["F700253 - GI FC/PC BARREL CONNECTOR", 1.16],
+  ["FIBRE SPLITTER 2 WAY", 46.46],
+  ["FIBRE SPLITTER 4 WAY", 58.08],
+  ["ULTIMA FIBRE SPLICE TRAY 12/24F", 1.39],
+  ["ULTIMA 8 WAY SIMPLEX SM FC", 1.09],
+  ["ULTIMA FIBRE PIGTAILSM FC OS2 9 YELLOW (L) 1.5", 1.37],
+  ["ULTIMA 8 WAY SIMPLEX BREAKOUT BOX", 17.13],
+  ["TRUNKING MINI SELF ADHESIVE PVC 3 MTR", 6.48],
+  ["UNISTRUT SUPPORT SLOTTED STEEL M10 SLOT (L) 3MTR", 25.37],
+  ["UNISTRUT THREADED ROD (L)2MTR (DIA)M10", 2.71],
+  ["UNISTRUT CHANNEL BOLT STEEL (L) 25MM (DIA) M10", 1.75],
+  ["UNISTRUT CHANNEL WASHER FLAT PLATE (DIA) M10/M12", 1.75],
+  ["UNISTRUT CHANNEL NUT PLAIN ZINC PLATED (DIA) M10", 1.75],
+  ["UNISTRUT CHANNEL NUT SHORT SPRING ZINC PLATED (DIA) M10", 1.75],
+  ["CHERRY PICKER (DAILY RATE)", 522.68],
+  ["CHERRY PICKER (DAILY RATE WITH DRIVER)", 1045.35],
+  ["SCISSOR LIFT", 522.68],
+  ["CABLE TRAY (PER METER)", 26.14],
+  ["CATENARY WORK (PER METER)", 63.88]
+];
+
+
+// --- init VIP (no external loader) ---
+(function initVIP(){
+  // default lead = current engineer
+  const lead = document.getElementById('vip_lead');
+  if (lead && !lead.value && typeof engineer === 'string') lead.value = engineer || '';
+
+  // populate equipment picker from VIP_EQUIPMENT array
+  const pick = document.getElementById('vip_eq_pick');
+  if (pick) {
+    pick.innerHTML = VIP_EQUIPMENT
+      .map(([n,p]) => `<option value="${n}">${n} — £${p.toFixed(2)}</option>`)
+      .join('');
+  }
+
+  // set initial mode & totals
+
+})();
+
+
+    // mode toggle
+    const vipMode = document.getElementById('vip_mode');
+    const vipTimeBlock  = document.getElementById('vip_time_block');
+    const vipFixedBlock = document.getElementById('vip_fixed_block');
+    function setVipMode(){
+      const isTime = (vipMode?.value || '').startsWith('Time');
+      vipTimeBlock.style.display  = isTime ? '' : 'none';
+      vipFixedBlock.style.display = isTime ? 'none' : '';
+      updateVipTotals();
+    }
+    
+
+    // equipment list state
+    const eqState = []; // {name, unit, qty, total}
+    const eqListDiv = document.getElementById('vip_eq_list');
+    function renderEq(){
+      if(!eqListDiv) return;
+      if(!eqState.length){ eqListDiv.innerHTML = '<p class="muted">No items added.</p>'; return; }
+      let html = '<div class="card" style="background:rgba(255,255,255,.04)">';
+      html += '<table style="width:100%; border-collapse:collapse;"><thead><tr><th style="text-align:left;padding:6px">Item</th><th style="text-align:right;padding:6px">Qty</th><th style="text-align:right;padding:6px">Unit</th><th style="text-align:right;padding:6px">Line</th><th></th></tr></thead><tbody>';
+      eqState.forEach((r, i)=>{
+        html += `<tr>
+          <td style="padding:6px">${r.name}</td>
+          <td style="padding:6px; text-align:right">${r.qty}</td>
+          <td style="padding:6px; text-align:right">£${r.unit.toFixed(2)}</td>
+          <td style="padding:6px; text-align:right">£${r.total.toFixed(2)}</td>
+          <td style="padding:6px; text-align:right"><button class="go ghost" data-del="${i}">Remove</button></td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      eqListDiv.innerHTML = html;
+      eqListDiv.querySelectorAll('button[data-del]').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          const i = parseInt(e.currentTarget.dataset.del, 10);
+          eqState.splice(i,1);
+          renderEq(); updateVipTotals();
+        });
+      });
+    }
+    const eqAddBtn = document.getElementById('vip_eq_add');
+    if(eqAddBtn){
+      eqAddBtn.addEventListener('click', ()=>{
+        const pick = document.getElementById('vip_eq_pick');
+        const qty  = Math.max(1, parseInt(document.getElementById('vip_eq_qty').value||'1',10));
+        const name = pick?.value || '';
+        if(!name) return;
+        const item = VIP_EQUIPMENT.find(([n])=>n===name);
+        const unit = item ? item[1] : 0;
+        eqState.push({ name, unit, qty, total: unit*qty });
+        renderEq(); updateVipTotals();
+      });
+    }
+    renderEq();
+
+    // helpers
+    const mins = txt => {
+      if(!txt) return 0;
+      const m = /^\s*(\d{1,2}):(\d{2})\s*$/.exec(txt);
+      if(!m) return 0;
+      const h = parseInt(m[1],10), mi = parseInt(m[2],10);
+      if(mi>59) return 0;
+      return h*60 + mi;
+    };
+    const timeCharge = totalMins => {
+      if(totalMins<=0) return 0;
+      if(totalMins<=90) return VIP_FIRST_90;
+      return VIP_FIRST_90 + (totalMins-90)/60 * VIP_RATE_HR;
+    };
+
+    // main calculation
+    function updateVipTotals(){
+      const isTime = (vipMode?.value || '').startsWith('Time');
+
+      // engineer names (used to decide if 2nd/3rd count)
+      const secondName = document.getElementById('vip_second')?.value?.trim() || '';
+      const thirdName  = document.getElementById('vip_third')?.value?.trim() || '';
+
+      // labour
+      let labour = 0;
+      if(isTime){
+        const leadM = mins(document.getElementById('t_lead_site')?.value) + mins(document.getElementById('t_lead_travel')?.value);
+        const secM  = secondName ? (mins(document.getElementById('t_second_site')?.value) + mins(document.getElementById('t_second_travel')?.value)) : 0;
+        const thdM  = thirdName  ? (mins(document.getElementById('t_third_site')?.value)  + mins(document.getElementById('t_third_travel')?.value))  : 0;
+
+        labour = timeCharge(leadM) + timeCharge(secM) + timeCharge(thdM);
+      } else {
+        const which = document.getElementById('vip_fixed_pick')?.value || 'Event set cost (£1,600)';
+        labour = which.includes('Event') ? VIP_EVENT_SET : VIP_SITE_SURVEY;
+      }
+
+      // equipment total
+      const equip = eqState.reduce((a,b)=>a + (b.total||0), 0);
+
+      // hotel / additional
+      const hLead = parseFloat(document.getElementById('x_lead_hotel')?.value)||0;
+      const aLead = parseFloat(document.getElementById('x_lead_add')?.value)||0;
+      const hSec  = secondName ? (parseFloat(document.getElementById('x_second_hotel')?.value)||0) : 0;
+      const aSec  = secondName ? (parseFloat(document.getElementById('x_second_add')?.value)||0)   : 0;
+      const hThd  = thirdName  ? (parseFloat(document.getElementById('x_third_hotel')?.value)||0)  : 0;
+      const aThd  = thirdName  ? (parseFloat(document.getElementById('x_third_add')?.value)||0)    : 0;
+
+      const hotel = hLead + hSec + hThd;
+      const addl  = aLead + aSec + aThd;
+
+      const sub = labour + equip + hotel + addl;
+      const vatOn = document.getElementById('vip_vat')?.checked;
+      const vat = vatOn ? sub * 0.20 : 0;
+      const total = sub + vat;
+
+      // write out
+      const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = toGBP(val); };
+      set('vip_labour_out', labour);
+      set('vip_equip_out', equip);
+      set('vip_hotel_out', hotel);
+      set('vip_add_out', addl);
+      set('vip_sub_out', sub);
+      set('vip_vat_out2', vat);
+      set('vip_total_out', total);
+    }
+
+    // wire inputs (any edit recalculates)
+    [
+      'vip_vr','vip_date','vip_job','vip_mode','vip_lead','vip_second','vip_third','vip_vat',
+      't_lead_site','t_lead_travel','t_second_site','t_second_travel','t_third_site','t_third_travel',
+      'vip_fixed_pick','x_lead_hotel','x_lead_add','x_second_hotel','x_second_add','x_third_hotel','x_third_add'
+    ].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('input', updateVipTotals);
+      el.addEventListener('change', updateVipTotals);
+    });
+    updateVipTotals();
+
+    // preview payload (for later Teams/email step)
+    const vipPreview = document.getElementById('vip_preview');
+    if(vipPreview){
+      vipPreview.addEventListener('click', ()=>{
+        if(!requireName()) return;
+        const payload = {
+          invoice_type: 'vip / tier 2',
+          vr_number: document.getElementById('vip_vr')?.value || '',
+          visit_date: document.getElementById('vip_date')?.value || '',
+          job_type: document.getElementById('vip_job')?.value || '',
+          lead_engineer: document.getElementById('vip_lead')?.value || '',
+          second_engineer: document.getElementById('vip_second')?.value || '',
+          third_engineer: document.getElementById('vip_third')?.value || '',
+          labour_value: document.getElementById('vip_labour_out')?.textContent || '£0.00',
+          materials_value: document.getElementById('vip_equip_out')?.textContent || '£0.00',
+          hotel_value: document.getElementById('vip_hotel_out')?.textContent || '£0.00',
+          additional_value: document.getElementById('vip_add_out')?.textContent || '£0.00',
+          total_value: document.getElementById('vip_total_out')?.textContent || '£0.00',
+          equipment_lines: eqState.map(r => ({ item:r.name, unit:r.unit, qty:r.qty, total:r.total }))
+        };
+        alert('VIP Preview\n\n' + JSON.stringify(payload, null, 2));
+      });
+    }
+(function setDefaultDates(){
+  const ids = ['date','biz_date','vip_date'];
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  const iso = `${yyyy}-${mm}-${dd}`;     // HTML date inputs expect YYYY-MM-DD
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = iso;
+  });
+})();
+/* ===== Interaction sugar ===== */
+
+/* 3D tilt on the three Home cards */
+document.querySelectorAll('#home .cta').forEach(card=>{
+  const MAX = 10; // degrees
+  card.addEventListener('mousemove', e=>{
+    const r = card.getBoundingClientRect();
+    const x = e.clientX - r.left,  y = e.clientY - r.top;
+    const rx = ((y - r.height/2) / r.height) * -MAX;
+    const ry = ((x - r.width/2)  / r.width ) *  MAX;
+    card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateY(-2px)`;
+    card.style.setProperty('--gx', `${(x/r.width)*100}%`);
+    card.style.setProperty('--gy', `${(y/r.height)*100}%`);
+  });
+  card.addEventListener('mouseleave', ()=>{ card.style.transform = 'rotateX(0) rotateY(0)'; });
+});
+
+
+(function autoFillProjectEngineer(){
+  const engInput = document.getElementById("proj_engineers"); // ✅ matches your HTML ID
+  if(!engInput) return;
+
+  const eng = localStorage.getItem("engineer") || "";
+  if(eng){
+    engInput.value = eng;
+  }
+})();
+
+
+/* Magnetic light that follows the cursor on primary buttons */
+document.querySelectorAll('button.go').forEach(btn=>{
+  btn.addEventListener('mousemove', e=>{
+    const r = btn.getBoundingClientRect();
+    btn.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    btn.style.setProperty('--my', `${e.clientY - r.top}px`);
+  });
+});
+
+
+const API_URL = "http://127.0.0.1:3001/api/submit";
+
+async function postInvoice(type, data) {
+  const record = { type, ...data };
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record)
+    });
+    if (res.ok) {
+      alert(`Invoice submitted ✓ (${type})`);
+    } else {
+      alert("Save failed ❌");
+    }
+    return res;
+  } catch (err) {
+    console.error(err);
+    alert("Save failed ❌");
+  }
+}
+
+// === Non-chargeable submit wiring ===
+(function wireNcSubmit(){
+  const btn = document.getElementById("nc_submit");
+  if(!btn) return;
+
+  btn.addEventListener("click", async () => {
+    const eng = JSON.parse(localStorage.getItem("sky_engineer")||"{}");
+
+    const payload = {
+      engineer: eng.title || "",
+      team: eng.team || "",
+      activity: document.getElementById("nc_activity")?.value || "",
+      date: document.getElementById("nc_date")?.value || "",
+      time_hhmm: document.getElementById("nc_time")?.value || "",
+      hours: hhmmToHours(document.getElementById("nc_time")?.value || ""),
+      rate: Number(document.getElementById("nc_rate")?.value || 0),
+      notes: document.getElementById("nc_notes")?.value || "",
+      include_vat: !!document.getElementById("nc_vat")?.checked
+    };
+
+    await postInvoice("non-chargeable", payload);
+  });
+})();
+
+// === VIP/Tier 2 submit wiring ===
+(function wireVipSubmit(){
+  const btn = document.getElementById("vip_submit");
+  if(!btn) return;
+
+  btn.addEventListener("click", async () => {
+    const eng = JSON.parse(localStorage.getItem("sky_engineer")||"{}");
+
+    const payload = {
+      engineer: eng.title || "",
+      team: eng.team || "",
+      // Adjust these to your VIP form field IDs
+      date: document.getElementById("vip_date")?.value || "",
+      site: document.getElementById("vip_site")?.value || "",
+      hours: hhmmToHours(document.getElementById("vip_time")?.value || ""),
+      equipment: document.getElementById("vip_equipment")?.value || "",
+      notes: document.getElementById("vip_notes")?.value || "",
+      include_vat: !!document.getElementById("vip_vat")?.checked
+    };
+
+    await postInvoice("vip", payload);
+  });
+})();
+
+/* --- PROJECT: auto-fill engineer name --- */
+(function autoFillProjectEngineer(){
+  const engInput = document.getElementById("proj_engineers");
+  if (!engInput) return;
+  const eng = JSON.parse(localStorage.getItem("sky_engineer") || "{}");
+  if (eng && eng.title) engInput.value = eng.title;
+})();
+
+/* --- PROJECT: submit wiring --- */
+(function wireProjectSubmit(){
+  const btn = document.getElementById("proj_submit");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    const eng = JSON.parse(localStorage.getItem("sky_engineer") || "{}");
+
+    // read the form
+    const timeTxt = document.getElementById("proj_time")?.value || "";
+    const { hours } = parseHHMM ? parseHHMM(timeTxt) : { hours: 0 };
+
+    const payload = {
+      engineer      : eng.title || "",
+      team          : eng.team  || "",
+      stakeholder   : document.getElementById("proj_stake")?.value || "",
+      date          : document.getElementById("proj_date")?.value || "",
+      engineers     : document.getElementById("proj_engineers")?.value || "",
+      venue         : document.getElementById("proj_venue")?.value || "",
+      postcode      : document.getElementById("proj_postcode")?.value || "",
+      time_hhmm     : timeTxt,
+      hours,
+      rate          : Number(document.getElementById("proj_rate")?.value || 0),
+      equipment     : document.getElementById("proj_equipment")?.value || "",
+      hotel_required: document.getElementById("proj_hotel_req")?.value || "",
+      notes         : document.getElementById("proj_notes")?.value || "",
+      include_vat   : !!document.getElementById("proj_vat")?.checked,
+      // totals shown on screen
+      labour_out    : document.getElementById("proj_labour_out")?.textContent || "",
+      subtotal_out  : document.getElementById("proj_sub_out")?.textContent || "",
+      vat_out       : document.getElementById("proj_vat_out")?.textContent || "",
+      total_out     : document.getElementById("proj_total_out")?.textContent || ""
+    };
+
+    await postInvoice("project", payload);   // server writes project_invoices.csv
+  });
+})();
+
+(function wireVipSubmit(){
+  const btn = document.getElementById('vip_preview');   // reuse Preview as submit
+  if(!btn) return;
+
+  btn.addEventListener('click', async () => {
+    // who is signed in
+    const eng = JSON.parse(localStorage.getItem('sky_engineer') || '{}');
+
+    // equipment lines → array of row objects (your table already builds eqState)
+    const eqState = (window.eqState || []).map(r => ({
+      item: r.name, unit: r.unit, qty: r.qty, total: r.total
+    }));
+
+    const payload = {
+      engineer: eng.title || '',
+      team:     eng.team  || '',
+
+      vr_number:   document.getElementById('vip_vr')?.value || '',
+      visit_date:  document.getElementById('vip_date')?.value || '',
+      job_type:    document.getElementById('vip_job')?.value || '',
+      site_name:   document.getElementById('vip_site')?.value || '',
+      oracle_time: document.getElementById('vip_time')?.value || '',
+      rate_per_hr: parseFloat(document.getElementById('vip_rate')?.value || 0),
+      notes:       document.getElementById('vip_notes')?.value || '',
+      include_vat: !!document.getElementById('vip_vat')?.checked,
+
+      // live totals from the page
+      labour_value:  document.getElementById('vip_labour_out')?.textContent || '£0.00',
+      equip_value:   document.getElementById('vip_equip_out')?.textContent  || '£0.00',
+      hotel_value:   document.getElementById('vip_hotel_out')?.textContent  || '£0.00',
+      additional:    document.getElementById('vip_add_out')?.textContent    || '£0.00',
+      total_value:   document.getElementById('vip_total_out')?.textContent  || '£0.00',
+
+      // extra fields
+      additional_desc: document.getElementById('vip_additional')?.value || '',
+      equipment_lines: eqState
+    };
+
+    await postInvoice('vip', payload);   // this pops “Invoice submitted ✓ (vip)”
+  });
+})();
+</script>
+
+
+
+</body>
+</html>

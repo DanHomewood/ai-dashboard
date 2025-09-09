@@ -1,0 +1,667 @@
+﻿ASA,ASA Number,Store Status,StakeHolder,Store Name,Address,Postcode,Shopping Centre,City,Postcode2,Country,Area,Regional Manager
+11164-0001,11164-0001,Open,Sky Retail,Barking,"Vicarage Field Shopping Centre, Barking",IG11 8DQ,"Vicarage Field Shopping Centre, Barking",Barking,,England,LS01,Shazad Shah
+11164-0002,11164-0002,Open,Sky Retail,Basildon,"Eastgate Shopping Centre, Basildon",SS14 1EB,"Eastgate Shopping Centre, Basildon",Basildon,,England,LS02,Shazad Shah
+11164-0003,11164-0003,Closed,Sky Retail,Chatham,#N/A,#N/A,"The Pentagon Shopping Centre, Chatham",Chatham,,England,LS06,Shazad Shah
+11164-0004,11164-0004,Closed,Sky Retail,Croydon,#N/A,#N/A,"Whitgift Centre, Croydon",Croydon,,England,LS05,Shazad Shah
+11164-0006,11164-0006,Closed,Sky Retail,Dalston,#N/A,#N/A,"Kingsland Shopping Centre, Dalston",Dalston,,England,,
+11164-0007,11164-0007,Closed,Sky Retail,White City 3,#N/A,#N/A,"Westfield London, Shepherds Bush",Shepherds Bush,,England,,
+11164-0008,11164-0008,Closed,Sky Retail,"Manchester, Trafford 2",#N/A,#N/A,"Intu Trafford Centre, Manchester",Manchester,,England,,
+11164-0009,11164-0009,Open,Sky Retail,Hounslow,"The Treaty Shopping Centre, London",TW3 1RH,"The Treaty Shopping Centre, London",London,,England,ST01,Laurence Nettle
+11164-0010,11164-0010,Open,Sky Retail,Lewisham,"The Lewis Shopping Centre, Lewisham",SE13 7HB,"The Lewis Shopping Centre, Lewisham",Lewisham,,England,LS03,Shazad Shah
+11164-0012,11164-0012,Closed,Sky Retail,Redditch,#N/A,#N/A,"Kingfisher Shopping Centre, Redditch",Redditch,,England,WW05,Julia McVicar
+11164-0014,11164-0014,Open,Sky Retail,Walsall,"Saddlers Shopping Centre, Walsall",WS1 1YS,"Saddlers Shopping Centre, Walsall",Walsall,,England,WW04,Julia McVicar
+11164-0017,11164-0017,Closed,Sky Retail,Wood Green,#N/A,#N/A,"The Mall Wood Green, London",London,,England,LS03,Shazad Shah
+11164-0024,11164-0024,Closed,Sky Retail,"Bradford, Kirkgate","Kirkgate Shopping Centre, Bradford",BD1 1TQ,"Kirkgate Shopping Centre, Bradford",Bradford,,England,EN03,James Owen
+11164-0029,11164-0029,Open,Sky Retail,Perry Barr,"One Stop Shopping Centre, Birmingham",B42 1AA,"One Stop Shopping Centre, Birmingham",Birmingham,,England,WW02,Julia McVicar
+11164-0042,11164-0042,Open,Sky Retail,"Dundee, Overgate","Overgate Shopping Centre, Dundee",DD1 1UH,"Overgate Shopping Centre, Dundee",Dundee,,Scotland,SN01,Chris Spence
+11164-0053,11164-0053,Closed,Sky Retail,"Wolverhampton, Mander",#N/A,#N/A,"The Mander Centre, Wolverhampton",Wolverhampton,,England,WW04,Julia McVicar
+11164-0072,11164-0072,Open,Sky Retail,Coventry,"West Orchards Shopping Centre, Coventry",CV1 1QX,"West Orchards Shopping Centre, Coventry",Coventry,,England,WW01,Julia McVicar
+11164-0073,11164-0073,Closed,Sky Retail,Gloucester,#N/A,#N/A,"Eastgate Shopping Centre, Gloucester",Gloucester,,England,WW03,Julia McVicar
+11164-0077,11164-0077,Open,Sky Retail,"Glasgow,   Braehead","Intu Braehead, Glasgow",G51 4BN,"Intu Braehead, Glasgow",Glasgow,,Scotland,SN03,Chris Spence
+11164-0078,11164-0078,Closed,Sky Retail,Washington,#N/A,#N/A,"Galleries Shopping Centre, Washington",Washington,,England,,
+11164-0082,11164-0082,Closed,Sky Retail,Crawley,#N/A,#N/A,"Crawley County Mall, Crawley",Crawley,,England,LS07,Shazad Shah
+11164-0083,11164-0083,Open,Sky Retail,Exeter,"Guildhall Shopping Centre, Exeter",EX4 3HP,"Guildhall Shopping Centre, Exeter",Exeter,,England,ST04,Laurence Nettle
+11164-0084,11164-0084,Closed,Sky Retail,"Gateshead, Metro 1",#N/A,#N/A,"Intu Metrocentre, Gateshead",Gateshead,,England,,
+11164-0085,11164-0085,Closed,Sky Retail,Lakeside 1,#N/A,#N/A,"Intu Lakeside, Thurrock",Thurrock,,England,,
+11164-0088,11164-0088,Open,Sky Retail,Bury,"Millgate Shopping Centre, Bury",BL9 0QQ,"Millgate Shopping Centre, Bury",Bury,,England,NT02,Mark Fitzpatrick
+11164-0091,11164-0091,Closed,Sky Retail,"Portsmouth, Cascades","Cascades Shopping Centre, Portsmouth",PO1 4RL,"Cascades Shopping Centre, Portsmouth",Portsmouth,,England,ST03,Laurence Nettle
+11164-0092,11164-0092,Open,Sky Retail,"Glasgow, Forge","The Forge Shopping Centre, Glasgow",G31 4EB,"The Forge Shopping Centre, Glasgow",Glasgow,,Scotland,SN03,Chris Spence
+11164-0093,11164-0093,Open,Sky Retail,Swindon,"The Brunel Shopping Centre, Swindon",SN1 1LF,"The Brunel Shopping Centre, Swindon",Swindon,,England,WW03,Julia McVicar
+11164-0097,11164-0097,Closed,Sky Retail,"Leicester, Haymarket",#N/A,#N/A,"The Haymarket Shopping Centre, Leicester",Leicester,,England,,
+11164-0099,11164-0099,Open,Sky Retail,Fareham,"Fareham Shopping Centre, Fareham",PO16 0PQ,"Fareham Shopping Centre, Fareham",Fareham,,England,ST03,Laurence Nettle
+11164-0100,11164-0100,Closed,Sky Retail,"Manchester, Arndale 1",#N/A,#N/A,"The Arndale Shopping Centre, Manchester",Manchester,,England,,
+11164-0102,11164-0102,Open,Sky Retail,"Preston, St Georges","St Georges Shopping Centre, Preston",PR1 2TU,"St Georges Shopping Centre, Preston",Preston,,England,NT01,Mark Fitzpatrick
+11164-0103,11164-0103,Closed,Sky Retail,"Southampton, Marlands",#N/A,#N/A,"The Marlands Shopping Centre, Southampton",Southampton,,England,ST03,Laurence Nettle
+11164-0104,11164-0104,Closed,Sky Retail,Falkirk,#N/A,#N/A,"The Howgate Shopping Centre, Falkirk",Falkirk,,Scotland,SN06,Chris Spence
+11164-0105,11164-0105,Closed,Sky Retail,"Norwich, Castle Mall",#N/A,#N/A,"Castle Mall, Norwich",Norwich,,England,,
+11164-0107,11164-0107,Open,Sky Retail,"Slough, Queensmere","Queensmere Shopping Centre, Slough",SL1 1DG,"Queensmere Shopping Centre, Slough",Slough,,England,ST01,Laurence Nettle
+11164-0108,11164-0108,Open,Sky Retail,Maidstone,"The Mall Maidstone, Maidstone",ME15 6AT,"The Mall Maidstone, Maidstone",Maidstone,,England,LS04,Shazad Shah
+11164-0109,11164-0109,Closed,Sky Retail,Camberley,#N/A,#N/A,"The Square Camberley, Camberley",Camberley,,England,ST05,Laurence Nettle
+11164-0111,11164-0111,Closed,Sky Retail,"Aberdeen, Trinity",#N/A,#N/A,"Trinity Mall, Aberdeen",Aberdeen,,Scotland,,
+11164-0119,11164-0119,Closed,Sky Retail,Dartford,#N/A,#N/A,"The Priory Centre, Dartford",Dartford,,England,,
+11164-0121,11164-0121,Closed,Sky Retail,Maidenhead,#N/A,#N/A,"Nicholson Centre, Maidenhead",Maidenhead,,England,,
+11164-0123,11164-0123,Closed,Sky Retail,Morecambe,#N/A,#N/A,"Arndale Centre, Morecambe",Morecambe,,England,NT02,Mark Fitzpatrick
+11164-0125,11164-0125,Open,Sky Retail,Telford 1,"Telford Shopping Centre, Telford",TF3 4BX,"Telford Shopping Centre, Telford",Telford,,England,WW04,Julia McVicar
+11164-0126,11164-0126,Closed,Sky Retail,Wellingborough,#N/A,#N/A,"The Swansgate Shopping Centre, Wellingborough",Wellingborough,,England,,
+11164-0127,11164-0127,Open,Sky Retail,Blackburn,"The Mall Blackburn, Blackburn",BB1 5AF,"The Mall Blackburn, Blackburn",Blackburn,,England,NT01,Mark Fitzpatrick
+11164-0129,11164-0129,Closed,Sky Retail,Tunbridge Wells,#N/A,#N/A,"Royal Victoria Place, Tunbridge Wells",Tunbridge Wells,,England,LS06,Shazad Shah
+11164-0133,11164-0133,Closed,Sky Retail,"Belfast, Castle Court",#N/A,#N/A,"Castle Court Shopping Centre, Belfast",Belfast,,Northern Ireland,,
+11164-0135,11164-0135,Closed,Sky Retail,"Glasgow, Buchanan",#N/A,#N/A,"Buchanan Galleries, Glasgow",Glasgow,,Scotland,,
+11164-0136,11164-0136,Closed,Sky Retail,Irvine,#N/A,#N/A,"The Rivergate Centre, Irvine",Irvine,,Scotland,SN07,Chris Spence
+11164-0137,11164-0137,Closed,Sky Retail,"Uxbridge, Pavillions",#N/A,#N/A,"The Pavillions, Uxbridge",Uxbridge,,England,LS03,Shazad Shah
+11164-0144,11164-0144,Open,Sky Retail,"Manchester, Trafford 1","Intu Trafford Centre, Manchester",M17 8AA,"Intu Trafford Centre, Manchester",Manchester,,England,NT04,Mark Fitzpatrick
+11164-0148,11164-0148,Closed,Sky Retail,East Kilbride,#N/A,#N/A,"Centre West Shopping Centre, East Kilbride",East Kilbride,,Scotland,SN05,Chris Spence
+11164-0153,11164-0153,Open,Sky Retail,Stoke,"Intu Potteries, Stoke-on-Trent",ST1 1PS,"Intu Potteries, Stoke-on-Trent",Stoke-on-Trent,,England,WW04,Julia McVicar
+11164-0155,11164-0155,Closed,Sky Retail,Eastleigh,#N/A,#N/A,"The Swan Centre, Eastleigh",Eastleigh,,England,LS05,Shazad Shah
+11164-0163,11164-0163,Closed,Sky Retail,Wood Green 2,#N/A,#N/A,"The Mall Wood Green, London",London,,England,,
+11164-0164,11164-0164,Closed,Sky Retail,Scarborough,#N/A,#N/A,"Brunswick Shopping Centre, Scarborough",Scarborough,,England,,
+11164-0166,11164-0166,Open,Sky Retail,Huddersfield,"Kingsgate Shopping Centre, Huddersfield",HD1 2QB,"Kingsgate Shopping Centre, Huddersfield",Huddersfield,,England,EN03,James Owen
+11164-0170,11164-0170,Open,Sky Retail,Merry Hill 2,"Intu Merry Hill, Dudley",DY5 1QS,"Intu Merry Hill, Dudley",Dudley,,England,WW02,Julia McVicar
+11164-0181,11164-0181,Open,Sky Retail,Mansfield,"Four Seasons Centre, Mansfield",NG18 1SU ,"Four Seasons Centre, Mansfield",Mansfield,,England,EN05,James Owen
+11164-0183,11164-0183,Closed,Sky Retail,"Sheffield, Crystal Peaks",#N/A,#N/A,"Crystal Peaks Shopping Centre, Sheffield",Sheffield,,England,,
+11164-0184,11164-0184,Closed,Sky Retail,"Dundee, Wellgate",#N/A,#N/A,"The Wellgate Shopping Centre, Dundee",Dundee,,Scotland,,
+11164-0186,11164-0186,Open,Sky Retail,Poole,"Dolphin Centre, Poole",BH15 1SZ,"Dolphin Centre, Poole",Poole,,England,ST03,Laurence Nettle
+11164-0188,11164-0188,Closed,Sky Retail,"Uxbridge, Chimes",#N/A,#N/A,"Intu Uxbridge, Uxbridge",Uxbridge,,England,LS01,Shazad Shah
+11164-0189,11164-0189,Closed,Sky Retail,"Liverpool, Clayton Square",#N/A,#N/A,"Clayton Square Shopping Centre, Liverpool",Liverpool,,England,,
+11164-0191,11164-0191,Closed,Sky Retail,"Edinburgh, Gyle",#N/A,#N/A,"Gyle Shopping Centre, Edinburgh",Edinburgh,,Scotland,,
+11164-0193,11164-0193,Closed,Sky Retail,"Leeds, St Johns",#N/A,#N/A,"St Johns Shopping Centre, Leeds",Leeds,,England,,
+11164-0196,11164-0196,Open,Sky Retail,Livingston,"Almondvale Shopping Centre, Livingston",EH54 6HR,"Almondvale Shopping Centre, Livingston",Livingston,,Scotland,SN02,Chris Spence
+11164-0197,11164-0197,Closed,Sky Retail,"Londonderry, Foyleside",#N/A,#N/A,"Foyleside Shopping Centre, Londonderry",Londonderry,,Northern Ireland,,
+11164-0200,11164-0200,Open,Sky Retail,Sunderland,"The Bridges Shopping Centre, Sunderland",SR1 3DR,"The Bridges Shopping Centre, Sunderland",Sunderland,,England,EN01,James Owen
+11164-0202,11164-0202,Closed,Sky Retail,Telford 2,#N/A,#N/A,"Telford Shopping Centre, Telford",Telford,,England,WW06,Julia McVicar
+11164-0203,11164-0203,Closed,Sky Retail,Aldershot,#N/A,#N/A,"Wellington Shopping Centre, Aldershot",Aldershot,,England,,
+11164-0206,11164-0206,Closed,Sky Retail,"Aberdeen, Bon Accord","Bon Accord St Nicholas Shopping Centre, Aberdeen",AB25 1HZ,"Bon Accord St Nicholas Shopping Centre, Aberdeen",Aberdeen,,Scotland,SN01,Chris Spence
+11164-0207,11164-0207,Open,Sky Retail,"Norwich, Chapelfield","Intu Chapelfield, Norwich",NR1 3SH,"Intu Chapelfield, Norwich",Norwich,,England,EN04,James Owen
+11164-0213,11164-0213,Closed,Sky Retail,Banbury,#N/A,#N/A,"Castle Quay Shopping Centre, Banbury",Banbury,,England,,
+11164-0216,11164-0216,Closed,Sky Retail,"Cardiff, St Davids",#N/A,#N/A,"St Davids Centre, Cardiff",Cardiff,,Wales,,
+11164-0223,11164-0223,Open,Sky Retail,Milton Keynes 1 (site 36),"thecentre MK, Milton Keynes",MK9 3ES,"thecentre MK, Milton Keynes",Milton Keynes,,England,ST05,Laurence Nettle
+11164-0224,11164-0224,Closed,Sky Retail,Milton Keynes 2 (site 5),#N/A,#N/A,"thecentre MK, Milton Keynes",Milton Keynes,,England,,
+11164-0225,11164-0225,Open,Sky Retail,Stratford,"Stratford Centre, London",E15 1NG,"Stratford Centre, London",London,,England,LS02,Shazad Shah
+11164-0226,11164-0226,Closed,Sky Retail,"Carlisle, The Lanes",#N/A,#N/A,"The Lanes Shopping Centre, Carlisle",Carlisle,,England,NT03,Mark Fitzpatrick
+11164-0231,11164-0231,Closed,Sky Retail,Wandsworth,#N/A,#N/A,"Southside Shopping Centre, London",London,,England,LS05,Shazad Shah
+11164-0232,11164-0232,Closed,Sky Retail,"Nottingham, Victoria",#N/A,#N/A,"Intu Victoria Centre, Nottingham",Nottingham,,England,,
+11164-0233,11164-0233,Closed,Sky Retail,Romford,#N/A,#N/A,"Liberty Shopping Centre, Romford",Romford,,England,LS05,Shazad Shah
+11164-0234,11164-0234,Closed,Sky Retail,Woking,#N/A,#N/A,"The Peacocks Shopping Centre, Woking",Woking,,England,,
+11164-0235,11164-0235,Open,Sky Retail,Oldham,"The Spindles Shopping Centre, Oldham",OL1 1HD,"The Spindles Shopping Centre, Oldham",Oldham,,England,NT02,Mark Fitzpatrick
+11164-0236,11164-0236,Closed,Sky Retail,Rhyl,#N/A,#N/A,"The White Rose Shopping Centre, Rhyl",Rhyl,,England,WW03,Julia McVicar
+11164-0237,11164-0237,Open,Sky Retail,Ashton-under-Lyne,"The Arcades Shopping Centre, Ashton-under-Lyne",OL6 7JE,"The Arcades Shopping Centre, Ashton-under-Lyne",Ashton-under-Lyne,,England,NT02,Mark Fitzpatrick
+11164-0238,11164-0238,Closed,Sky Retail,Bexleyheath,#N/A,#N/A,"Broadway Shopping Centre, Bexleyheath",Bexleyheath,,England,LS03,Shazad Shah
+11164-0246,11164-0246,Closed,Sky Retail,Rushmere,#N/A,#N/A,"Rushmere Shopping Centre, Craigavon",Craigavon,,Northern Ireland,SN05,Chris Spence
+11164-0248,11164-0248,Closed,Sky Retail,"Burton, Coopers",#N/A,#N/A,"Coopers Square Shopping Centre, Burton-on-Trent",Burton-on-Trent,,England,WW04,Julia McVicar
+11164-0250,11164-0250,Closed,Sky Retail,"Belfast, Connswater",#N/A,#N/A,"Connswater Shopping Centre, Belfast",Belfast,,Northern Ireland,,
+11164-0253,11164-0253,Closed,Sky Retail,Stirling,#N/A,#N/A,"The Thistles, Stirling",Stirling,,Scotland,SN06,Chris Spence
+11164-0255,11164-0255,Closed,Sky Retail,Inverness,#N/A,#N/A,"Eastgate Shopping Centre, Inverness",Inverness,,Scotland,SN06,Chris Spence
+11164-0256,11164-0256,Open,Sky Retail,Andover,"Chantry Centre, Andover",SP10 1RL,"Chantry Centre, Andover",Andover,,England,ST02,Laurence Nettle
+11164-0262,11164-0262,Closed,Sky Retail,"Edinburgh, Ocean",#N/A,#N/A,"Ocean Terminal Services Ltd, Edinburgh",Edinburgh,,Scotland,,
+11164-0263,11164-0263,Open,Sky Retail,Grimsby,"Freshney Place, Grimsby",DN31 1ED,"Freshney Place, Grimsby",Grimsby,,England,EN02,James Owen
+11164-0265,11164-0265,Open,Sky Retail,"Middlesbrough, Hill","Hill Street Shopping Centre, Middlesbrough",TS1 1SU,"Hill Street Shopping Centre, Middlesbrough",Middlesbrough,,England,EN01,James Owen
+11164-0269,11164-0269,Open,Sky Retail,Surrey Quays,"Surrey Quays Shopping Centre, London",SE16 7LL,"Surrey Quays Shopping Centre, London",London,,England,LS01,Shazad Shah
+11164-0271,11164-0271,Closed,Sky Retail,Boscombe,#N/A,#N/A,"The Sovereign Centre, Bournemouth",Bournemouth,,England,,
+11164-0272,11164-0272,Closed,Sky Retail,Castleford,#N/A,#N/A,"Carlton Lanes Shopping Centre, Castleford",Castleford,,England,,
+11164-0279,11164-0279,Open,Sky Retail,Harrow,"St Georges Shopping Centre, Harrow",HA1 1HS,"St Georges Shopping Centre, Harrow",Harrow,,England,LS01,Shazad Shah
+11164-0282,11164-0282,Closed,Sky Retail,Llanelli,#N/A,#N/A,"St Elli Shopping Centre, Llanelli",Llanelli,,Wales,,
+11164-0289,11164-0289,Closed,Sky Retail,Warrington Cockhedge,#N/A,#N/A,"Cockhedge Shopping Park, Warrington",Warrington,,England,NT03,Mark Fitzpatrick
+11164-0291,11164-0291,Closed,Sky Retail,Weston Super Mare,#N/A,#N/A,"The Sovereign Shopping Centre, Weston-Super-Mare",Weston-Super-Mare,,England,ST04,Laurence Nettle
+11164-0301,11164-0301,Closed,Sky Retail,Havant,#N/A,#N/A,"The Meridian Shopping Centre, Havant",Havant,,England,,
+11164-0302,11164-0302,Open,Sky Retail,Swansea,"The Quadrant, Swansea",SA1 3QW,"The Quadrant, Swansea",Swansea,,Wales,WW03,Julia McVicar
+11164-0305,11164-0305,Open,Sky Retail,Brighton,"Churchill Square Shopping Centre, Brighton",BN1 2RG,"Churchill Square Shopping Centre, Brighton",Brighton,,England,LS04,Shazad Shah
+11164-0307,11164-0307,Closed,Sky Retail,Newtownards,#N/A,#N/A,"Ards Shopping Centre, Newtownards",Newtownards,,Northern Ireland,SN08,Chris Spence
+11164-0309,11164-0309,Closed,Sky Retail,Bridlington Promenades,#N/A,#N/A,"The Promenades, Bridlington",Bridlington,,England,,
+11164-0313,11164-0313,Open,Sky Retail,Wigan,"Grand Arcade Shopping Centre, Wigan",WN1 1BH,"Grand Arcade Shopping Centre, Wigan",Wigan,,England,NT03,Mark Fitzpatrick
+11164-0314,11164-0314,Open,Sky Retail,"Bangor, Bloomfield","Bloomfield Retail Park, Bangor",BT19 7HR,"Bloomfield Retail Park, Bangor",Bangor,,Northern Ireland,SN04,Chris Spence
+11164-0316,11164-0316,Closed,Sky Retail,Southend on Sea,#N/A,#N/A,"Royals Shopping Centre, Southend-On-Sea",Southend-On-Sea,,England,LS06,Shazad Shah
+11164-0317,11164-0317,Open,Sky Retail,Birkenhead,"The Pyramids Shopping Centre, Birkenhead",CH41 2RA,"The Pyramids Shopping Centre, Birkenhead",Birkenhead,,England,NT03,Mark Fitzpatrick
+11164-0322,11164-0322,Open,Sky Retail,"Stockport, Merseyway","Merseyway Shopping Centre, Stockport",SK1 1PD,"Merseyway Shopping Centre, Stockport",Stockport,,England,NT04,Mark Fitzpatrick
+11164-0324,11164-0324,Open,Sky Retail,"Birmingham, Bullring","Bullring, Birmingham",B5 4BU,"Bullring, Birmingham",Birmingham,,England,WW05,Julia McVicar
+11164-0325,11164-0325,Open,Sky Retail,Eastbourne,"Beacon Centre, Eastbourne",BN21 3NW,"Beacon Centre, Eastbourne",Eastbourne,,England,LS04,Shazad Shah
+11164-0326,11164-0326,Open,Sky Retail,Hempstead Valley,"Hempstead Valley Shopping Centre, Gillingham",ME7 3PD,"Hempstead Valley Shopping Centre, Gillingham",Gillingham,,England,LS03,Shazad Shah
+11164-0328,11164-0328,Open,Sky Retail,"Peterborough, Queensgate","Queensgate Centre, Peterborough",PE1 1NT,"Queensgate Centre, Peterborough",Peterborough,,England,EN04,James Owen
+11164-0329,11164-0329,Closed,Sky Retail,"Reading, The Oracle",#N/A,#N/A,"The Oracle, Reading",Reading,,England,,
+11164-0331,11164-0331,Closed,Sky Retail,Lisburn,#N/A,#N/A,"Bow Street Mall, Lisburn",Lisburn,,Northern Ireland,,
+11164-0333,11164-0333,Closed,Sky Retail,Perth,#N/A,#N/A,"St Johns Shopping Centre, Leeds",Leeds,,England,,
+11164-0337,11164-0337,Closed,Sky Retail,Cramlington,#N/A,#N/A,"Manor walks Shopping Centre, Cramlington",Cramlington,,England,,
+11164-0341,11164-0341,Closed,Sky Retail,Stockton,#N/A,#N/A,"Castlegate Shopping Centre  Outside Peacocks, Stockton on Tees",Stockton on Tees,,England,,
+11164-0343,11164-0343,Open,Sky Retail,"Chelmsford, High Chelmer","High Chelmer Shopping Centre, Chelmsford",CM1 1XB,"High Chelmer Shopping Centre, Chelmsford",Chelmsford,,England,LS02,Shazad Shah
+11164-0347,11164-0347,Open,Sky Retail,Blackpool,"Hounds Hill Shopping Centre, Blackpool",FY1 4HU,"Hounds Hill Shopping Centre, Blackpool",Blackpool,,England,NT01,Mark Fitzpatrick
+11164-0348,11164-0348,Open,Sky Retail,Buttercrane - NI,"Buttercrane Shopping Centre, Newry",BT35 8HJ,"Buttercrane Shopping Centre, Newry",Newry,,Northern Ireland,SN05,Chris Spence
+11164-0349,11164-0349,Closed,Sky Retail,Redhill,#N/A,#N/A,"The Belfry Shopping Centre, Redhill  Surrey",Redhill  Surrey,,England,,
+11164-0351,11164-0351,Open,Sky Retail,Abbey - NI,"Abbey Centre, Newtown Abbey",BT37 9UH,"Abbey Centre, Newtown Abbey",Newtown Abbey,,Northern Ireland,SN04,Chris Spence
+11164-0352,11164-0352,Open,Sky Retail,"Bridgwater, Angel Place","The Angel Place Shopping Centre, Bridgewater",TA6 3TQ,"The Angel Place Shopping Centre, Bridgewater",Bridgewater,,England,ST04,Laurence Nettle
+11164-0353,11164-0353,Closed,Sky Retail,"Edinburgh, Cameron Toll",#N/A,#N/A,"Cameron Toll Shopping Centre, Edinburgh",Edinburgh,,Scotland,SN06,Chris Spence
+11164-0354,11164-0354,Closed,Sky Retail,Stafford,#N/A,#N/A,"Guildhall Shopping Centre, Exeter",Exeter,,England,,
+11164-0356,11164-0356,Closed,Sky Retail,Barnstaple,#N/A,#N/A,"Green Lanes Shopping Centre, Barnstaple",Barnstaple,,England,,
+11164-0361,11164-0361,Open,Sky Retail,Glenrothes,"Kingdom Centre, Glenrothes",KY7 5NW,"Kingdom Centre, Glenrothes",Glenrothes,,Scotland,SN02,Chris Spence
+11164-0362,11164-0362,Closed,Sky Retail,Northampton,#N/A,#N/A,"Grosvenor Centre, Northampton",Northampton,,England,LS03,Shazad Shah
+11164-0364,11164-0364,Open,Sky Retail,Rochdale,"Rochdale Exchange Shopping Centre, Rochdale",OL16 1BA,"Rochdale Exchange Shopping Centre, Rochdale",Rochdale,,England,NT02,Mark Fitzpatrick
+11164-0365,11164-0365,Closed,Sky Retail,Southend-On-Sea,#N/A,#N/A,"The Victoria Shopping Centre, Southend-On-Sea",Southend-On-Sea,,England,,
+11164-0366,11164-0366,Open,Sky Retail,Staines,"Elmsleigh Shopping Centre, Staines",TW18 4QF,"Elmsleigh Shopping Centre, Staines",Staines,,England,ST01,Laurence Nettle
+11164-0367,11164-0367,Closed,Sky Retail,Cwmbran,#N/A,#N/A,"Cwmbran Shopping Centre, Cwmbran",Cwmbran,,Wales,,
+11164-0369,11164-0369,Open,Sky Retail,Plymouth,"Drake Circus Shopping Centre, Plymouth",PL1 1EA,"Drake Circus Shopping Centre, Plymouth",Plymouth,,England,ST04,Laurence Nettle
+11164-0370,11164-0370,Closed,Sky Retail,"Ballymena, Fairhill",#N/A,#N/A,"Fairhill Shopping Centre, Ballymena",Ballymena,,Northern Ireland,,
+11164-0371,11164-0371,Closed,Sky Retail,"Hastings, Priory Meadow",#N/A,#N/A,"Priory Meadow Shopping Centre, Hastings",Hastings,,England,NT05,Mark Fitzpatrick
+11164-0372,11164-0372,Closed,Sky Retail,"Londonderry, Richmond Cen",#N/A,#N/A,"Richmond Shopping Centre, Londonderry",Londonderry,,Northern Ireland,SN08,Chris Spence
+11164-0375,11164-0375,Closed,Sky Retail,White City 1,#N/A,#N/A,"Westfield SC London, London",London,,England,,
+11164-0377,11164-0377,Closed,Sky Retail,"Newcastle, Eldon 2",#N/A,#N/A,"Intu Eldon Square, Newcastle Upon Tyne",Newcastle Upon Tyne,,England,,
+11164-0378,11164-0378,Open,Sky Retail,"Bristol, Galleries","The Galleries, Bristol",BS1 3XD,"The Galleries, Bristol",Bristol,,England,WW03,Julia McVicar
+11164-0383,11164-0383,Closed,Sky Retail,Lakeside 2,#N/A,#N/A,"Intu Lakeside, Thurrock",Thurrock,,England,,
+11164-0385,11164-0385,Closed,Sky Retail,"Ballymena, Tower",#N/A,#N/A,"Tower Centre, Ballymena",Ballymena,,Northern Ireland,SN08,Chris Spence
+11164-0386,11164-0386,Closed,Sky Retail,"Gateshead, Metro 2",#N/A,#N/A,"Intu Metrocentre, Gateshead",Gateshead,,England,,
+11164-0387,11164-0387,Closed,Sky Retail,"Newcastle, Eldon 1",#N/A,#N/A,"Intu Eldon Square, Newcastle Upon Tyne",Newcastle Upon Tyne,,England,EN03,James Owen
+11164-0388,11164-0388,Open,Sky Retail,Watford,"Atria Watford, Watford",WD17 2UB,,Watford,,England,ST05,Laurence Nettle
+11164-0389,11164-0389,Closed,Sky Retail,"Sheffield, Meadowhall 2 (",#N/A,#N/A,"Meadowhall Centre 2, Sheffield",Sheffield,,England,,
+11164-0419,11164-0419,Closed,Sky Retail,"Farnborough, Princes Mead",#N/A,#N/A,"Princes Mead shopping centre, Farnborough",Farnborough,,England,EN02,James Owen
+11164-0423,11164-0423,Closed,Sky Retail,"London, Fulham",#N/A,#N/A,"Fulham Broadway Station Arcade, London",London,,England,,
+11164-0424,11164-0424,Closed,Sky Retail,"Chelmsford, The Meadows",#N/A,#N/A,"The Meadows, Chelmsford",Chelmsford,,England,,
+11164-0427,11164-0427,Closed,Sky Retail,"Reading, Broad Street",#N/A,#N/A,"Broad Street Mall, Reading",Reading,,England,,
+11164-0431,11164-0431,Closed,Sky Retail,Scunthorpe,#N/A,#N/A,"The Foundry Shopping Centre, Scunthorpe",Scunthorpe,,England,EN02,James Owen
+11164-0436,11164-0436,Open,Sky Retail,"Manchester, Arndale 2","The Arndale Shopping Centre, Manchester",M4 3AQ,"The Arndale Shopping Centre, Manchester",Manchester,,England,NT05,Mark Fitzpatrick
+11164-0442,11164-0442,Closed,Sky Retail,Ashford,#N/A,#N/A,"County Square Shopping Centre, ASHFORD",ASHFORD,,England,LS05,Shazad Shah
+11164-0452,11164-0452,Open,Sky Retail,"Cheltenham, Regent","Cheltenham Regent Arcade, Cheltenham",GL50 1JZ,"Cheltenham Regent Arcade, Cheltenham",Cheltenham,,England,WW01,Julia McVicar
+11164-0453,11164-0453,Closed,Sky Retail,"Glasgow, St Enoch",#N/A,#N/A,"St Enoch Shopping Centre, Glasgow",Glasgow,,Scotland,,
+11164-0500,11164-0500,Closed,Sky Retail,"Hull, St Stephens",#N/A,#N/A,"St Stephens, Hull",Hull,,England,EN05,James Owen
+11164-0502,11164-0502,Closed,Sky Retail,"Worcester, Crowngate",#N/A,#N/A,"Crowngate Shopping Centre, Worcester",Worcester,,England,,
+11164-0507,11164-0507,Closed,Sky Retail,Trowbridge,#N/A,#N/A,"The Shires, Trowbridge",Trowbridge,,England,ST04,Laurence Nettle
+11164-0510,11164-0510,Closed,Sky Retail,"Bristol, Cribbs",#N/A,#N/A,"Cribbs Causeway Regional Shopping Centre, Bristol",Bristol,,England,,
+11164-0520,11164-0520,Open,Sky Retail,Taunton,"Orchard Shopping Centre, Taunton",TA1 3TP,"Orchard Shopping Centre, Taunton",Taunton,,England,ST04,Laurence Nettle
+11164-0525,11164-0525,Closed,Sky Retail,Crewe,#N/A,#N/A,"The Market Shopping Centre, Crewe",Crewe,,England,NT03,Mark Fitzpatrick
+11164-0528,11164-0528,Closed,Sky Retail,Caerphilly,#N/A,#N/A,"Castle Court Shopping Centre, Caerphilly",Caerphilly,,Wales,,
+11164-0534,11164-0534,Closed,Sky Retail,"Merthyr Tydfil, Beacon Pl",#N/A,#N/A,"Beacon Place Shopping Centre, Merthyr Tydfil",Merthyr Tydfil,,Wales,WW05,Julia McVicar
+11164-0535,11164-0535,Closed,Sky Retail,"Belfast, Forestside",#N/A,#N/A,"Forestside Shopping Centre, Belfast",Belfast,,Northern Ireland,SN08,Chris Spence
+11164-0536,11164-0536,Open,Sky Retail,Stratford Westfield 1,"Stratford City Westfield, London",E20 1EJ,"Stratford City Westfield, London",London,,England,LS06,Shazad Shah
+11164-0538,11164-0538,Closed,Sky Retail,Peterborough - Serpentine,#N/A,#N/A,"Serpentine Green Shopping Centre, Peterborough",Peterborough,,England,,
+11164-0539,11164-0539,Open,Sky Retail,Solihull,"Touchwood Solihull Shopping Centre, Solihull",B91 3GJ,"Touchwood Solihull Shopping Centre, Solihull",Solihull,,England,WW01,Julia McVicar
+11164-0540,11164-0540,Closed,Sky Retail,Ealing,#N/A,#N/A,"Ealing Broadway Shopping Centre, London",London,,England,,
+11164-0542,11164-0542,Closed,Sky Retail,Carmarthen,#N/A,#N/A,"Merlins Walk Shopping Centre, Carmarthen",Carmarthen,,Wales,WW06,Julia McVicar
+11164-0543,11164-0543,Closed,Sky Retail,Belfast Kennedy,#N/A,#N/A,"The Kennedy Centre, Belfast",Belfast,,Northern Ireland,SN08,Chris Spence
+11164-0546,11164-0546,Closed,Sky Retail,High Wycombe Eden,#N/A,#N/A,"Eden Shopping Centre, High Wycombe",High Wycombe,,England,,
+11164-0574,11164-0574,Closed,Sky Retail,Stratford Westfield 2,#N/A,#N/A,"Westfield Stratford City, London",London,,England,,
+11164-0601,11164-0601,Closed,Sky Retail,Bluewater - Old,#N/A,#N/A,"Bluewater Shopping Centre, Greenhithe",Greenhithe,,England,,
+11164-0604,11164-0604,Closed,Sky Retail,"Liverpool, One",#N/A,#N/A,"Liverpool One Shopping Centre, Liverpool",Liverpool,,England,,
+11164-0605,11164-0605,Open,Sky Retail,"Bradford, The Broadway","The Broadway, Bradford, Bradford",BD1 1HA,"The Broadway, Bradford, Bradford",Bradford,,England,EN03,James Owen
+11164-0606,11164-0606,Closed,Sky Retail,Kingston,#N/A,#N/A,"The Bentall Centre, Kingston Upon Thames",Kingston Upon Thames,,England,,
+11164-0607,11164-0607,Open,Sky Retail,"Bolton, Market Place","Market Place Bolton, Bolton",BL1 1DF,"Market Place Bolton, Bolton",Bolton,,England,NT01,Mark Fitzpatrick
+11164-4001,11164-4001,Open,Sky Retail,Liverpool One,"Liverpool One Shopping Centre, Liverpool",L1 8BU,"Liverpool One Shopping Centre, Liverpool",Liverpool,,England,NT06,Mark Fitzpatrick
+11164-4002,11164-4002,Open,Sky Retail,Gateshead,"Intu Metrocentre, Gateshead",NE11 9YG,"Intu Metrocentre, Gateshead",,,England,EN06,James Owen
+11164-4003,11164-4003,Open,Sky Retail,Glasgow,"Buchanan Galleries, Glasgow",G1 2FF,"Buchanan Galleries, Glasgow",Glasgow,,Scotland,SN07,Chris Spence
+11164-4004,11164-4004,Open,Sky Retail,Leeds,"Trinity Leeds, Leeds",LS1 5AT,"Trinity Leeds, Leeds",Leeds,,England,EN07,James Owen
+11164-4005,11164-4005,Open,Sky Retail,Bristol,"Cribbs Causeway Regional Shopping Centre, Bristol",BS34 5DG,"Cribbs Causeway Regional Shopping Centre, Bristol",Bristol,,England,WW06,Julia McVicar
+11164-4006,11164-4006,Open,Sky Retail,Edinburgh,"St James Centre, Edinburgh",EH12 9JY,"St James Centre, Edinburgh",Edinburgh,,Scotland,SN06,Chris Spence
+11164-4007,11164-4007,Open,Sky Retail,Sheffield,"Meadowhall Centre 2, Sheffield",S9 1EP,"Meadowhall Centre 2, Sheffield",Sheffield,,England,EN08,James Owen
+11164-4008,11164-4008,Open,Sky Retail,Stratford Westfield,"Westfield Stratford City, London",E20 1 EJ,"Westfield Stratford City, London",London,,England,LS06,Shazad Shah
+11164-4009,11164-4009,Open,Sky Retail,Cardiff,"St Davids Centre, Cardiff",CF10 2DP,"St Davids Centre, Cardiff",Cardiff,,Wales,WW07,Julia McVicar
+11164-4010,11164-4010,Open,Sky Retail,Bluewater,"Bluewater Shopping Centre, Greenhithe",DA9 9ST,"Bluewater Shopping Centre, Greenhithe",Greenhithe,,England,LS07,Shazad Shah
+11164-4011,11164-4011,Open,Sky Retail,White City,"Westfield White City, Shepherds Bush",W12 7GF,"Westfield White City, Shepherds Bush",Shepherds Bush,,England,ST06,Laurence Nettle
+11164-4012,11164-4012,Open,Sky Retail,Manchester,"The Arndale Shopping Centre, Manchester",M4 3AQ,"The Arndale Shopping Centre, Manchester",Manchester,,England,NT05,Mark Fitzpatrick
+11164-4014,11164-4014,Open,Sky Retail,"Bullring, Birmingham","Bullring, Birmingham",B5 4BU,"Bullring, Birmingham",Birmingham,,England,WW05,Julia McVicar
+11164-4015,11164-4015,Open,Sky Retail,Battersea,Battersea Power Station,SW11 8DD,Battersea Power Station,London,,England,ST07,Laurence Nettle
+11164-5131,11164-5131,Closed,Sky Retail,"Leeds, Trinity",#N/A,#N/A,"Trinity Leeds, Leeds",Leeds,,England,,
+11164-6001,11164-6001,Open,Sky Retail,Luton,"The Mall Luton, Luton",LU1 2LJ,"The Mall Luton, Luton",Luton,,England,ST05,Laurence Nettle
+11164-6002,11164-6002,Open,Sky Retail,"Leicester, Highcross","Highcross Shopping Centre, Leicester, Leicester",LE1 4AN,"Highcross Shopping Centre, Leicester, Leicester",Leicester,,England,EN04,James Owen
+11164-6003,11164-6003,Open,Sky Retail,Merry Hill,"Intu Merry Hill, Dudley",DY5 1QX,"Intu Merry Hill, Dudley",Dudley,,England,WW02,Julia McVicar
+11164-6004,11164-6004,Open,Sky Retail,Derby,"Derbion Shopping Centre, Derby",DE1 2NQ,"Derbion Shopping Centre, Derby",Derby,,England,EN05,James Owen
+11164-6005,11164-6005,Open,Sky Retail,"Leeds, White Rose","White Rose Shopping Centre, Leeds",LS11 8LU,"White Rose Shopping Centre, Leeds",Leeds,,England,EN02,James Owen
+11164-6006,11164-6006,Open,Sky Retail,"Southampton, West Quay","West Quay Shopping Centre, Southampton",SO15 1QF,"West Quay Shopping Centre, Southampton",Southampton,,England,ST03,Laurence Nettle
+11164-6007,11164-6007,Open,Sky Retail,Basingstoke,"Festival Place Shopping Centre, Basingstoke",RG21 7LJ,"Festival Place Shopping Centre, Basingstoke",Basingstoke,,England,ST02,Laurence Nettle
+11164-6008,11164-6008,Open,Sky Retail,Brent Cross,"Brent Cross Shopping Centre, London",NW4 3FP,"Brent Cross Shopping Centre, London",London,,England,LS01,Shazad Shah
+11164-6009,11164-6009,Open,Sky Retail,"Glasgow, Silverburn","Silverburn Shopping Centre, Glasgow",G53 6EQ,"Silverburn Shopping Centre, Glasgow",Glasgow,,Scotland,SN03,Chris Spence
+11164-6010,11164-6010,Open,Sky Retail,Nottingham Victoria,"Intu Victoria Centre, Nottingham",NG1 3QN,"Intu Victoria Centre, Nottingham",,,England,EN05,James Owen
+11164-6011,11164-6011,Open,Sky Retail,Manchester Trafford,"Four Seasons Centre, Mansfield",NG18 1SU,"Intu Trafford Centre, Manchester",,,England,NT04,Mark Fitzpatrick
+11164-6012,11164-6012,Open,Sky Retail,Reading Oracle,"The Oracle, Reading",RG1 2AG,"The Oracle, Reading",,,England,ST02,Laurence Nettle
+11164-6013,11164-6013,Closed,Sky Retail,Bromley,#N/A,#N/A,"The Glades Shopping Centre, Bromley",Bromley,,England,LS02,Shazad Shah
+11164-6014,11164-6014,Open,Sky Retail,Newcastle Eldon,"Intu Eldon Square, Newcastle Upon Tyne",NE1 7XE,"Intu Eldon Square, Newcastle Upon Tyne",,,England,EN01,James Owen
+11164-7006,11164-7006,Open,Sky Retail,Retail Vehicle 2,0,#N/A,,WV19 FJO,,,LS08,Shazad Shah
+11164-7008,11164-7008,Open,Sky Retail,Retail Vehicle 1,0,#N/A,,WV19 FJN,,,LS08,Shazad Shah
+81169-0050,81169-0050,Open,Sky Retail,Letterkenny,"Letterkenny Shopping Centre, Letterkenny",#N/A,"Letterkenny Shopping Centre, Letterkenny",Co. Donegal,,Republic of Ireland,ROI02,Linda Doran
+81169-0002,81169-0002,Open,Sky Retail,Tallaght,"The Square Shopping Centre, Tallaght",#N/A,"The Square Shopping Centre, Tallaght",Dublin,,Republic of Ireland,ROI01,Maria Garcia
+81169-0003,81169-0003,Closed,,Omni,#N/A,#N/A,"Omni Park Shopping Centre, Santry",Santry,,Republic of Ireland,,
+81169-0004,81169-0004,Open,Sky Retail,Liffey Valley,"Liffey Valley Shopping Centre, Clondalkin",#N/A,"Liffey Valley Shopping Centre, Clondalkin",Clondalkin,,Republic of Ireland,ROI01,Maria Garcia
+81169-0005,81169-0005,Open,Sky Retail,"Drogheda, Scotch Hall","Scotch Hall Shopping Centre, Drogheda",#N/A,"Scotch Hall Shopping Centre, Drogheda",Drogheda,,Republic of Ireland,ROI01,Maria Garcia
+81169-0006,81169-0006,Closed,,Marshes,#N/A,#N/A,"Marshes Shopping Centre, Dundalk",Dundalk,,Republic of Ireland,,
+81169-0009,81169-0009,Closed,,Blanchardstown,#N/A,#N/A,"Blanchardstown Shopping Centre, Dublin",Dublin,,Republic of Ireland,,
+81169-0011,81169-0011,Closed,,Ilac,#N/A,#N/A,"Ilac Centre, Dublin",Dublin,,Republic of Ireland,,
+81169-0012,81169-0012,Closed,,Mill,#N/A,#N/A,"The Mill Shopping Centre, Clondalkin",Clondalkin,,Republic of Ireland,,
+81169-0014,81169-0014,Open,Sky Retail,Pavillions,"Pavilions Shopping Centre, Dublin",#N/A,"Pavilions Shopping Centre, Dublin",Co. Dublin,,Republic of Ireland,ROI01,Maria Garcia
+81169-0020,81169-0020,Closed,,Longford,#N/A,#N/A,"Longford Shopping Centre, Longford",Longford,,Republic of Ireland,,
+81169-0021,81169-0021,Open,Sky Retail,Navan,"Navan Shopping Centre, Navan",#N/A,"Navan Shopping Centre, Navan",Co. Meath,,Republic of Ireland,ROI01,Maria Garcia
+81169-0022,81169-0022,Open,Sky Retail,Galway,"Galway Shopping Centre, Galway",#N/A,"Galway Shopping Centre, Galway",Galway,,Republic of Ireland,ROI02,Linda Doran
+81169-0023,81169-0023,Closed,,McDonagh Junction,#N/A,#N/A,"MacDonagh Junction Shopping Centre, Kilkenny",Kilkenny,,Republic of Ireland,,
+81169-0024,81169-0024,Open,Sky Retail,Carlow,"Fairgreen Shopping Centre, Carlow",#N/A,"Fairgreen Shopping Centre, Carlow",Carlow,,Republic of Ireland,ROI03,Darren Lynch
+81169-0026,81169-0026,Closed,,"Arklow, Bridgewater",#N/A,#N/A,"Bridgewater Shopping Centre, Arklow",Arklow,,Republic of Ireland,,
+81169-0027,81169-0027,Open,Sky Retail,Wilton,"Wilton Shopping Centre, Cork",#N/A,"Wilton Shopping Centre, Cork",Cork,,Republic of Ireland,ROI03,Darren Lynch
+81169-0028,81169-0028,Closed,,"Newbridge, Whitewater",#N/A,#N/A,"Whitewater Shopping Centre, Newbridge",Newbridge,,Republic of Ireland,ROI02,Linda Doran
+81169-0029,81169-0029,Open,Sky Retail,Portlaoise,"Laois Shopping Centre, Portlaoise",#N/A,"Laois Shopping Centre, Portlaoise",Portlaoise,,Republic of Ireland,ROI02,Linda Doran
+81169-0030,81169-0030,Closed,,Mahon Point,#N/A,#N/A,"Mahon Point Shopping Centre, Mahon Point",Mahon Point,,Republic of Ireland,,
+81169-0031,81169-0031,Open,Sky Retail,Tralee,"Manor West Shopping Centre, Tralee",#N/A,"Manor West Shopping Centre, Tralee",Tralee,,Republic of Ireland,ROI03,Darren Lynch
+81169-0033,81169-0033,Open,Sky Retail,Douglas,"Douglas Court Shopping Centre, Douglas",#N/A,"Douglas Court Shopping Centre, Douglas",Douglas,,Republic of Ireland,ROI03,Darren Lynch
+81169-0037,81169-0037,Open,Sky Retail,Blackpool,"Blackpool Shopping Centre, Cork City",#N/A,"Blackpool Shopping Centre, Cork City",Cork City,,Republic of Ireland,ROI03,Darren Lynch
+81169-0038,81169-0038,Closed,,Wexford,#N/A,#N/A,"TESCO'S WEXFORD, Wexford",Wexford,,Republic of Ireland,,
+81169-0039,81169-0039,Closed,,Thurles,#N/A,#N/A,"Thurles Shopping Centre, Thurles",Thurles,,Republic of Ireland,,
+81169-0040,81169-0040,Closed,,Paul St,#N/A,#N/A,"Paul Street Shopping Centre, Cork",Cork,,Republic of Ireland,,
+81169-0041,81169-0041,Closed,,Arthur's Quay,"Arthur's Quay Shopping Centre, Limerick",#N/A,"Arthur's Quay Shopping Centre, Limerick",Limerick,,Republic of Ireland,ROI02,Linda Doran
+81169-0042,81169-0042,Open,Sky Retail,"Waterford, Arundel Square","City Square Shopping Centre, Waterford",#N/A,"City Square Shopping Centre, Waterford",Waterford,,Republic of Ireland,ROI03,Darren Lynch
+81169-0049,81169-0049,Closed,,Northside Shopping Centre,#N/A,#N/A,"Northside Shopping Centre, Dublin",Dublin,,Republic of Ireland,,
+81169-0051,81169-0051,Closed,,Eyre Square,#N/A,#N/A,"Eyre Square Shopping Centre, Galway",,,Republic of Ireland,,
+81169-0052,81169-0052,Open,Sky Retail,"Golden Island, Athlone","Golden Island Shopping Centre, Athlone",#N/A,"Golden Island Shopping Centre, Athlone",Athlone,,Republic of Ireland,ROI02,Linda Doran
+81169-0053,81169-0053,Closed,,"Harbour Place, Mullingar",#N/A,#N/A,"Harbour Place Shopping Centre, Republic of Ireland",,,Republic of Ireland,,
+81169-2222,81169-2222,Open,Sky Retail,Parkway,"Parkway Shopping Centre, Limerick City",#N/A,"Parkway Shopping Centre, Limerick City",Limerick City,,Republic of Ireland,ROI02,Linda Doran
+81169-3333,81169-3333,Closed,,Nutgrove,#N/A,#N/A,"Nutgrove Shopping Centre, Dublin 14",Dublin 14,,Republic of Ireland,,
+81169-4001,81169-4001,Open,Sky Retail,Blanchardstown Store,"Blanchardstown Shopping Centre, Dublin",#N/A,"Blanchardstown Shopping Centre, Dublin",Dublin,,Republic of Ireland,ROI01,Maria Garcia
+81169-4002,81169-4002,Open,Sky Retail,Crescent Store,Crescent Shopping Centre,#N/A,Crescent Shopping Centre,Co. Limerick,,Republic of Ireland,ROI02,Linda Doran
+81169-4003,81169-4003,Open,Sky Retail,Mahon Point Store,"Mahon Point Shopping Centre, Mahon Point",#N/A,"Mahon Point Shopping Centre, Mahon Point",Cork,,Republic of Ireland,ROI03,Darren Lynch
+81169-4004,81169-4004,Open,Sky Retail,Dundrum Store,0,#N/A,,Dublin 16,,Republic of Ireland,ROI01,Maria Garcia
+11164-0000,11164-0000,Mock,Sky Retail,Retail Mock Shop,Sky Osterley Grant Way,TW7 5QD,,,,,,
+11164-6016,11164-6016,Open,Sky Retail,Lakeside 1,"Intu Lakeside, Thurrock",RM20 7ZP,"Intu Lakeside, Thurrock",,,England,LS03,Shazad Shah
+11164-4013,11164-4013,Open,Sky Retail,Belfast Shop,"22 Castle Ln, Belfast BT1 5DB",BT1 5DB,Castle Lane,Belfast,,Northern Ireland,SN08,Chris Spence
+00286-2279,00286-2279,Open,Curry's,DERBY Kingsway,Kingsway Retail Park,DE22 3FA,,Derbyshire,,,,
+00286-2427,00286-2427,Open,Curry's,ENFIELD,Unit 4 De Mandeville Gate RP,EN1 1TW,,London,,,,
+00286-2368,00286-2368,Open,Curry's,GLASGOW Braehead,Unit G Braehead Retail Park,G51 4BT,,Renfrewshire,,,,
+00286-2304,00286-2304,Open,Curry's,LEEDS Birstall,Unit A-B West Yorkshire RP,WF17 9AE,,West Yorkshire,,,,
+00286-2272,00286-2272,Open,Curry's,LEICESTER Fosse,Unit 1  Fosse Park South,LE19 1UT,,Leicestershire,,,,
+00286-2429,00286-2429,Open,Curry's,LISBURN,Sprucefield Centre,BT27 5UN,Sprucefield Centre,Co Antrim,,Northern Ireland,,
+00286-2175,00286-2175,Open,Curry's,MEDWAY,Unit A Horsted Retail Park,ME5 9SQ,,Kent,,,,
+00286-2467,00286-2467,Open,Curry's,NEW MALDEN,Unit 2 Burlington Retail Park,KT3 4PA,,London,,,,
+00286-2483,00286-2483,Open,Curry's,READING,Unit 5 Reading Gate RP,RG2 0QG,,Berkshire,,,,
+00286-2237,00286-2237,Open,Curry's,ROTHERHAM,Unit 15 Parkgate Shopping Park,S60 1TG,,South Yorkshire,,,,
+00286-2432,00286-2432,Open,Curry's,STAPLES CORNER,Unit 4 Staples Corner RP,NW2 6LW,,London,,,,
+00286-2311,00286-2311,Open,Curry's,CHARLTON,Unit 6 Stone Lake Retail Park,SE7 8LU,,London,,,,
+00286-2206,00286-2206,Open,Curry's,CREWE,Unit 6 Grand Junction RP,CW1 2RP,,Cheshire,,,,
+00286-1605,00286-1605,Open,Curry's,NEWBURY,Unit 11 Newbury Retail Park,RG14 7HU,,Berkshire,,,,
+00286-2271,00286-2271,Open,Curry's,ROCHDALE,The Old Cricket Ground,OL12 6XT,,Greater Manchester,,,,
+00286-2301,00286-2301,Open,Curry's,SCARBOROUGH,Unit A Seamer Road,YO12 4HE,,North Yorkshire,,,,
+00286-2484,00286-2484,Open,Curry's,Brentford,6 West Cross Way,TW8 9DE,,London,,,,
+00286-2426,00286-2426,Open,Curry's,ASHTON-UNDER-LYNE,Unit 17 Snipe Retail Park,OL7 0DN,,Greater Manchester,,,,
+00286-2420,00286-2420,Open,Curry's,BLACKPOOL,Unit A1 Blackpool Retail Park,FY4 2RP,,Lancashire,,,,
+00286-2274,00286-2274,Open,Curry's,BRIXTON,Unit A Effra Road Retail Park,SW2 1BZ,,London,,,,
+00286-2810,00286-2810,Open,Curry's,BROMBOROUGH,Unit A The Croft Retail Park,CH62 3PN,,Merseyside,,,,
+00286-2154,00286-2154,Open,Curry's,CARDIFF EAST,501 Newport Road,CF23 9AD,,South Glamorgan,,,,
+00286-2243,00286-2243,Open,Curry's,COVENTRY,Unit 1 Airport Retail Park,CV3 4RP,,West Midlands,,,,
+00286-2224,00286-2224,Open,Curry's,FALKIRK,Unit 9 Central Retail Park,FK1 1LW,,Falkirk,,,,
+00286-2431,00286-2431,Open,Curry's,HAYES,Unit 1 Hayes Bridge RP,UB4 0RH,,London,,,,
+00286-2168,00286-2168,Open,Curry's,HEMEL HEMPSTEAD,Unit5 Apsley Mills Retail Park,HP3 9QN,,Hertfordshire,,,,
+00286-2130,00286-2130,Open,Curry's,LEAMINGTON,Unit 1 The Shires Retail Park,CV34 6RH,,Warwickshire,,,,
+00286-2222,00286-2222,Open,Curry's,LIVERPOOL Aintree,Unit 1A Aintree Racecourse RP,L9 5AL,,Merseyside,,,,
+00286-2083,00286-2083,Open,Curry's,LLANDUDNO,Unit 1 Mostyn Champneys RP,LL30 1RY,,Clwyd,,,,
+00286-2327,00286-2327,Open,Curry's,MAIDSTONE,Unit 4,ME20 7TP,,Kent,,,,
+00286-2409,00286-2409,Open,Curry's,MILTON KEYNES,Unit A The Place Retail Park,MK9 1EN,,Buckinghamshire,,,,
+00286-2434,00286-2434,Open,Curry's,NOTTINGHAM Castle Marina,Unit 6C Castle Marina RP,NG7 1GX,,Nottinghamshire,,,,
+00286-5238,00286-5238,Open,Curry's,PETERBOROUGH,Unit 4 Maskew Retail Park,PE1 2BT,,Cambridgeshire,,,,
+00286-2435,00286-2435,Open,Curry's,ROMFORD,Unit 1 Eastern Avenue RP,RM7 7EX,,London,,,,
+00286-2306,00286-2306,Open,Curry's,TELFORD,Unit 10 Forge Shopping Park,TF3 4AG,,Shropshire,,,,
+00286-2269,00286-2269,Open,Curry's,UDDINGSTON,Rannoch Road,G71 5PR,,North Lanarkshire,,,,
+00286-2443,00286-2443,Open,Curry's,ABERDEEN Berryden,Unit 1 Berryden Retail Park,AB25 3SG,,Aberdeen City,,,,
+00286-2229,00286-2229,Open,Curry's,ABERYSTWYTH,Unit 2 Parc Y Llyn,SY23 3TL,,Dyfed,,,,
+00286-2228,00286-2228,Closed,Curry's,ALPERTON MK_PL,#N/A,#N/A,,,,,,
+00286-2240,00286-2240,Open,Curry's,ALTRINCHAM,Units 2/3,WA14 5GR,,Greater Manchester,,,,
+00286-2186,00286-2186,Open,Curry's,ANDOVER,Unit 2 Churchill Retail Park,SP10 1RY,,Hampshire,,,,
+00286-1618,00286-1618,Open,Curry's,ASHFORD,Unit 4 Gallagher Retail Park,TN23 7DH,,Kent,,,,
+00286-2860,00286-2860,Open,Curry's,AYLESBURY,Unit 1/2 Aylesbury SP,HP20 1DG,,Buckinghamshire,,,,
+00286-2161,00286-2161,Open,Curry's,AYR,Unit 9 Heathfield Retail Park,KA8 9BF,,South Ayrshire,,,,
+00286-2422,00286-2422,Open,Curry's,BANBURY,Unit 2 Banbury Cross RP,OX16 1LX,,Oxfordshire,,,,
+00286-2448,00286-2448,Open,Curry's,BANGOR Clandeboye,Unit 1 Clandeboye Retail Park,BT19 1AR,Clandeboye Retail Park,Co Down,,Northern Ireland,,
+00286-2276,00286-2276,Open,Curry's,BANGOR Menai,Unit A Menai Retail Park,LL57 4SJ,,Gwynedd,,Wales,,
+00286-2464,00286-2464,Open,Curry's,BARNSLEY,Unit 8 The Peel Centre,S71 1JE,,South Yorkshire,,,,
+00286-1802,00286-1802,Open,Curry's,BARNSTAPLE,Unit 1 Barnstaple Retail Park,EX31 2BP,,Devon,,,,
+00286-2442,00286-2442,Open,Curry's,BARROW-IN-FURNESS,Unit E-H Hollywood RP,LA14 2NA,,Cumbria,,,,
+00286-2855,00286-2855,Open,Curry's,BASILDON,Unit D2A,SS14 3AF,,Essex,,,,
+00286-5248,00286-5248,Open,Curry's,BASINGSTOKE,Unit 5-6 St Michaels Rt Pk,RG22 4AZ,,Hampshire,,,,
+00286-2370,00286-2370,Open,Curry's,BATH,Unit A Weston Lock Retail Park,BA2 1EP,,Somerset,,,,
+00286-2308,00286-2308,Open,Curry's,BECKTON,Unit 7 Beckton Triangle RP,E6 6LH,,London,,,,
+00286-2216,00286-2216,Open,Curry's,BEDFORD,Unit 3 St John's Centre,MK42 0XE,,Bedfordshire,,,,
+00286-2884,00286-2884,Open,Curry's,BEXHILL,Unit 2B Ravenside Retail Park,TN40 2JS,,East Sussex,,,,
+00286-2320,00286-2320,Open,Curry's,BIRMINGHAM HIGHGATE,Unit 2 Apex Retail Park,B12 0EB,,West Midlands,,,,
+00286-2804,00286-2804,Open,Curry's,BISHOPBRIGGS,Unit 7 Strathkelvin RP,G64 2TS,,East Dunbartonshire,,,,
+00286-2239,00286-2239,Open,Curry's,BLACKBURN,Unit 2 Hyndburn Retail Park,BB1 3NT,,Lancashire,,,,
+00286-2317,00286-2317,Open,Curry's,BOLTON GATE,Unit G Bolton Gate Retail Park,BL1 2SL,,Greater Manchester,,,,
+00286-2341,00286-2341,Open,Curry's,BOLTON Middlebrook,Unit 10 Middlebrook RP,BL6 6JA,,Greater Manchester,,,,
+00286-2878,00286-2878,Open,Curry's,BOURNEMOUTH,Unit 8 Mallard Retail Park,BH8 9PE,,Dorset,,,,
+00286-2076,00286-2076,Open,Curry's,BRACKNELL,Unit 5A The Peel Centre,RG12 1EN,,Berkshire,,,,
+00286-2316,00286-2316,Open,Curry's,BRADFORD,Unit 9 Forster Square RP,BD1 4RN,,West Yorkshire,,,,
+00286-2153,00286-2153,Open,Curry's,BRIDGEND,Unit 4 Bridgend Retail Park,CF31 3XX,,Mid Glamorgan,,,,
+00286-2197,00286-2197,Open,Curry's,BRIDGWATER,Unit F Bridgwater Retail Park,TA6 4AB,,Somerset,,,,
+00286-2906,00286-2906,Open,Curry's,BRIGHTON & HOVE,Unit5 Sussex House Business Pk,BN3 7EU,,East Sussex,,,,
+00286-2853,00286-2853,Open,Curry's,Bristol Longwell Green,Unit 2 Gallagher Retail Park,BS30 7DA,,Avon,,,,
+00286-2848,00286-2848,Open,Curry's,BRISTOL Winterstoke,Unit C,BS3 2LQ,,Avon,,,,
+00286-2408,00286-2408,Open,Curry's,BURNLEY,Unit 1 Prestige Retail Park,BB11 1BS,,Lancashire,,,,
+00286-2205,00286-2205,Open,Curry's,BURTON,Unit 1 Centrum East RP,DE14 2WG,,Staffordshire,,,,
+00286-2270,00286-2270,Open,Curry's,BURY,Unit 5 Woodfields Retail Park,BL9 5BY,,Greater Manchester,,,,
+00286-2393,00286-2393,Open,Curry's,CAMBRIDGE,Unit 1 Cambridge Retail Park,CB5 8WR,,Cambridgeshire,,,,
+00286-2261,00286-2261,Open,Curry's,CANTERBURY,Unit 1A Canterbury Retail Park,CT1 1WZ,,Kent,,,,
+00286-2313,00286-2313,Open,Curry's,CARDIFF Culverhouse Cross,Unit 1 Brooklands Retail Park,CF5 6XW,,South Glamorgan,,,,
+00286-2811,00286-2811,Open,Curry's,CARLISLE,Unit D Kingstown Retail Park,CA3 0JR,,Cumbria,,,,
+00286-2814,00286-2814,Open,Curry's,CARMARTHEN,Unit 1 Towy Ford Retail Park,SA31 2BR,,Dyfed,,,,
+00286-2349,00286-2349,Open,Curry's,CHADWELL HEATH,Unit 5 Goodmayes Retail Park,RM6 4HX,,London,,,,
+00286-2854,00286-2854,Open,Curry's,CHELMSFORD,"Unit A1, 5 Chelmer Village RP",CM2 6XE,,Essex,,,,
+00286-2356,00286-2356,Open,Curry's,CHELTENHAM,Unit B Cheltenham Retail Park,GL51 9DU,,Gloucestershire,,,,
+00286-2433,00286-2433,Open,Curry's,CHESTER,Unit 3 Deva Retail Park,CH1 4LU,,Cheshire,,,,
+00286-2281,00286-2281,Open,Curry's,CHESTERFIELD,Unit 2 Ravenside Retail Park,S40 1TB,,Derbyshire,,,,
+00286-2471,00286-2471,Open,Curry's,CHICHESTER,Unit 3B Portfield Retail Park,PO19 7YH,,West Sussex,,,,
+00286-2234,00286-2234,Open,Curry's,CHINGFORD,Unit 1a Cork Tree Retail Park,E4 8JA,,London,,,,
+00286-1607,00286-1607,Open,Curry's,CHIPPENHAM,Bath Road,SN14 0AT,,Wiltshire,,,,
+00286-1600,00286-1600,Open,Curry's,CLACTON,Unit 2 Brook Retail Park,CO15 3TP,,Essex,,,,
+00286-2827,00286-2827,Open,Curry's,COATBRIDGE,Unit 17 Faraday Retail Park,ML5 3SQ,,North Lanarkshire,,,,
+00286-2366,00286-2366,Open,Curry's,COLLIERS WOOD,Unit 4 Priory Retail Park,SW19 2PP,,London,,,,
+00286-2864,00286-2864,Open,Curry's,CRAMLINGTON,Unit 5 Westmorland Retail Park,NE23 6UY,,Northumberland,,,,
+00286-2266,00286-2266,Open,Curry's,CRAWLEY,Unit 4A County Oak Retail Park,RH11 7XN,,West Sussex,,,,
+00286-2351,00286-2351,Open,Curry's,CRAYFORD,Unit 5 Tower Retail Park,DA1 4LD,,Kent,,,,
+00286-2285,00286-2285,Open,Curry's,CRIBBS CAUSEWAY,Unit 1-2 Cribbs Causeway RP,BS34 5TX,,Avon,,,,
+00286-2447,00286-2447,Open,Curry's,CWMBRAN,Unit 5A Cwmbran Retail Park,NP44 3JQ,,Gwent,,,,
+00286-2157,00286-2157,Open,Curry's,DARLINGTON,Unit 4 Darlington Retail Park,DL1 4PU,,Co Durham,,,,
+00286-2870,00286-2870,Open,Curry's,DERBY Meteor,Unit A  Meteor Centre,DE21 4RY,,Derbyshire,,,,
+00286-2460,00286-2460,Open,Curry's,DIDCOT,Unit 2 The Orchard Centre,OX11 7LG,,Oxfordshire,,,,
+00286-2249,00286-2249,Open,Curry's,DONCASTER,Unit 1 Danum Retail Park,DN5 8AS,,South Yorkshire,,,,
+00286-2833,00286-2833,Prospect,Curry's,DOUGLAS,2 Spring Valley Industrial Est,IM2 2QR,,Isle of Man,,,,
+00286-2382,00286-2382,Open,Curry's,DUNDEE,Units 6/7 Kingsway West RP,DD3 8RX,,Dundee City,,,,
+00286-2163,00286-2163,Open,Curry's,DUNFERMLINE,Unit 5 Halbeath Retail Park,KY11 4LP,,Fife,,,,
+00286-2339,00286-2339,Open,Curry's,DURHAM,Unit 2 Durham City Retail Park,DH1 2RP,,Co Durham,,,,
+00286-1606,00286-1606,Open,Curry's,EAST KILBRIDE,Unit D Kingsway Retail Park,G74 4ZA,,South Lanarkshire,,,,
+00286-2176,00286-2176,Open,Curry's,EASTBOURNE,U2 Broadwater Way Retail Park,BN22 9PW,,East Sussex,,,,
+00286-2832,00286-2832,Closed,Curry's,EDINBURGH (Corstorphine),#N/A,#N/A,,,,,,
+00286-1807,00286-1807,Open,Curry's,EDINBURGH Craigleith,Unit 16 Craigleith Retail Park,EH4 2LN,,City of Edinburgh,,,,
+00286-2210,00286-2210,Open,Curry's,ELGIN,Unit 8 Springfield Retail Park,IV30 6WQ,,Moray,,,,
+00286-2398,00286-2398,Open,Curry's,ENNISKILLEN,Unit 3 Railway Junction RP,BT74 6GG,Railway Junction Retail Park,Co Fermanagh,,Northern Ireland,,
+00286-1603,00286-1603,Open,Curry's,EVESHAM,Unit A Springfield Drive,WR11 1DX,,Worcestershire,,,,
+00286-2463,00286-2463,Open,Curry's,EXETER,Unit 1 Rydon Lane Retail Park,EX2 7HX,,Devon,,,,
+00286-2004,00286-2004,Open,Curry's,FAREHAM,136/138 Southampton Road,SO31 6AF,,Hampshire,,,,
+00286-2187,00286-2187,Open,Curry's,FARNBOROUGH,Unit 8 Blackwater SP,GU14 8BL,,Hampshire,,,,
+00286-2178,00286-2178,Open,Curry's,FOLKESTONE,Park Farm Retail Park,CT19 5GA,,Kent,,,,
+00286-2802,00286-2802,Open,Curry's,FRIERN BARNET,Unit 11 Friern Bridge RP,N11 3PW,,London,,,,
+00286-2402,00286-2402,Open,Curry's,GATESHEAD Team Valley,Unit 2/2A Team Valley SP,NE11 0BD,,Tyne & Wear,,,,
+00286-2411,00286-2411,Open,Curry's,GLASGOW Great Western,Unit 1-2 Great Western RP,G15 6RX,,Glasgow City,,,,
+00286-2221,00286-2221,Open,Curry's,GLOUCESTER,Unit 1&2 Eastern Avenue RP,GL4 3EA,,Gloucestershire,,,,
+00286-2822,00286-2822,Open,Curry's,GRANTHAM,Unit 4 Dysart Retail Park,NG31 7NP,,Lincolnshire,,,,
+00286-2262,00286-2262,Open,Curry's,GRIMSBY,Unit 1 High Point Retail Park,DN31 1TY,,Lincolnshire,,,,
+00286-5234,00286-5234,Open,Curry's,GUILDFORD,Unit 1 Ladymead Retail Park,GU1 1AJ,,Surrey,,,,
+00286-2344,00286-2344,Open,Curry's,HAMILTON,Unit 7 Palace Grounds RP,ML3 6AD,,South Lanarkshire,,,,
+00286-2302,00286-2302,Open,Curry's,HARLOW,Unit 4 Queensgate Retail Park,CM20 2DA,,Essex,,,,
+00286-2389,00286-2389,Open,Curry's,HARROGATE,Unit 1 Plumpton Park,HG2 7LD,,North Yorkshire,,,,
+00286-2298,00286-2298,Open,Curry's,HARTLEPOOL,Unit 5 Anchor Retail Park,TS24 0XR,,Teesside,,,,
+00286-1809,00286-1809,Open,Curry's,HAVERFORDWEST,Unit F Springfield Retail Park,SA61 2AT,,Dyfed,,,,
+00286-2825,00286-2825,Open,Curry's,HEREFORD,Unit B Hereford Retail Park,HR4 9NY,,Herefordshire,,,,
+00286-2813,00286-2813,Open,Curry's,HIGH WYCOMBE,Unit E Wycombe Retail Park,HP11 1FY,,Buckinghamshire,,,,
+00286-2325,00286-2325,Closed,Curry's,HORSHAM,#N/A,#N/A,,,,,,
+00286-2264,00286-2264,Open,Curry's,HUDDERSFIELD,Unit 5 Great Northern RP,HD1 6ND,,West Yorkshire,,,,
+00286-2238,00286-2238,Open,Curry's,HULL Clough Road,Unit 2 Clough Road Retail Park,HU6 7PT,,East Yorkshire,,,,
+00286-2263,00286-2263,Open,Curry's,INVERNESS,Unit 1 Telford Street,IV3 5LU,,Highland,,,,
+00286-2412,00286-2412,Open,Curry's,INVERURIE,Unit 9 Inverurie Retail Park,AB51 0GZ,,Aberdeenshire,,,,
+00286-2265,00286-2265,Open,Curry's,IPSWICH,Unit A Interchange Retail Park,IP8 3TT,,Suffolk,,,,
+00286-2815,00286-2815,Open,Curry's,KENSINGTON,47/53 Kensington High Street,W8 5ED,,London,,,,
+00286-2390,00286-2390,Open,Curry's,KIDDERMINSTER,Unit K Crossley Retail Park,DY11 6DY,,Worcestershire,,,,
+00286-2288,00286-2288,Open,Curry's,KILMARNOCK,Unit 2 Queens Drive RP,KA1 3XB,,East Ayrshire,,,,
+00286-2428,00286-2428,Open,Curry's,KINGS LYNN,Unit 10-11 Hardwick RP,PE30 4WP,,Norfolk,,,,
+00286-2253,00286-2253,Open,Curry's,KIRKCALDY,Unit 5 Fife Central RP,KY2 6QL,,Fife,,,,
+00286-2218,00286-2218,Open,Curry's,LANCASTER,Unit 1 Bulk Road Retail Park,LA1 1DT,,Lancashire,,,,
+00286-2816,00286-2816,Open,Curry's,LEEDS Central,LDU1 GROUND AND FIRST FLOOR,LS1 6AG,,West Yorkshire,,,,
+00286-2267,00286-2267,Open,Curry's,LEEDS CROWN POINT,Unit 7 Crown Point SP,LS10 1ET,,West Yorkshire,,,,
+00286-2849,00286-2849,Open,Curry's,LEICESTER St Georges,Unit 2 St Georges Retail Park,LE1 1SG,,Leicestershire,,,,
+00286-2438,00286-2438,Open,Curry's,LEYTON,Unit C Leyton Mills RP,E10 5NH,,London,,,,
+00286-2926,00286-2926,Closed,Curry's,LIFFEY VALLEY,#N/A,#N/A,,Co Dublin,,,,
+00286-2865,00286-2865,Open,Curry's,LIVERPOOL Speke,Unit 10c New Mersey SP,L24 8QB,,Merseyside,,,,
+00286-1622,00286-1622,Open,Curry's,LLANELLI,Unit 1 Parc Pemberton RP,SA14 9UZ,,Dyfed,,,,
+00286-2413,00286-2413,Open,Curry's,LONDONDERRY,Unit 2 Crescent Link RP,BT47 6SA,Crescent Link Retail Park,Co Londonderry,,Northern Ireland,,
+00286-2826,00286-2826,Open,Curry's,LOUGHBOROUGH,Unit C&D Regent Place RP,LE11 5PL,,Leicestershire,,,,
+00286-2207,00286-2207,Open,Curry's,MACCLESFIELD,Unit 5 Lyme Green Retail Park,SK11 0TB,,Cheshire,,,,
+00286-1612,00286-1612,Open,Curry's,MANCHESTER Cheetham Hill,Unit C Cheetham Hill RP,M8 8BB,,Greater Manchester,,,,
+00286-2380,00286-2380,Open,Curry's,MANCHESTER White City,Units 1&2 White City RP,M16 0RP,,Greater Manchester,,,,
+00286-2371,00286-2371,Open,Curry's,MANSFIELD,Units B/C Nottingham Road RP,NG18 1BW,,Nottinghamshire,,,,
+00286-2321,00286-2321,Open,Curry's,MERTHYR TYDFIL,Unit 7 Cyfarthfa Retail Park,CF48 1HY,,Mid Glamorgan,,,,
+00286-1611,00286-1611,Open,Curry's,MIDDLESBROUGH,Unit F Cleveland Retail Park,TS6 6UX,,Teesside,,,,
+00286-2375,00286-2375,Open,Curry's,MILE END ROAD,Unit 3 Anchor House,E1 4UJ,,London,,,,
+00286-2404,00286-2404,Open,Curry's,NEWARK,Unit D Northgate Retail Park,NG24 1GA,,Nottinghamshire,,,,
+00286-2437,00286-2437,Open,Curry's,NEWCASTLE Kingston Park,Unit 1 Kingston Retail Park,NE3 2ES,,Tyne & Wear,,,,
+00286-2230,00286-2230,Open,Curry's,NEWPORT Gwent,Unit 3 Harlech Retail Park,NP20 3BA,,Gwent,,,,
+00286-1614,00286-1614,Open,Curry's,NEWPORT IoW,Unit D Wakes Retail Park,PO30 5UZ,,Isle of Wight,,,,
+00286-2414,00286-2414,Open,Curry's,NEWTOWNABBEY,Unit 2 Abbey Retail Park,BT36 7GU,Abbey Retail Park,Co Antrim,,Northern Ireland,,
+00286-2259,00286-2259,Open,Curry's,NORTH SHIELDS,Unit D2 Silverlink Retail Park,NE28 9ND,,Tyne & Wear,,,,
+00286-2254,00286-2254,Open,Curry's,NORTHAMPTON Nene Valley,Unit 4A Nene Valley RP,NN1 1ET,,Northamptonshire,,,,
+00286-2193,00286-2193,Open,Curry's,NORTHAMPTON Riverside,Unit I Riverside Retail Park,NN3 9HU,,Northamptonshire,,,,
+00286-2294,00286-2294,Open,Curry's,NORTHWICH,Unit 4 Northwich Retail Park,CW9 5LY,,Cheshire,,,,
+00286-2904,00286-2904,Open,Curry's,NORWICH,Unit 5 Sweet Briar Retail Park,NR6 5DH,,Norfolk,,,,
+00286-2280,00286-2280,Open,Curry's,NOTTINGHAM Madford,Unit B-C Madford Retail Park,NG5 6AD,,Nottinghamshire,,,,
+00286-2812,00286-2812,Open,Curry's,OLD KENT ROAD,585/589 Old Kent Road,SE15 1LA,,London,,,,
+00286-2260,00286-2260,Open,Curry's,OLDHAM,Unit 6 Elk Mill Shopping Park,OL2 5HX,,Greater Manchester,,,,
+00286-1804,00286-1804,Open,Curry's,ORPINGTON,Unit 3 Springvale Retail Park,BR5 3SG,,London,,,,
+00286-2401,00286-2401,Open,Curry's,OXFORD,Unit 1 Botley Road Retail Park,OX2 0HY,,Oxfordshire,,,,
+00286-2843,00286-2843,Open,Curry's,PERTH,Unit 7 St Catherine's RP,PH1 5XA,,Perth & Kinross,,,,
+00286-2232,00286-2232,Open,Curry's,PONTEFRACT,Unit C Park Road Retail Park,WF8 4PR,,West Yorkshire,,,,
+00286-2376,00286-2376,Open,Curry's,PONTYPRIDD,Unit 3 Brown Lennox RP,CF37 4DA,,Mid Glamorgan,,,,
+00286-2290,00286-2290,Open,Curry's,POOLE,Unit 8 Wessex Gate Retail Park,BH15 3TE,,Dorset,,,,
+00286-2407,00286-2407,Open,Curry's,PRESTON Capitol,Units 3-4 The Capitol Centre,PR5 4AW,,Lancashire,,,,
+00286-1604,00286-1604,Open,Curry's,PRESTON Deepdale,102-120 Blackpool Road,PR2 6BX,,Lancashire,,,,
+00286-2391,00286-2391,Open,Curry's,RUGBY,Unit 1 Junction 1 Retail Park,CV21 1RW,,Warwickshire,,,,
+00286-2115,00286-2115,Open,Curry's,SALISBURY,"Unit D, Southampton Road Retail Park, Salisbury SP1 2LB",SP1 2LB,,Wiltshire,,,,
+00286-2235,00286-2235,Open,Curry's,SCUNTHORPE,Unit 1 Lakeside Retail Park,DN16 3UA,,North Lincolnshire,,,,
+00286-2354,00286-2354,Closed,Curry's,SEVENOAKS,#N/A,#N/A,,,,,,
+00286-2337,00286-2337,Open,Curry's,SHEFFIELD Heeley,Unit 3 Heeley Retail Park,S8 0RG,,South Yorkshire,,,,
+00286-2258,00286-2258,Open,Curry's,SHEFFIELD Meadowhall Reta,Units I&J Meadowhall RP,S9 2YZ,,South Yorkshire,,,,
+00286-2149,00286-2149,Open,Curry's,SHREWSBURY,Unit 4 Meole Brace Retail Park,SY3 9NB,,Shropshire,,,,
+00286-2225,00286-2225,Open,Curry's,SLOUGH,Unit A Westgate Retail Park,SL1 5PS,,Berkshire,,,,
+00286-2839,00286-2839,Open,Curry's,SOLIHULL,Unit C Solihull Retail Park,B90 4LD,,West Midlands,,,,
+00286-2252,00286-2252,Open,Curry's,SOUTH RUISLIP,Victoria Road,HA4 0EL,,London,,,,
+00286-2835,00286-2835,Open,Curry's,SOUTHAMPTON West Quay,Unit 5B West Quay Retail Park,SO15 1BA,,Hampshire,,,,
+00286-2395,00286-2395,Open,Curry's,SOUTHEND,Unit 2 London Road,SS1 1PP,,Essex,,,,
+00286-1803,00286-1803,Open,Curry's,ST HELENS,Unit 12 Ravenhead Retail Park,WA9 1JF,,Merseyside,,,,
+00286-2319,00286-2319,Open,Curry's,STAFFORD,Unit 1 Madford Retail Park,ST16 2QY,,Staffordshire,,,,
+00286-2482,00286-2482,Closed,Curry's,STAINES,#N/A,#N/A,,,,,,
+00286-2423,00286-2423,Open,Curry's,STEVENAGE,Unit 10 Roaring Meg RP,SG1 1XN,,Hertfordshire,,,,
+00286-1800,00286-1800,Open,Curry's,STIRLING,25 Springkerse Retail Park,FK7 7TL,,Stirling,,,,
+00286-2828,00286-2828,Open,Curry's,STOCKPORT,Unit 7 The Peel Centre,SK1 2HD,,Greater Manchester,,,,
+00286-2823,00286-2823,Open,Curry's,STOKE Longton,Unit 1&2 Phoenix Retail Park,ST3 2JD,,Staffordshire,,,,
+00286-2399,00286-2399,Open,Curry's,SUNDERLAND,Unit 1 Trimdon Street RP,SR4 6DW,,Tyne & Wear,,,,
+00286-2355,00286-2355,Prospect,Curry's,SUTTON COLDFIELD,Unit A Princess Alice RP,B73 6RB,,West Midlands,,,,
+00286-2800,00286-2800,Open,Curry's,SWANSEA Morfa,Units 13-15 Morfa SP,SA1 7BP,,West Glamorgan,,,,
+00286-1616,00286-1616,Closed,Curry's,SWANSEA Pontarddulais,#N/A,#N/A,,,,,,
+00286-2856,00286-2856,Open,Curry's,SYDENHAM,Unit 5 Bell Green Retail Park,SE26 4PR,,London,,,,
+00286-2188,00286-2188,Open,Curry's,TAUNTON,Unit 4 Taunton Retail Park,TA1 2LR,,Somerset,,,,
+00286-1610,00286-1610,Open,Curry's,THANET,Unit 3 Broadstairs Retail Park,CT10 2QW,,Kent,,,,
+00286-2406,00286-2406,Open,Curry's,THETFORD,Unit 1 Forest Retail Park,IP24 3QL,,Norfolk,,,,
+00286-5230,00286-5230,Open,Curry's,THURROCK,Unit B1B Lakeside Retail Park,RM20 1WN,,Essex,,,,
+00286-2805,00286-2805,Open,Curry's,TOTTENHAM COURT ROAD,147-149 Tottenham Court Rd,W1T 7NE,,London,,,,
+00286-2088,00286-2088,Open,Curry's,TOTTENHAM HALE,Unit 1 Tottenham Hale RP,N15 4QD,,London,,,,
+00286-2905,00286-2905,Open,Curry's,TRURO,Unit 1 Treliske Retail Park,TR1 3LN,,Cornwall,,,,
+00286-2440,00286-2440,Open,Curry's,TUNBRIDGE WELLS,Unit 5 Great Lodge Retail Park,TN2 3EW,,Kent,,,,
+00286-2245,00286-2245,Open,Curry's,WAKEFIELD,Unit 2 Westgate Retail Park,WF2 9SD,,West Yorkshire,,,,
+00286-2379,00286-2379,Open,Curry's,WARRINGTON,Unit A Junction Nine RP,WA2 8TW,,Cheshire,,,,
+00286-2377,00286-2377,Open,Curry's,WATFORD,Unit 4 Century Retail Park,WD17 2SF,,Hertfordshire,,,,
+00286-2334,00286-2334,Closed,Curry's,WEST DRAYTON,#N/A,#N/A,,London,,,,
+00286-2363,00286-2363,Open,Curry's,WESTON-SUPER-MARE,Unit 1A Gallagher Retail Park,BS23 3YY,,Somerset,,,,
+00286-2329,00286-2329,Open,Curry's,WEYBRIDGE,Unit B1 The Paddock RP,KT13 0XR,,Surrey,,,,
+00286-2324,00286-2324,Closed,Curry's,WOKING,#N/A,#N/A,,,,,,
+00286-2208,00286-2208,Open,Curry's,WOLVERHAMPTON,Unit D St John's Retail Park,WV2 4SJ,,West Midlands,,,,
+00286-2277,00286-2277,Open,Curry's,WORCESTER,Unit 5 Blackpole Retail Park,WR3 8PQ,,Worcestershire,,,,
+00286-2369,00286-2369,Open,Curry's,WORKSOP,Unit 1 Sandy Lane Retail Park,S80 1UJ,,Nottinghamshire,,,,
+00286-2430,00286-2430,Open,Curry's,WREXHAM,Unit E Plas Coch Retail Park,LL11 2BA,,Clwyd,,,,
+00286-2162,00286-2162,Open,Curry's,YEOVIL,Unit 6 Houndstone Retail Park,BA22 8YQ,,Somerset,,,,
+00286-TBC,00286-TBC,Closed,Curry's,TBC,#N/A,#N/A,,,,,,
+00286-2318,00286-2318,Open,Curry's,CROYDON,12 Trojan Way,CR0 4XL,,London,,,,
+00286-2223,00286-2223,Open,Curry's,SOUTHAMPTON,Unit 2&3 Hedge End Park,SO30 2UH,,Hampshire,,,,
+00286-2388,00286-2388,Open,Curry's,WEDNESBURY J9,Unit 4 Gallagher Shopping Park,WS10 9QY,,West Midlands,,,,
+00286-2862,00286-2862,Open,Curry's,EDINBURGH Kinnard,47A Kinnaird Park,EH15 3RD,,City of Edinburgh,,,,
+00286-2322,00286-2322,Open,Curry's,HULL St Andrews Quay,Unit 8 St Andrews Quay RP,HU3 4SA,,East Yorkshire,,,,
+00286-2292,00286-2292,Open,Curry's,LINCOLN,Unit 5 Tritton Retail Park,LN6 7AN,,Lincolnshire,,,,
+00286-2866,00286-2866,Open,Curry's,PLYMOUTH,Unit B Marsh Mills Retail Park,PL6 8LX,,Devon,,,,
+00286-1805,00286-1805,Open,Curry's,PORTSMOUTH,Unit 6 Ocean Retail Park,PO3 5NP,,Hampshire,,,,
+00286-2250,00286-2250,Open,Curry's,STOKE Festival Park,Unit 1 Festival Heights RP,ST1 5NZ,,Staffordshire,,,,
+00286-2209,00286-2209,Open,Curry's,SWINDON,Unit 1/2 Greenbridge RP,SN3 3SG,,Wiltshire,,,,
+00286-2241,00286-2241,Open,Curry's,Colchester,Unit 2 Tollgate Retail Park,CO3 8RH,,Essex,,,,
+00286-2441,00286-2441,Open,Curry's,Halifax,Unit C Charlestown Road Retail,HX3 6AB,,West Yorkshire,,,,
+00286-2486,00286-2486,Open,Curry's,Livingston,Unit 2A Almondvale Retail Park,EH54 6RQ,,West Lothian,,,,
+00286-2446,00286-2446,Open,Curry's,Luton,Unit 2 Dunstable Road RP,LU4 8EZ,,Bedfordshire,,,,
+00286-2287,00286-2287,Open,Curry's,Merry Hill Retail Park,Unit 8 Merry Hill Retail Park,DY5 1SY,,West Midlands,,,,
+00286-2282,00286-2282,Open,Curry's,Teesside Park,Unit 2 Teesside Retail Park,TS17 7BW,,Teesside,,,,
+00286-2358,00286-2358,Open,Curry's,Torbay,Unit 2 Riviera Way Retail Park,TQ2 7AP,,Devon,,,,
+00286-2257,00286-2257,Open,Curry's,Trowbridge,Unit 6 Spitfire Retail Park,BA14 0AZ,,Wiltshire,,,,
+00286-2405,00286-2405,Open,Curry's,York,Unit 8 A&B Clifton Moor RP,YO30 4XU,,North Yorkshire,,,,
+00286-1814,00286-1814,Open,Curry's,BIRMINGHAM Castle Vale,Unit 3-4 Castle Vale Retail Pk,B35 6HB,,West Midlands,,,,
+00286-2923,00286-2923,Open,Curry's,COVENTRY Arena,Unit 9b Arena Shopping Park,CV6 6AS,,West Midlands,,,,
+00286-1813,00286-1813,Open,Curry's,WIGAN,Unit 10 Robin Retail Park,WN5 0UH,,Greater Manchester,,,,
+00286-2874,00286-2874,Open,Curry's,BIRMINGHAM Selly Oak,Unit 3A Battery Retail Park,B29 6SJ,,West Midlands,,,,
+00286-2834,00286-2834,Open,Curry's,BOSTON,Trinity Street,PE21 8RJ,,Lincolnshire,,,,
+00286-2332,00286-2332,Open,Curry's,BROMLEY,27 Homesdale Road,BR2 9LY,,London,,,,
+00286-2199,00286-2199,Open,Curry's,BURY ST EDMUNDS,Unit A St Edmundsbury RP,IP32 7BY,,Suffolk,,,,
+00286-2470,00286-2470,Open,Curry's,CAERPHILLY,Unit 9 Gallagher Retail Park,CF83 3GX,,Gwent,,,,
+00286-2444,00286-2444,Open,Curry's,CHRISTCHURCH,Unit 1&2 Stony Lane RP,BH23 7LQ,,Dorset,,,,
+00286-2295,00286-2295,Open,Curry's,COLERAINE,Unit 8 Riverside Retail Park,BT51 3QQ,,Co Derry,,,,
+00286-1626,00286-1626,Open,Curry's,CORBY Peel Centre,Unit 15 Corby Retail Park,NN17 5DT,,Northamptonshire,,,,
+00286-2214,00286-2214,Prospect,Curry's,DORCHESTER,Unit 1 Dorchester Retail Park,DT1 2RY,,Dorset,,,,
+00286-2248,00286-2248,Open,Curry's,GALASHIELS,Unit 3 Comely Bank Mill RP,TD1 1PY,,Borders,,,,
+00286-2338,00286-2338,Open,Curry's,Leeds - GUISELEY,Unit 7B Westside Retail Park,LS20 9NE,,West Yorkshire,,,,
+00286-2350,00286-2350,Open,Curry's,IRVINE,Unit 7 Riverway Retail Park,KA12 8AG,,North Ayrshire,,,,
+00286-2868,00286-2868,Open,Curry's,KETTERING,Unit 3 Belgrave Retail Park,NN16 9XZ,,Northamptonshire,,,,
+00286-2352,00286-2352,Open,Curry's,LEIGH,Unit 5 Parsonage Retail Park,WN7 5SJ,,Greater Manchester,,,,
+00286-2326,00286-2326,Prospect,Curry's,LITTLEHAMPTON,Unit B Arun Retail Park,BN17 5RA,,West Sussex,,,,
+00286-2305,00286-2305,Open,Curry's,LOWESTOFT,Unit 6 North Quay Retail Park,NR32 2ED,,Suffolk,,,,
+00286-2819,00286-2819,Open,Curry's,NOTTINGHAM Trinity Square,41 Milton Street,NG1 3EN,,Nottinghamshire,,,,
+00286-2202,00286-2202,Open,Curry's,RHYL,Unit 4 Clwyd Retail Park,LL18 2TJ,,Clwyd,,,,
+00286-2314,00286-2314,Open,Curry's,SITTINGBOURNE,Unit 2 Sittingbourne RP,ME10 2XD,,Kent,,,,
+00286-2416,00286-2416,Open,Curry's,SKEGNESS,Unit C Skegness Retail Park,PE25 3ST,,Lincolnshire,,,,
+00286-2081,00286-2081,Open,Curry's,SOUTHPORT,"Unit 2a, Meols cop retail park, Southport",PR9 7RG,"Unit 2a, Meols cop retail park,",Southport,,,,
+00286-2439,00286-2439,Open,Curry's,STAMFORD,Unit 3 Stamford Retail Park,PE9 1XT,,Lincolnshire,,,,
+00286-2922,00286-2922,Open,Curry's,STRATFORD-UPON-AVON,"Unit 3, Maybrook Retail Park, Birmingham Rd, Stratford-upon-Avon CV37 0BT",CV37 0BT,,Stratford-upon-Avon,,,,
+00286-2340,00286-2340,Open,Curry's,WEYMOUTH,Unit 4 Jubilee Retail Park,DT4 7BG,,Dorset,,,,
+00286-2343,00286-2343,Open,Curry's,CANNOCK MK_PL,Unit 2&3 Linkway Retail Park,WS11 1TD,,Staffordshire,,,,
+00286-1613,00286-1613,Closed,Curry's,CHORLEY,#N/A,#N/A,,,,,,
+00286-2303,00286-2303,Closed,Curry's,WINCHESTER,#N/A,#N/A,,Hampshire,,,,
+00286-2461,00286-2461,Open,Curry's,WISBECH,Units B/C Belgrave Retail Park,PE14 0SL,,Cambridgeshire,,,,
+00286-2383,00286-2383,Open,Curry's,BELFAST Drumkeen,Unit 5 Drumkeen Retail Park,BT8 6RB,Drumkeen Retail Park,Co Antrim,,Northern Ireland,,
+00286-2397,00286-2397,Open,Curry's,DUMFRIES,Unit 6 Dumfries Retail Park,DG2 0NU,,Dumfries & Galloway,,,,
+00286-2359,00286-2359,Open,Curry's,SHEFFIELD Drakehouse,Unit 8 Drakehouse Retail Park,S20 7JJ,,South Yorkshire,,,,
+00286-2159,00286-2159,Open,Curry's,TAMWORTH,Unit 4  Ventura Retail Park,B78 3HB,,Staffordshire,,,,
+00286-2283,00286-2283,Open,Curry's,WORKINGTON,Unit 5 Derwent Howe RP,CA14 3YW,,Cumbria,,,,
+00286-2396,00286-2396,Open,Curry's,ABERDEEN Garthdee,Unit 2 Garthdee Road,AB10 7AY,,Aberdeen City,,,,
+00286-2323,00286-2323,Open,Curry's,BALLYMENA,Unit 9 Braidwater Retail Park,BT42 3AG,Braidwater Retail Park,Co Antrim,,Northern Ireland,,
+00286-2364,00286-2364,Closed,Curry's,BERWICK-UPON-TWEED,#N/A,#N/A,,,,,,
+00286-2291,00286-2291,Closed,Curry's,GLASGOW FORGE,#N/A,#N/A,,,,,,
+00286-2273,00286-2273,Open,Curry's,GREENOCK,Unit 1 Waterfront Retail Park,PA15 1EG,,Inverclyde,,,,
+00286-2336,00286-2336,Open,Curry's,KEIGHLEY,Unit 5 Keighley Retail Park,BD21 3NJ,,West Yorkshire,,,,
+00286-2345,00286-2345,Open,Curry's,NEWRY,Unit 2 Damolly Retail Park,BT35 6PR,Damolly Retail Park,Co Armagh,,Northern Ireland,,
+00286-2425,00286-2425,Open,Curry's,WORTHING,Unit 1 Downlands Retail Park,BN14 9FB,,West Sussex,,,,
+00286-0884,00286-0884,Open,Curry's,BARBICAN11221,"14-20 Chiswell St, London EC1Y 4TW",EC1Y 4TW,,London,,,,
+00286-5211,00286-5211,Closed,Curry's,OXFORD STREET East,#N/A,#N/A,,London,,,,
+00286-0110,00286-0110,Prospect,Curry's,Meadowhall,#N/A,#N/A,,South Yorkshire,,,,
+00286-2679,00286-2679,Closed,Curry's,WHITE CITY Westfield,#N/A,#N/A,,London,,,,
+00286-5249,00286-5249,Closed,Curry's,Southport temp store,#N/A,#N/A,,Merseyside,,,,
+00286-2831,00286-2831,Prospect,Curry's,GATESHEAD Metro Centre,Unit 39/40 Lower Green Mall,NE11 9YR,,Tyne & Wear,,,,
+00286-2857,00286-2857,Open,Curry's,KENDAL,Unit 1 South Lakeland RP,LA9 6DU,,Cumbria,,,,
+00286-2335,00286-2335,Open,Curry's,WEMBLEY STADIUM,Unit 1A Stadium Retail Park,HA9 8TS,,London,,,,
+00286-2147,00286-2147,Open,Curry's,PENZANCE,Unit 2B Heliport Retail Park,TR18 3RG,,Cornwall,,,,
+11164-7999,11164-7999,Open,Sky Retail,RETAIL VEHICLE DUMMY,#N/A,#N/A,,,,,ST07,Laurence Nettle
+11164-6017,11164-6017,Open,Sky Retail,Craigavon Rushmere,"Rushmere Shopping Centre, Central Way, Craigavon BT64 1AA",BT64 1AA,Rushmere Shopping Centre,Craigavon,,Northern Ireland,SN05,Chris Spence
+11164-9996,11164-9996,Open,Sky Retail,Warrington Golden Square,"Golden Square Shopping Centre, 27 Old Mkt Pl, Warrington WA1 1QB",WA1 1QB,"Golden Square, Warrington",Warrington,,England,NT03,Mark Fitzpatrick
+00286-2204,00286-2204,Open,Curry's,"Currys, Hanworth",Unit 2 Apex Retail Park,TW13 6JH,,Feltham,,,,
+00286-2346,00286-2346,Open,Curry's,"Currys, Craigavon",Unit 3 Rushmere Retail Park,BT64 1AA,,Craigavon,,,,
+00286-2384,00286-2384,Open,Curry's,"Currys, Bridlington",Unit A Bessingby Way RP,YO16 4SJ,,Bridlington,,England,,
+11164-0608,11164-0608,Open,Sky Retail,"Frenchgate Shopping Centre, Doncaster",Doncaster Frenchgate,DN1 1SW,Doncaster Frenchgate,Doncaster,,England,EN02,James Owen
+11164-6015,11164-6015,Open,Sky Retail,"Cascades Shopping Centre, Portsmouth","Cascades Shopping Centre, Commercial Rd, Portsmouth PO1 4RL",PO1 4RL,Cascades Shopping Centre,,,England,ST03,Laurence Nettle
+33333-4417,33333-4417,Open,EE Store,York,"34 Parliament Street, York YO1 8RU",YO1 8RU,,York,,England,,
+33333-4291,33333-4291,Open,EE Store,Enfield,"19 Church St, Enfield EN2 6AF",EN2 6AF,,Enfield,,England,,
+33333-4988,33333-4988,Open,EE Store,Teesside,"Teesside Retail Park, Thornaby, Stockton-on-Tees TS17 7BW",TS17 7BW,Teeside Retail Park,Teesside,,England,,
+33333-4140,33333-4140,Open,EE Store,One Braham,"1 Braham St, London E1 8EE",E1 8EE,,London,,England,,
+33333-4962,33333-4962,Open,EE Store,Norwich Chapelfield,"149 Chapelfield Shopping Ctr, Norwich NR2 1SB",NR2 1SB,Intu Chapelfield,Norwich,,England,,
+33333-4203,33333-4203,Open,EE Store,Crawley,"9 The Martletts, Crawley RH10 1ES",RH10 1ES,,Crawley,,England,,
+33333-4984,33333-4984,Open,EE Store,Glasgow Buchanan,"128 Buchanan St, Glasgow, United Kingdom, G1 2JW",G1 3YE,,Glasgow,,England,,
+33333-4114,33333-4114,Open,EE Store,Gateshead Metro Centre,"Unit 26, 10 The Parade, Metrocentre, Gateshead NE11 9YJ",NE11 9YJ,MetroCentre,Gateshead,,England,,
+33333-4332,33333-4332,Open,EE Store,Sunderland,"75, The Bridges Shopping Centre, Sunderland SR1 3LE",SR1 3LE,Bridges Shopping Centre,Sunderland,,England,,
+33333-R631,33333-R631,Open,EE Store,Milton Keynes Central,"Unit K Central Retail Park Milton Keynes Mk13 8Pu, Milton Keynes MK13 8PU",MK13 8PU,,Milton Keynes,,England,,
+33333-4513,33333-4513,Open,EE Store,Tottenham Court Rd,"4/5 Tottenham Court Road, London W1T 1BD",W1T 1BD,,London,,England,,
+33333-R392,33333-R392,Open,EE Store,Swansea Morfa," Unit C, Morfa Retail Park, Bon-y-maen, Swansea SA1 7BP",SA1 7DF,Morfa Retail Park,Swansea,,Wales,,
+33333-R614,33333-R614,Open,EE Store,Coventry,"24 Upper Precinct, Coventry CV1 1DE",CV1 1DD,West Orchards Shopping Centre,Coventry,,England,,
+33333-4972,33333-4972,Open,EE Store,Leamington Spa,"32 Parade, Leamington Spa CV32 4BQ",CV32 4BQ,,Leamington Spa,,England,,
+33333-R393,33333-R393,Open,EE Store,Swansea Oxford St," 803 Whitewalls, Swansea SA1 3AF",SA1 3AF,Swansea Indoor Market,Swansea,,Wales,,
+33333-4496,33333-4496,Prospect,EE Store,Nottingham Victoria,"Unit 26 Victoria Ctr, Nottingham, Nottingham, Nottinghamshire, Nottingham NG1 3QN",NG1 3QN,Victoria Centre,Nottingham,,England,,
+33333-R391,33333-R391,Open,EE Store,Doncaster,"Upper North Mall, Town Centre, Doncaster DN1 1LJ",DN1 1LJ,Frenchgate.,Doncaster,,England,,
+33333-4015,33333-4015,Open,EE Store,Sheffield,"31-35 The Moor , Sheffield, S1 4PF",S1 4PF,,Sheffield,,England,,
+33333-4062,33333-4062,Open,EE Store,Cardiff Queen Street,"46-48 Queen St, St Davids Centre, Cardiff CF10 2GQ",CF10 2GQ,St Davids Centre,Cardiff,,Scotland,,
+33333-R575,33333-R575,Open,EE Store,Cambridge,"Cambridge Grand Arcade. 40-41 Lions Yard , Cambridge. CB2 3NA",CB2 3NA,Lions Yard,Cambridge,,England,,
+33333-4955,33333-4955,Open,EE Store,Llantrisant," Unit 10, Talbot Green Shopping Park, Talbot Green, Pontyclun CF72 8LW",CF72 8LW,Talbot Green Shopping Park,Llantrisant,,Wales,,
+33333-4556,33333-4556,Open,EE Store,Walthamstow," 12 Selborne Rd, London E17 7JR",E17 7JR,17 & Central,London,,England,,
+33333-4313,33333-4313,Open,EE Store,Wood Green,"14 High Rd, London N22 6HH",N22 6HH,,London,,England,,
+33333-4499,33333-4499,Open,EE Store,Brent Cross,"Unit D15 Brent Cross Shopping Centre, London NW4 3FD",NW4 3FD,Brent Cross Shopping Centre,Brent Cross,,England,,
+33333-R897,33333-R897,Open,EE Store,Chelmsford,"72 High Street, Chelmsford, Chelmsford CM1 1DH",CM1 1DH,,Chelmsford,,England,,
+33333-4405,33333-4405,Open,EE Store,Ipswich,"37/39 Tavern Street, Ipswich, Ipswich IP1 3AG",IP1 3AG,,Ipswich,,England,,
+33333-R174,33333-R174,Open,EE Store,Birmingham Bullring,"Unit Su323 Lower Mall The Bullring Shopping Centre, Birmingham B5 4BA",B5 4BA,Bullring,Birmingham,,England,,
+33333-4560,33333-4560,Open,EE Store,Solihull,"100 High Street, Solihull, B91 3GS",B91 3GZ,Touchwood Solihull,Solihull,,England,,
+33333-4448,33333-4448,Open,EE Store,Beckton," 14A Gallions Reach Retail Park, London E6 7ER",E6 7ER,Gallions Reach Shopping Park,Beckton,,England,,
+33333-4394,33333-4394,Open,EE Store,East Ham,"109 High St N, London E6 1HZ",E6 1HZ,,East Ham,,England,,
+33333-R345,33333-R345,Open,EE Store,Woolwich,"33 Powis Street, Woolwich SE18 6HZ",SE18 6HZ,,Woolwich,,England,,
+33333-4395,33333-4395,Open,EE Store,Clapham,"25 St John's Rd, London SW11 1QN",SW11 1QN,,Clapham,,England,,
+33333-4504,33333-4504,Open,EE Store,Hounslow,"3 The Treaty Centre, Hounslow TW3 1ES",TW3 1BL,,Hounslow,,England,,
+33333-4976,33333-4976,Open,EE Store,Covent Garden,"98 Long Acre, London, London, Greater London, London WC2E 9NR",WC2E 9NR,,Covent Garden,,England,,
+33333-4270,33333-4270,Open,EE Store,Edgware,"Unit 4, Broadwalk Shopping Centre, Edgware HA8 7BD",HA8 7BD,The Broadwalk Shopping Centre,Edgware,,England,,
+33333-R334,33333-R334,Open,EE Store,Hanley the Potteries,"Unit 104 Churchway, The Potteries Shopping Centre, Stoke On Trent, Stoke-On-Trent ST1 1PS",ST1 1PS,The Potteries Centre,Stoke on Trent,,England,,
+33333-4130,33333-4130,Open,EE Store,Manchester Trafford,"Stretford, Manchester",M17 8AA,,Manchester,,England,,
+33333-R570,33333-R570,Open,EE Store,Watford,"Unit 116 The Harlequin Shopping Centre, Watford WD17 2TN",WD17 2TN,atria Watford,Watford,,England,,
+33333-4266,33333-4266,Open,EE Store,Dudley Merry Hill,"Merry Hill Shopping Centre, Brierley Hill",DY5 1QX,Merry Hill,Dudley,,England,,
+33333-4503,33333-4503,Open,EE Store,Walsall,"51 Park Street, Walsall WS1 1LY",WS1 1LY,Saddlers Shopping Centre Walsall,Walsall,,England,,
+33333-R501,33333-R501,Open,EE Store,Wolverhampton,"25 Central Arcade, Wolverhampton WV1 3ET",WV1 3ET,Mander Centre,Wolverhampton,,England,,
+33333-4423,33333-4423,Open,EE Store,Dalston," 16A Kingsland Shopping Centre, Dalston, London E8 2LX",E8 2LX,Kingsland Shopping centre,Dalston,,England,,
+33333-R512,33333-R512,Open,EE Store,Stratford Westfield,"SU0046, 56/57 The Arcade, London E20 1EH",E20 1EH,Stratford Westfield,Stratford Westfield,,England,,
+33333-4407,33333-4407,Open,EE Store,Lakeside,"West Thurrock Way, West Thurrock, Grays RM20 2ZQ",RM20 2ZG,Lakeside,Lakeside,,England,,
+33333-4098,33333-4098,Open,EE Store,Bluewater,"Bluewater Shopping Centre, Greenhithe, Kent",DA9 9ST,Bluewater Shopping Centre,Bluewater,,England,,
+33333-4539,33333-4539,Open,EE Store,Maidstone,"36 Week Street, Maidstone ME14 1RP",ME14 1RP,,Maidstone,,England,,
+33333-4414,33333-4414,Open,EE Store,Putney,"87 High Street, Putney, London, London, Greater London, London SW15 1SR",SW15 1SR,,London,,England,,
+33333-4392,33333-4392,Open,EE Store,Camden,"169 Camden High Street, Camden Town, London",NW1 7JY,,London,,England,,
+33333-R873,33333-R873,Open,EE Store,Preston,"103 Fishergate, Preston PR1 2AE",PR1 2AE,St George's Shopping Centre,Preston,,England,,
+33333-4099,33333-4099,Open,EE Store,Bury,"34 Clerke St, Bury BL9 0BX",BL9 0BX,Mill Gate Shopping Centre,Bury,,England,,
+33333-4274,33333-4274,Open,EE Store,Kilburn,"95 Kilburn High Rd, London NW6 6JE",NW6 6JE,,London,,England,,
+33333-R557,33333-R557,Open,EE Store,Bexleyheath,"Unit 75 The Mall, Bexleyheath DA6 7JJ",DA6 7JJ,,London,,England,,
+33333-R440,33333-R440,Open,EE Store,Canary Wharf," Unit 450, Cabot Square, 1 Canada Square, London E14 5AX",E14 5AX,,London,,England,,
+33333-4422,33333-4422,Open,EE Store,Crouch End,"50 The Broadway, Crouch End, London, London, Greater London, London N8 9TP",N8 9TP,,Crouch End,,England,,
+33333-4494,33333-4494,Open,EE Store,Oxford St,"291A Oxford Street, London, London, Greater London, London W1C 2DS",W1C 2DP,,London,,England,,
+33333-R330,33333-R330,Open,EE Store,Chester,"Chester: Eastgate. 9/11 Eastgate Street , CHESTER. CH1 1LG",CH1 1LG,,Chester,,England,,
+33333-4957,33333-4957,Open,EE Store,Chester Broughton,"Unit 8A, Chester CH4 0DE",CH4 0DE,Broughton Shopping Park,Chester Broughton,,England,,
+33333-4144,33333-4144,Open,EE Store,Liverpool One,"Lower Level, 59 S John St, Liverpool L1 8BU",L1 8BU,Liverpool One,Liverpool One,,England,,
+33333-4416,33333-4416,Open,EE Store,Holloway Rd," 440 Holloway Rd, London N7 6QA",N7 6QA,,London,,England,,
+33333-4978,33333-4978,Open,EE Store,Bromley,"59 The Glades Shopping Centre, Bromley, Bromley, Kent, Bromley BR1 1DN",BR1 1DN,Glades Shopping centre,Bromley,,England,,
+33333-4979,33333-4979,Open,EE Store,Croydon,"143 West Arcade, Whitgift Centre, Croydon CR0 1UT",CR0 1TJ,Centrale Shopping Centre,Croydon,,England,,
+33333-4948,33333-4948,Open,EE Store,Canterbury,"Canterbury: St George. 10 St. Georges Street , Canterbury. CT1 2SR.",CT1 2SR,Whitefriars Canterbury,Canterbury,,England,,
+33333-4016,33333-4016,Open,EE Store,Northampton,"23 Abington St, Northampton NN1 2AN",NN1 2AN,Grosvenor,Northampton,,England,,
+33333-4868,33333-4868,Open,EE Store,Leicester Fosse Park,"Unit 4 Fosse Shopping Park, Leicester LE19 1HY",LE19 1HY,Fosse Retail Park,Leicester,,England,,
+33333-4102,33333-4102,Open,EE Store,Rushden Lakes,"Unit A5, Lakes Shopping Centre, Rushden NN10 6FH",NN10 6FH,Rushden Lakes Shopping Centre,Rushden,,England,,
+33333-R484,33333-R484,Open,EE Store,Belfast Castle Court,"Unit 29 Castle Court, Royal Avenue, Belfast BT1 1FB",BT1 1FB,Castle Court Shopping Centre,Belfast,,Northern Ireland,,
+33333-4090,33333-4090,Open,EE Store,Westwood Cross,"Unit 1A, Westwood Cross Shopping Centre, Westwood, Broadstairs CT10 2BF",CT10 2BF,Westwood Cross Shopping Centre,Broadstairs,,England,,
+33333-R432,33333-R432,Open,EE Store,Wakefield Trinity Walk,"20 Unit G10 Trinity Walk, Wakefield WF1 1QU",WF1 1QU,Trinity Walk,Wakefield,,England,,
+33333-4151,33333-4151,Open,EE Store,Bath Stall St,"20/21 Stall St, Bath BA1 1QF",BA1 1QF,,Bath Stall St,,England,,
+33333-4360,33333-4360,Open,EE Store,Cribbs Causeway,"The Mall Cribbs Causeway, Bristol",BS34 5QU,Cribbs Causeway Shopping Centre,Bristol,,England,,
+33333-R415,33333-R415,Open,EE Store,Bristol Cabot Circus,"43 Cabot Circus George, White St, Bristol BS1 3BA",BS1 3BA,Cabots Circus,Bristol,,England,,
+33333-4497,33333-4497,Open,EE Store,Newcastle Eldon,"61 Northumberland Street, Newcastle Upon Tyne NE1 7AF",NE1 7AF,Eldon Square shopping centre,Newcastle,,England,,
+33333-4344,33333-4344,Open,EE Store,Middlesbrough,"Hillstreet Shopping Centre, Middlesbrough",TS1 1SU,,Middlesborough,,England,,
+33333-4112,33333-4112,Open,EE Store,Leeds Briggate,"52/53 Briggate, Leeds LS1 6HD",LS1 6HD,,Leeds,,England,,
+33333-4205,33333-4205,Open,EE Store,Durham Arnison,"Unit R Arnison Shopping Park, Durham DH1 5GB",DH1 5GB,Arnison Shopping Park,Durham,,England,,
+33333-4956,33333-4956,Open,EE Store,Bradford Westfield,"49 Petergate Mall Centre, Bradford BD1 1AH",BD1 1AH,The Broadway,Bradford,,England,,
+33333-R421,33333-R421,Open,EE Store,Hull St Stephens,"110 Ferensway, Kingston upon Hull HU2 8LN",HU2 8LN,St Stephen's Shopping Centre,Hull,,England,,
+33333-4095,33333-4095,Open,EE Store,Huddersfield,"Kingsgate Shopping Centre, King St, Huddersfield HD1 2QB",HD1 2QB,Kingsgate Shopping Centre,Huddersfield,,England,,
+33333-R571,33333-R571,Open,EE Store,Plymouth Drake Circus,"27 Old Town St, Plymouth PL1 1EA",PL1 1DA,Drake Circus,Plymouth,,England,,
+33333-R413,33333-R413,Open,EE Store,Edinburgh Fort,"Unit 30B Fort Kinnard, Edinburgh EH15 3RD ·",EH15 3RH,Fort Kinnaird,Edinburgh,,Scotland,,
+33333-4355,33333-4355,Open,EE Store,Edinburgh Princes St,"21 Princes St, Edinburgh EH2 2AN",EH2 2AN,,Edinburgh,,Scotland,,
+33333-4388,33333-4388,Open,EE Store,Glasgow Fort,"Glasgow Fort Shopping Centre, Glasgow",G34 9DL,Glasgow Fort,Glasgow,,Scotland,,
+33333-4398,33333-4398,Open,EE Store,Livingston,"Unit 84 The Centre Almondvale South, Livingston EH54 6HR ",EH54 6HR,The Centre Livingston,Livingston,,Scotland,,
+33333-4518,33333-4518,Open,EE Store,Cheltenham,"Cheltenham: High Street. 162/164 High Street , Cheltenham. GL50 1EP.",GL50 1EP,Regent Arcade,Cheltenham,,England,,
+33333-4061,33333-4061,Open,EE Store,Oxford Westgate,"Unit 31, Westgate Shopping Centre, Oxford OX1 1AN",OX1 1AN,Westgate Shopping Centre,Oxford,,England,,
+33333-4243,33333-4243,Open,EE Store,Hammersmith,"Unit 16, Kings Mall, London W6 0PZ",W6 0PZ,Kings Mall,London,,England,,
+33333-4349,33333-4349,Open,EE Store,Streatham,"168 Streatham High Rd, London SW16 1BJ",SW16 1BJ,,Streatham,,England,,
+33333-4488,33333-4488,Open,EE Store,Wimbledon,"118 Centre Court Shopping Centre, London SW19 8YE",SW19 8YE,Wimbledon Quarter,Wimbledon,,England,,
+33333-R328,33333-R328,Open,EE Store,Bournemouth, 30 - 32 Commercial Road Bournemouth Dorset BH2 5LP,BH2 5LP,,Bournemouth,,England,,
+33333-4201,33333-4201,Open,EE Store,Aberdeen Bon Accord,"Unit 30 Lower Mall Bon Accord Shopping Centre, George St, Aberdeen AB25 1HZ",AB25 1HZ,Bon Accord Centre,Aberdeen,,Scotland,,
+33333-R165,33333-R165,Open,EE Store,Dundee Overgate,"Unit L22 Overgate, Dundee, Dundee DD1 1UF ",DD1 1UF,Overgate Shopping Centre,Dundee,,Scotland,,
+33333-4491,33333-4491,Open,EE Store,Islington," 4, 6 Liverpool Rd, London N1 0PU",N1 0PU,,Islington,,England,,
+33333-4149,33333-4149,Open,EE Store,Kingston-upon-Thames,"16 Clarence St, Kingston upon Thames KT1 1NX",KT1 1NX,,Kingston-upon-Thames,,England,,
+33333-R412,33333-R412,Open,EE Store,High Wycombe,"Newland Street, Town Centre, High Wycombe HP11 2BY",HP11 2BY,Eden Shopping Centre,High Wycombe,,England,,
+33333-4482,33333-4482,Open,EE Store,Brixton,"Brixton, London 457A Brixton Road, Brixton, London, SW9 8HH",SW9 8HH,,Brixton,,England,,
+33333-4489,33333-4489,Open,EE Store,Lewisham,"66 Lewisham Shopping Ctr, London SE13 7EP",SE13 7EP,Lewisham Shopping Centre,Lewisham,,England,,
+33333-4982,33333-4982,Open,EE Store,Basingstoke,"Unit 33 Lower Ground, Festival Place Wesley Walk, Basingstoke RG21 7BE",RG21 7BE,Festival Place,Basingstoke,,England,,
+33333-4512,33333-4512,Open,EE Store,Reading,"114/115 Broad Street, Reading RG1 2BA",RG1 2BA,,Reading,,England,,
+33333-4472,33333-4472,Open,EE Store,Peckham,"Unit 7 The Aylsham Centre, London SE15 5EW",SE15 5EW,The Aylesham Centre,London,,England,,
+33333-4161,33333-4161,Open,EE Store,Manchester Market St,"33 Market St, Manchester M1 1WR",M1 1WR,102 Market Street,Manchester,,England,,
+00000-0000,00000-0000,Mock,,Retail Indirect Staff,#N/A,#N/A,,,,,,
+11122-0098,11122-0098,Open,Hughes ,"Norwich, Hall Road","UNIT 4 Hall Rd, Norwich NR4 6DH", NR4 6DH,,Norwich,,England,,
+11122-0097,11122-0097,Open,Hughes ,Martlesham,"2 Martinsyde, Martlesham Heath, Martlesham, Ipswich IP5 3QA",IP5 3QA,,Ipswich,,England,,
+11122-0093,11122-0093,Open,Hughes ,Colchester,"Unit 1 Tollgate W, Colchester CO3 8RH",CO3 8RH,,Colchester,,England,,
+11122-0032,11122-0032,Open,Hughes ,Great Yarmouth,"The Two Bears, 7 Mill Rd, Great Yarmouth NR31 0HS",NR31 0HS,,Great Yarmouth,,England,,
+11111-HNBH,11111-HNBH,Open,Harvey Norman,Harvey Norman Belfast Holywood,Holywood Exchange Retail Park,Northern Ireland,Holywood Exchange Retail Park,Belfast,,Northern Ireland,,
+11111-HNMH,11111-HNMH,Open,Harvey Norman,Harvey Norman Merry Hill,Merry Hill Shopping Centre,0,Merry Hill Shopping Centre,Brierley Hill,,,,
+00286-0000,00286-0000,Open,Curry's,Currys - Fort Dunlop,Currys Fort Dunlop Training Academy,England,Currys Fort Dunlop Training Academy,Birmingham,,England,,
+11164-0609,11164-0609,Open,Sky Retail,"Union Square, Aberdeen","The Atrium, union square shopping centre, Center, Aberdeen AB11 5PS",AB11 5PS,Union Square Shopping Centre,Aberdeen,,Scotland,SN01,Chris Spence
+11164-0610,11164-0610,Open,Sky Retail,Leeds Merrion,"Merrion Way, Leeds LS2 8NG",LS2 8NG,Merrion Shopping Centre,Leeds,,England,EN03,James Owen
+,00000-0000,,,,#N/A,#N/A,,,,,,
+33333-4258,33333-4258,Open,EE Store,"EE, Nottingham Clumber Street","16 Clumber St, Nottingham NG1 3GA",NG1 3GA,,Nottingham,,England,,
+77777-0000,77777-0000,Open,,,#N/A,#N/A,,,,,,

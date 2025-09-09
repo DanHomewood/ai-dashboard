@@ -1,0 +1,2 @@
+type,engineer,asa,store,receipt,date,time,rate,hotel,food,travel,other,vat,totals
+retail,Steven Davis,00286-2225,SLOUGH,,2025-09-09,03:30,90,0,0,0,0,True,"{'labour': '£315.00', 'expenses': '£0.00', 'subtotal': '£315.00', 'vat': '£63.00', 'total': '£378.00'}"

@@ -1,0 +1,11 @@
+type,engineer,team,date,asa,store,receipt,time,rate,hotel,food,travel,other,vat,labour,expenses,subtotal,vat_total,grand_total,invoice_type,area,vr_number,sla_type,venue_name,visit_type,engineer_count,oracle_time_hhmm,rate_per_hour,labour_value,total_value,notes,vr_number_vip,job_type,lead_engineer,second_engineer,third_engineer,labour_value_vip,materials_value,hotel_value,additional_value,total_value_vip,activity,time_hhmm,hours,nc_rate,nc_notes,include_vat
+retail,Alex Doman,,2025-09-09,00286-2088,TOTTENHAM HALE,,03:30,90,0,0,0,0,True,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+business,Alex Doman,,,,,,,,,,,,,,,,,,Business Cover,North,,,,,,03:25,90,£307.50,£369.00,,,,,,,,,,,,,,,,,
+non-chargeable,,,,,,,,90,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,,True
+retail,Alex Doman,,2025-09-09,00286-2159,TAMWORTH,,03:30,90,0,0,0,0,True,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+retail,Alex Doman,,2025-09-09,00286-2193,NORTHAMPTON Riverside,,03:30,90,0,0,0,0,True,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+retail,Alex Doman,,2025-09-09,00286-2193,NORTHAMPTON Riverside,,03:30,90,0,0,0,0,True,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+retail,Steven Davis,,2025-09-09,00286-2430,WREXHAM,,03:30,90,0,0,0,0,True,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+business,Steven Davis,,,,,,,,,,,,,,,,,,Business Cover,North,,,,,,03:25,90,£307.50,£369.00,,,,,,,,,,,,,,,,,
+non-chargeable,,,,,,,,90,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,,True
+non-chargeable,,,,,,,,90,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,,True

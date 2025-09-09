@@ -1,0 +1,2 @@
+type,engineer,team,stakeholder,date,engineers,venue,postcode,time_hhmm,hours,rate,equipment,hotel_required,notes,include_vat,labour_out,subtotal_out,vat_out,total_out
+project,,,Project,2025-09-12,Samuel Kempson,cafe nero,me7 2qy,02:30,2.5,90,,No,,True,£225.00,£225.00,£45.00,£270.00

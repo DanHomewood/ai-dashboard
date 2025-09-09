@@ -1,0 +1,2 @@
+type,engineer,team,activity,date,time_hhmm,hours,rate,notes,include_vat
+non-chargeable,,,,,,0,90,,True
